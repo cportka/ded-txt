@@ -30,7 +30,7 @@ run(gradlew, ['assembleDebug', '--no-daemon'], androidDir);
 const apk = path.join(androidDir, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
 if (fs.existsSync(apk)) {
   fs.mkdirSync(path.join(root, 'dist-mobile'), { recursive: true });
-  const dest = path.join(root, 'dist-mobile', 'DeadText-debug.apk');
+  const dest = path.join(root, 'dist-mobile', 'DedTxt-debug.apk');
   fs.copyFileSync(apk, dest);
   console.log(`Wrote ${dest}`);
 } else {

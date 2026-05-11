@@ -1,10 +1,17 @@
-# DeadText
+<p align="center">
+  <img src="build/icon.svg" alt="DedTxt icon" width="160" />
+</p>
+
+# DedTxt
 
 A dead simple plain-text editor.
 
+> "because everything fucking sucked for this sort of thing" — cportka
+
 A bit like TextEdit or Notepad, but even simpler and with fewer features.
 No hidden text. No formatting. No settings to fiddle with. Just a textarea
-and your file. UTF-8 in, UTF-8 out.
+and your file. Raw bytes in, raw bytes out — UTF-8 by default, no BOM, no
+line-ending munging.
 
 Same code, every platform: macOS, Windows, Linux desktop apps; a PWA you
 can install from any browser; iOS and Android apps via Capacitor.
@@ -71,7 +78,7 @@ npm run serve:web         # serve dist-web/ at http://127.0.0.1:5173
 - `dist-web/app/`   — the PWA editor itself
 
 Pushes to `main` redeploy the site to the `gh-pages` branch automatically
-via GitHub Actions; the site lives at `https://cportka.github.io/deadtext/`.
+via GitHub Actions; the site lives at `https://cportka.github.io/dedtxt/`.
 
 ## Build the mobile apps
 
@@ -84,7 +91,7 @@ generated on demand because scaffolding it requires macOS.
 npm run cap:add:ios
 
 # then, per build
-npm run build:android     # produces dist-mobile/DeadText-debug.apk
+npm run build:android     # produces dist-mobile/DedTxt-debug.apk
 npm run build:ios         # macOS only — produces dist-mobile/ios/App.app for the simulator
 ```
 
@@ -123,12 +130,8 @@ full build.
 | Quit       | `Cmd + Q`          | `Ctrl + Q`        |
 
 Drop a file onto the window to open it. The OS "Open with…" menu lists
-DeadText for txt/md/log/json/csv/ini/yml/yaml/xml.
+DedTxt for txt/md/log/json/csv/ini/yml/yaml/xml.
 
 ## License
 
 ISC. See [LICENSE](./LICENSE).
-
----
-
-> "because everything sucked for this sort of thing" — cportka

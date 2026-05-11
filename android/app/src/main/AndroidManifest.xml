@@ -36,7 +36,7 @@
                 <data android:mimeType="application/x-yaml" />
             </intent-filter>
 
-            <!-- "Send to" / share text into DeadText -->
+            <!-- "Send to" / share text into DedTxt -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
