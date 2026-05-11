@@ -1,9 +1,9 @@
-// DeadText service worker — caches the app shell so it works offline.
+// DedTxt service worker — caches the app shell so it works offline.
 // Bumped automatically on every web build via the BUILD_ID placeholder
 // replaced by scripts/build-web.js.
 
 const VERSION = '__BUILD_ID__';
-const CACHE = `deadtext-${VERSION}`;
+const CACHE = `dedtxt-${VERSION}`;
 
 const SHELL = [
   './',

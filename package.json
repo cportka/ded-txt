@@ -1,20 +1,20 @@
 {
-  "name": "deadtext",
-  "productName": "DeadText",
-  "version": "0.4.0",
-  "description": "A dead simple plain-text editor.",
+  "name": "dedtxt",
+  "productName": "DedTxt",
+  "version": "0.5.0",
+  "description": "DedTxt — a dead simple plain-text editor.",
   "main": "main.js",
   "author": {
     "name": "Chris Portka"
   },
   "license": "ISC",
-  "homepage": "https://github.com/cportka/deadtext#readme",
+  "homepage": "https://github.com/cportka/dedtxt#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cportka/deadtext.git"
+    "url": "https://github.com/cportka/dedtxt.git"
   },
   "bugs": {
-    "url": "https://github.com/cportka/deadtext/issues"
+    "url": "https://github.com/cportka/dedtxt/issues"
   },
   "keywords": [
     "text-editor",
@@ -26,6 +26,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "gen:icons": "node scripts/build-icons.js",
+    "gen:social": "node scripts/build-social-preview.js",
     "build": "electron-builder",
     "build:mac": "node scripts/build-icons.js && electron-builder --mac",
     "build:win": "node scripts/build-icons.js && electron-builder --win",
@@ -57,8 +58,8 @@
     "@capacitor/share": "^6.0.3"
   },
   "build": {
-    "appId": "com.cportka.deadtext",
-    "productName": "DeadText",
+    "appId": "com.cportka.dedtxt",
+    "productName": "DedTxt",
     "copyright": "Copyright (c) 2025 Chris Portka",
     "files": [
       "main.js",
@@ -77,69 +78,21 @@
       "output": "dist"
     },
     "fileAssociations": [
-      {
-        "ext": "txt",
-        "name": "Plain Text",
-        "role": "Editor"
-      },
-      {
-        "ext": "md",
-        "name": "Markdown",
-        "role": "Editor"
-      },
-      {
-        "ext": "log",
-        "name": "Log File",
-        "role": "Editor"
-      },
-      {
-        "ext": "json",
-        "name": "JSON",
-        "role": "Editor"
-      },
-      {
-        "ext": "csv",
-        "name": "CSV",
-        "role": "Editor"
-      },
-      {
-        "ext": "ini",
-        "name": "INI",
-        "role": "Editor"
-      },
-      {
-        "ext": "yml",
-        "name": "YAML",
-        "role": "Editor"
-      },
-      {
-        "ext": "yaml",
-        "name": "YAML",
-        "role": "Editor"
-      },
-      {
-        "ext": "xml",
-        "name": "XML",
-        "role": "Editor"
-      }
+      { "ext": "txt",  "name": "Plain Text", "role": "Editor" },
+      { "ext": "md",   "name": "Markdown",   "role": "Editor" },
+      { "ext": "log",  "name": "Log File",   "role": "Editor" },
+      { "ext": "json", "name": "JSON",       "role": "Editor" },
+      { "ext": "csv",  "name": "CSV",        "role": "Editor" },
+      { "ext": "ini",  "name": "INI",        "role": "Editor" },
+      { "ext": "yml",  "name": "YAML",       "role": "Editor" },
+      { "ext": "yaml", "name": "YAML",       "role": "Editor" },
+      { "ext": "xml",  "name": "XML",        "role": "Editor" }
     ],
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
       ],
       "icon": "build/icon.icns",
       "hardenedRuntime": false,
@@ -152,19 +105,8 @@
     },
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
+        { "target": "nsis", "arch": ["x64", "arm64"] },
+        { "target": "portable", "arch": ["x64"] }
       ],
       "icon": "build/icon.ico"
     },
@@ -176,32 +118,15 @@
     },
     "linux": {
       "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "rpm",
-          "arch": [
-            "x64"
-          ]
-        }
+        { "target": "AppImage", "arch": ["x64", "arm64"] },
+        { "target": "deb", "arch": ["x64", "arm64"] },
+        { "target": "rpm", "arch": ["x64"] }
       ],
       "icon": "build/icon.png",
       "category": "Utility;TextEditor",
-      "maintainer": "Chris Portka <noreply@cportka.com>",
+      "maintainer": "Chris Portka <hello@chrisportka.com>",
       "synopsis": "A dead simple plain-text editor",
-      "description": "DeadText is a minimal plain-text editor. No formatting, no settings, no fuss."
+      "description": "DedTxt is a minimal plain-text editor. No formatting, no settings, no fuss."
     }
   }
 }
