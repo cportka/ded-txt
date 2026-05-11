@@ -2,7 +2,7 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron')
 const path = require('path');
 const fs = require('fs/promises');
 
-app.name = 'DeadText';
+app.name = 'DedTxt';
 
 const isMac = process.platform === 'darwin';
 
@@ -25,7 +25,7 @@ function updateTitle(win) {
   const s = getState(win);
   const name = s.filePath ? path.basename(s.filePath) : 'Untitled';
   const dot = s.dirty ? ' •' : '';
-  win.setTitle(`${name}${dot} — DeadText`);
+  win.setTitle(`${name}${dot} — DedTxt`);
 }
 
 function createWindow({ openPath } = {}) {
@@ -34,7 +34,7 @@ function createWindow({ openPath } = {}) {
     height: 700,
     minWidth: 320,
     minHeight: 240,
-    title: 'DeadText',
+    title: 'DedTxt',
     backgroundColor: '#ffffff',
     show: false,
     webPreferences: {
@@ -192,7 +192,7 @@ function buildMenu() {
     {
       role: 'help',
       submenu: [
-        { label: 'Project on GitHub', click: () => shell.openExternal('https://github.com/cportka/deadtext') }
+        { label: 'Project on GitHub', click: () => shell.openExternal('https://github.com/cportka/dedtxt') }
       ]
     }
   ];

@@ -57,7 +57,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: deadtext-${{ runner.os }}
+          name: dedtxt-${{ runner.os }}
           if-no-files-found: error
           path: |
             dist/*.dmg
@@ -86,7 +86,7 @@ jobs:
       - name: Upload web bundle
         uses: actions/upload-artifact@v4
         with:
-          name: deadtext-web
+          name: dedtxt-web
           path: dist-web/**
 
       - name: Deploy to gh-pages
@@ -132,7 +132,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: deadtext-android
+          name: dedtxt-android
           if-no-files-found: error
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
@@ -174,16 +174,16 @@ jobs:
         working-directory: ios/App
         run: |
           mkdir -p ../../dist-mobile
-          cp -R build/Build/Products/Debug-iphonesimulator/App.app ../../dist-mobile/DeadText.app
+          cp -R build/Build/Products/Debug-iphonesimulator/App.app ../../dist-mobile/DedTxt.app
           cd ../../dist-mobile
-          zip -ry DeadText-iOS-Simulator.zip DeadText.app
+          zip -ry DedTxt-iOS-Simulator.zip DedTxt.app
 
       - name: Upload .app
         uses: actions/upload-artifact@v4
         with:
-          name: deadtext-ios-simulator
+          name: dedtxt-ios-simulator
           if-no-files-found: error
-          path: dist-mobile/DeadText-iOS-Simulator.zip
+          path: dist-mobile/DedTxt-iOS-Simulator.zip
 
   release:
     name: release
@@ -202,10 +202,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/deadtext-macOS/**
-            artifacts/deadtext-Windows/**
-            artifacts/deadtext-Linux/**
-            artifacts/deadtext-android/**
+            artifacts/dedtxt-macOS/**
+            artifacts/dedtxt-Windows/**
+            artifacts/dedtxt-Linux/**
+            artifacts/dedtxt-android/**
           draft: false
           prerelease: false
           generate_release_notes: true

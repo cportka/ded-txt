@@ -4,7 +4,18 @@
 (function () {
   // Theme toggle: dark by default, persisted in localStorage so the choice
   // sticks across sessions and is shared with the PWA at /app/.
-  const THEME_KEY = 'deadtext-theme';
+  const THEME_KEY = 'dedtxt-theme';
+
+  // MIGRATION: copy old key to new key once, then remove old.
+  // Added during DeadText → DedTxt rename. Safe to remove after a few months.
+  try {
+    var oldThemeKey = localStorage.getItem('deadtext-theme');
+    if (oldThemeKey && !localStorage.getItem(THEME_KEY)) {
+      localStorage.setItem(THEME_KEY, oldThemeKey);
+    }
+    if (oldThemeKey) localStorage.removeItem('deadtext-theme');
+  } catch (e) { /* private mode */ }
+
   const themeMeta = document.getElementById('theme-color-meta');
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
@@ -19,7 +30,7 @@
     });
   });
 
-  const REPO = 'cportka/deadtext';
+  const REPO = 'cportka/dedtxt';
   const API = `https://api.github.com/repos/${REPO}/releases/latest`;
   const RELEASES_URL = `https://github.com/${REPO}/releases`;
 

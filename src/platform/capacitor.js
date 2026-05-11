@@ -23,7 +23,7 @@ function getFilesystem() {
 function updateTitle() {
   const base = currentName || 'Untitled';
   const dot = dirty ? ' •' : '';
-  document.title = `${base}${dot} — DeadText`;
+  document.title = `${base}${dot} — DedTxt`;
 }
 
 const capacitor = {
