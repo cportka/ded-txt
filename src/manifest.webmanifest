@@ -1,6 +1,6 @@
 {
-  "name": "DeadText",
-  "short_name": "DeadText",
+  "name": "DedTxt",
+  "short_name": "DedTxt",
   "description": "A dead simple plain-text editor.",
   "start_url": "./",
   "scope": "./",

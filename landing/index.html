@@ -3,23 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="DeadText is a dead simple plain-text editor for macOS, Windows, Linux, iOS, Android, and the web. UTF-8 in, UTF-8 out. No formatting, no settings." />
+  <meta name="description" content="DedTxt is a dead simple plain-text editor for macOS, Windows, Linux, iOS, Android, and the web. UTF-8 in, UTF-8 out. No formatting, no settings." />
   <meta name="theme-color" content="#0e0e0e" id="theme-color-meta" />
   <link rel="icon" href="./icons/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="./icons/icon-512.png" />
-  <meta property="og:title" content="DeadText" />
+  <meta property="og:title" content="DedTxt" />
   <meta property="og:description" content="A dead simple plain-text editor. Everywhere." />
   <meta property="og:image" content="./icons/icon-512.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
-  <title>DeadText — a dead simple plain-text editor</title>
+  <title>DedTxt — a dead simple plain-text editor</title>
   <script>
     // Apply the saved theme synchronously so the page never flashes the
     // wrong palette. First-time visitors get dark; once they toggle, their
     // choice is remembered.
     (function () {
       try {
-        var t = localStorage.getItem('deadtext-theme');
+        // MIGRATION: copy old key to new key once, then remove old.
+        // Added during DeadText → DedTxt rename. Safe to remove after a few months.
+        var old = localStorage.getItem('deadtext-theme');
+        if (old && !localStorage.getItem('dedtxt-theme')) {
+          localStorage.setItem('dedtxt-theme', old);
+        }
+        if (old) localStorage.removeItem('deadtext-theme');
+
+        var t = localStorage.getItem('dedtxt-theme');
         if (t !== 'dark' && t !== 'light') t = 'dark';
         document.documentElement.setAttribute('data-theme', t);
       } catch (e) {
@@ -241,15 +249,15 @@
 <body>
   <main>
     <header>
-      <img src="./icons/icon-512.png" alt="DeadText icon" />
-      <h1>DeadText</h1>
+      <img src="./icons/icon-512.png" alt="DedTxt icon" />
+      <h1>DedTxt</h1>
     </header>
     <p class="tagline">A dead simple plain-text editor. Everywhere.</p>
 
     <section class="download-card" aria-label="Download">
       <h2>Download</h2>
       <div class="primary-row" id="primary-row">
-        <a class="btn primary" href="https://github.com/cportka/deadtext/releases/latest" id="primary-btn">
+        <a class="btn primary" href="https://github.com/cportka/dedtxt/releases/latest" id="primary-btn">
           <span>Get the latest release</span>
         </a>
         <a class="btn" href="./app/">Use online (PWA)</a>
@@ -271,9 +279,9 @@
   <footer>
     <span>ISC licensed.</span>
     <span>
-      <a href="https://github.com/cportka/deadtext">Source on GitHub</a>
+      <a href="https://github.com/cportka/dedtxt">Source on GitHub</a>
       &middot;
-      <a href="https://github.com/cportka/deadtext/issues">Issues</a>
+      <a href="https://github.com/cportka/dedtxt/issues">Issues</a>
     </span>
     <button type="button" class="theme-toggle" data-theme-toggle>
       <span data-theme-show="dark">Switch to light</span>

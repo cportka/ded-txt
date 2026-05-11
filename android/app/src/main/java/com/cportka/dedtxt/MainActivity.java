@@ -1,4 +1,4 @@
-package com.cportka.deadtext;
+package com.cportka.dedtxt;
 
 import com.getcapacitor.BridgeActivity;
 

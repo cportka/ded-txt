@@ -1,6 +1,6 @@
 import platform from './platform/index.js';
 
-const THEME_KEY = 'deadtext-theme';
+const THEME_KEY = 'dedtxt-theme';
 const themeToggle = document.getElementById('theme-toggle');
 const themeMeta = document.getElementById('theme-color-meta');
 
