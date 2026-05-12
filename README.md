@@ -13,8 +13,9 @@ No hidden text. No formatting. No settings to fiddle with. Just a textarea
 and your file. Raw bytes in, raw bytes out — UTF-8 by default, no BOM, no
 line-ending munging.
 
-Same code, every platform: macOS, Windows, Linux desktop apps; a PWA you
-can install from any browser; iOS and Android apps via Capacitor.
+Three targets, same code: macOS / Windows / Linux desktop via Electron, and
+a PWA at <https://cportka.github.io/dedtxt/> that installs from any modern
+browser (including iOS and Android via "Add to Home Screen").
 
 ## Run from source
 
@@ -37,20 +38,17 @@ src/                      The app itself — shared by every platform
     index.js              Detects runtime, picks an implementation
     electron.js           IPC to main.js via window.dt
     web.js                File System Access API + download fallback
-    capacitor.js          @capacitor/filesystem on iOS/Android
   sw.js                   Service worker for offline web
   manifest.webmanifest    PWA manifest
 landing/                  Marketing/download page served at the root
-android/                  Capacitor project (committed)
-ios/                      Capacitor project (generated on demand — needs macOS)
 build/                    Icon source + electron-builder resources
-scripts/                  Build scripts (web, mobile, icons)
+scripts/                  Build scripts (web, icons, social preview)
 ```
 
 The renderer is platform-agnostic: it imports `platform/index.js`, which
-returns one of three modules with the same interface. Adding a new
-platform means writing a new module and teaching `platform/index.js` how
-to detect it.
+returns one of two modules with the same interface. Adding a new platform
+means writing a new module and teaching `platform/index.js` how to detect
+it.
 
 ## Build desktop installers
 
@@ -62,8 +60,8 @@ npm run build:linux       # AppImage + .deb + .rpm
 
 Outputs go to `dist/`. Each OS must build its own installers locally,
 except Linux, which can also be built from macOS. For full cross-platform
-builds, push to `main` or open a PR — the GitHub Actions workflow handles
-all three.
+builds, push a `v*` tag (or trigger the workflow manually) — the GitHub
+Actions workflow builds all three and attaches them to a Release.
 
 ## Build the web app
 
@@ -78,45 +76,16 @@ npm run serve:web         # serve dist-web/ at http://127.0.0.1:5173
 - `dist-web/app/`   — the PWA editor itself
 
 Pushes to `main` redeploy the site to the `gh-pages` branch automatically
-via GitHub Actions; the site lives at `https://cportka.github.io/dedtxt/`.
-
-## Build the mobile apps
-
-iOS and Android use [Capacitor](https://capacitorjs.com) to wrap the web
-build. The `android/` project is committed. The `ios/` project is
-generated on demand because scaffolding it requires macOS.
-
-```sh
-# one-time per checkout, macOS only
-npm run cap:add:ios
-
-# then, per build
-npm run build:android     # produces dist-mobile/DedTxt-debug.apk
-npm run build:ios         # macOS only — produces dist-mobile/ios/App.app for the simulator
-```
-
-For local development, open the native projects in their IDEs:
-
-```sh
-npm run cap:open:ios      # opens Xcode
-npm run cap:open:android  # opens Android Studio
-```
-
-CI builds an unsigned `app-debug.apk` and a simulator-only iOS `.app` on
-every push so you can sideload to test.
+via GitHub Actions; the site lives at <https://cportka.github.io/dedtxt/>.
 
 ## Icon
 
 The app icon lives at `build/icon.svg`. Edit it, then run:
 
 ```sh
-npm run gen:icons
+npm run gen:icons         # regenerates .png, .icns, .ico, and PWA icons
+npm run gen:social        # regenerates build/social-preview.png
 ```
-
-That regenerates the `.icns`, `.ico`, `.png`, and PWA icon set from the
-SVG. The desktop and web build scripts run this automatically; you only
-need to invoke it manually if you want to inspect the output without a
-full build.
 
 ## Keys
 

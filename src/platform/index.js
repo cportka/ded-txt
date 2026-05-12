@@ -9,11 +9,6 @@ let platform;
 
 if (typeof window !== 'undefined' && window.dt) {
   platform = electron;
-} else if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-  // Lazy-load Capacitor module only on Capacitor builds so the web bundle
-  // doesn't have to ship its dependencies.
-  const mod = await import('./capacitor.js');
-  platform = mod.default;
 } else {
   platform = web;
 }
