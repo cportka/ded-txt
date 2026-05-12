@@ -16,8 +16,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Desktop installers are heavy (~80 MB each) and Electron-bound. Only build
+  # them when intentionally cutting a release (tag v*) or manually triggered.
   desktop:
     name: desktop / ${{ matrix.os }}
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -68,6 +71,8 @@ jobs:
             dist/*.rpm
             dist/latest*.yml
 
+  # Web bundle is < 1 MB and feeds the live GitHub Pages site. Cheap to run
+  # on every push and PR.
   web:
     name: web
     runs-on: ubuntu-latest
@@ -103,6 +108,7 @@ jobs:
 
   android:
     name: android
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -138,6 +144,7 @@ jobs:
 
   ios:
     name: ios
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
