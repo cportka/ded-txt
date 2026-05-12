@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Desktop installers are heavy (~80 MB each) and Electron-bound. Only build
-  # them when intentionally cutting a release (tag v*) or manually triggered.
+  # Desktop bundles via Tauri. ~5–15 MB each — still only built on tags or
+  # manual dispatch to keep CI focused.
   desktop:
     name: desktop / ${{ matrix.os }}
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -35,27 +35,37 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
 
-      - name: Install rpm (Linux only)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install deps
+      - name: Install Linux build deps (WebKitGTK, AppImage tooling)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf \
+            rpm
+
+      - name: Cache Rust target
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
         run: npm ci
 
       - name: Lint
         run: npm run lint
 
-      - name: Build (macOS)
-        if: runner.os == 'macOS'
-        run: npx electron-builder --mac --publish never
+      - name: Generate icons
+        run: npm run gen:icons
 
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        run: npx electron-builder --win --publish never
-
-      - name: Build (Linux)
-        if: runner.os == 'Linux'
-        run: npx electron-builder --linux --publish never
+      - name: Build Tauri bundle
+        run: npx tauri build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -63,13 +73,13 @@ jobs:
           name: dedtxt-${{ runner.os }}
           if-no-files-found: error
           path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.exe
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.rpm
-            dist/latest*.yml
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/appimage/*.AppImage
 
   # Web bundle is < 1 MB and feeds the live GitHub Pages site. Cheap to run
   # on every push and PR.

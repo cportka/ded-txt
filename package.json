@@ -3,7 +3,6 @@
   "productName": "DedTxt",
   "version": "0.5.0",
   "description": "DedTxt — a dead simple plain-text editor.",
-  "main": "main.js",
   "author": {
     "name": "Chris Portka"
   },
@@ -19,96 +18,25 @@
   "keywords": [
     "text-editor",
     "plain-text",
-    "electron"
+    "tauri"
   ],
   "scripts": {
-    "start": "electron .",
+    "start": "node scripts/build-icons.js && tauri dev",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "gen:icons": "node scripts/build-icons.js",
     "gen:social": "node scripts/build-social-preview.js",
-    "build:mac": "node scripts/build-icons.js && electron-builder --mac",
-    "build:win": "node scripts/build-icons.js && electron-builder --win",
-    "build:linux": "node scripts/build-icons.js && electron-builder --linux",
+    "build:mac": "node scripts/build-icons.js && tauri build",
+    "build:win": "node scripts/build-icons.js && tauri build",
+    "build:linux": "node scripts/build-icons.js && tauri build",
     "build:web": "node scripts/build-icons.js && node scripts/build-web.js",
-    "serve:web": "node scripts/build-icons.js && node scripts/build-web.js && npx --yes http-server dist-web -p 5173 -c-1"
+    "serve:web": "node scripts/build-icons.js && node scripts/build-web.js && npx --yes http-server dist-web -p 5173 -c-1",
+    "tauri": "tauri"
   },
   "devDependencies": {
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
+    "@tauri-apps/cli": "^2",
     "eslint": "^8.57.1",
     "png2icons": "^2.0.1",
     "sharp": "^0.34.5"
-  },
-  "build": {
-    "appId": "com.cportka.dedtxt",
-    "productName": "DedTxt",
-    "copyright": "Copyright (c) 2025 Chris Portka",
-    "files": [
-      "main.js",
-      "preload.js",
-      "src/**/*",
-      "LICENSE",
-      "README.md",
-      "!**/*.map",
-      "!**/.DS_Store",
-      "!**/sw.js",
-      "!**/manifest.webmanifest"
-    ],
-    "directories": {
-      "buildResources": "build",
-      "output": "dist"
-    },
-    "fileAssociations": [
-      { "ext": "txt",  "name": "Plain Text", "role": "Editor" },
-      { "ext": "md",   "name": "Markdown",   "role": "Editor" },
-      { "ext": "log",  "name": "Log File",   "role": "Editor" },
-      { "ext": "json", "name": "JSON",       "role": "Editor" },
-      { "ext": "csv",  "name": "CSV",        "role": "Editor" },
-      { "ext": "ini",  "name": "INI",        "role": "Editor" },
-      { "ext": "yml",  "name": "YAML",       "role": "Editor" },
-      { "ext": "yaml", "name": "YAML",       "role": "Editor" },
-      { "ext": "xml",  "name": "XML",        "role": "Editor" }
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
-      ],
-      "icon": "build/icon.png",
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false,
-      "identity": null
-    },
-    "dmg": {
-      "title": "${productName} ${version}",
-      "writeUpdateInfo": false
-    },
-    "win": {
-      "target": [
-        { "target": "nsis", "arch": ["x64", "arm64"] },
-        { "target": "portable", "arch": ["x64"] }
-      ],
-      "icon": "build/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": true
-    },
-    "linux": {
-      "target": [
-        { "target": "AppImage", "arch": ["x64", "arm64"] },
-        { "target": "deb", "arch": ["x64", "arm64"] },
-        { "target": "rpm", "arch": ["x64"] }
-      ],
-      "icon": "build/icon.png",
-      "category": "Utility;TextEditor",
-      "maintainer": "Chris Portka <hello@chrisportka.com>",
-      "synopsis": "A dead simple plain-text editor",
-      "description": "DedTxt is a minimal plain-text editor. No formatting, no settings, no fuss."
-    }
   }
 }
