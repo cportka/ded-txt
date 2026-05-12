@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="DedTxt is a dead simple plain-text editor for macOS, Windows, Linux, iOS, Android, and the web. UTF-8 in, UTF-8 out. No formatting, no settings." />
+  <meta name="description" content="DedTxt is a dead simple plain-text editor for macOS, Windows, Linux, and the web. UTF-8 in, UTF-8 out. No formatting, no settings." />
   <meta name="theme-color" content="#0e0e0e" id="theme-color-meta" />
   <link rel="icon" href="./icons/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="./icons/icon-512.png" />
@@ -19,14 +19,6 @@
     // choice is remembered.
     (function () {
       try {
-        // MIGRATION: copy old key to new key once, then remove old.
-        // Added during DeadText → DedTxt rename. Safe to remove after a few months.
-        var old = localStorage.getItem('deadtext-theme');
-        if (old && !localStorage.getItem('dedtxt-theme')) {
-          localStorage.setItem('dedtxt-theme', old);
-        }
-        if (old) localStorage.removeItem('deadtext-theme');
-
         var t = localStorage.getItem('dedtxt-theme');
         if (t !== 'dark' && t !== 'light') t = 'dark';
         document.documentElement.setAttribute('data-theme', t);
@@ -272,7 +264,7 @@
 
     <div class="description">
       <p>A bit like TextEdit or Notepad, but even simpler and with fewer features. No hidden text. No formatting. No settings to fiddle with. Just a textarea and your file. <code>UTF-8</code> in, <code>UTF-8</code> out.</p>
-      <p>Same code, every platform: macOS, Windows, Linux desktop apps; a PWA you can install from any browser; iOS and Android apps.</p>
+      <p>Three targets, same code: macOS / Windows / Linux desktop, and a PWA you can install from any modern browser (including iOS and Android via "Add to Home Screen").</p>
     </div>
   </main>
 

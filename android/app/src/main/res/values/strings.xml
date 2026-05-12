@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">DedTxt</string>
-    <string name="title_activity_main">DedTxt</string>
-    <string name="package_name">com.cportka.dedtxt</string>
-    <string name="custom_url_scheme">com.cportka.dedtxt</string>
-</resources>

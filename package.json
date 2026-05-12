@@ -27,35 +27,18 @@
     "lint:fix": "eslint --fix .",
     "gen:icons": "node scripts/build-icons.js",
     "gen:social": "node scripts/build-social-preview.js",
-    "build": "electron-builder",
     "build:mac": "node scripts/build-icons.js && electron-builder --mac",
     "build:win": "node scripts/build-icons.js && electron-builder --win",
     "build:linux": "node scripts/build-icons.js && electron-builder --linux",
     "build:web": "node scripts/build-icons.js && node scripts/build-web.js",
-    "serve:web": "node scripts/build-icons.js && node scripts/build-web.js && npx --yes http-server dist-web -p 5173 -c-1",
-    "pack": "electron-builder --dir",
-    "cap:add:android": "node scripts/cap.js add android",
-    "cap:add:ios": "node scripts/cap.js add ios",
-    "cap:sync": "node scripts/cap.js sync",
-    "cap:open:android": "node scripts/cap.js open android",
-    "cap:open:ios": "node scripts/cap.js open ios",
-    "build:android": "node scripts/build-android.js",
-    "build:ios": "node scripts/build-ios.js"
+    "serve:web": "node scripts/build-icons.js && node scripts/build-web.js && npx --yes http-server dist-web -p 5173 -c-1"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.2.0",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
     "eslint": "^8.57.1",
     "png2icons": "^2.0.1",
     "sharp": "^0.34.5"
-  },
-  "dependencies": {
-    "@capacitor/android": "^6.2.0",
-    "@capacitor/core": "^6.2.0",
-    "@capacitor/filesystem": "^6.0.3",
-    "@capacitor/ios": "^6.2.0",
-    "@capacitor/share": "^6.0.3"
   },
   "build": {
     "appId": "com.cportka.dedtxt",
@@ -70,8 +53,7 @@
       "!**/*.map",
       "!**/.DS_Store",
       "!**/sw.js",
-      "!**/manifest.webmanifest",
-      "!node_modules/@capacitor/**"
+      "!**/manifest.webmanifest"
     ],
     "directories": {
       "buildResources": "build",
