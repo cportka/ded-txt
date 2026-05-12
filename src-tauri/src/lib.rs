@@ -1,0 +1,419 @@
+// DedTxt — Tauri main process.
+//
+// This is the Rust counterpart of the old Electron main.js. It owns:
+//   * the editor window
+//   * the system menu (with platform-correct accelerators)
+//   * file I/O (open/save dialogs + reading/writing bytes)
+//   * the title bar (filename + dirty bullet)
+//   * file-open events from the OS (CLI argv, macOS "Open with", second instance)
+//
+// The renderer (src/) calls into these via the standard Tauri invoke()
+// bridge, exposed to JS through src/platform/tauri.js.
+
+use std::path::PathBuf;
+use std::sync::Mutex;
+
+use serde::Serialize;
+use tauri::{
+    menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
+    AppHandle, Emitter, Manager, RunEvent, State, WindowEvent, Wry,
+};
+use tauri_plugin_dialog::DialogExt;
+
+#[derive(Default)]
+struct AppState {
+    current_path: Mutex<Option<PathBuf>>,
+    dirty: Mutex<bool>,
+    bypass_close: Mutex<bool>,
+    // Paths waiting to be opened once the frontend signals it's ready.
+    // Populated by CLI argv at launch and by macOS RunEvent::Opened.
+    pending: Mutex<Vec<PathBuf>>,
+}
+
+#[derive(Serialize)]
+struct OpenResult {
+    ok: bool,
+    #[serde(rename = "filePath", skip_serializing_if = "Option::is_none")]
+    file_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    canceled: Option<bool>,
+}
+
+#[derive(Serialize)]
+struct SaveResult {
+    ok: bool,
+    #[serde(rename = "filePath", skip_serializing_if = "Option::is_none")]
+    file_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    canceled: Option<bool>,
+}
+
+fn make_title(path: Option<&PathBuf>, dirty: bool) -> String {
+    let name = path
+        .and_then(|p| p.file_name())
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "Untitled".to_string());
+    let dot = if dirty { " •" } else { "" };
+    format!("{name}{dot} — DedTxt")
+}
+
+fn refresh_title(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let path = state.current_path.lock().unwrap().clone();
+    let dirty = *state.dirty.lock().unwrap();
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.set_title(&make_title(path.as_ref(), dirty));
+    }
+}
+
+fn read_file(path: &PathBuf) -> Result<OpenResult, String> {
+    let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    Ok(OpenResult {
+        ok: true,
+        file_path: Some(path.to_string_lossy().to_string()),
+        content: Some(content),
+        error: None,
+        canceled: None,
+    })
+}
+
+fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
+    match read_file(&path) {
+        Ok(payload) => {
+            let state = app.state::<AppState>();
+            *state.current_path.lock().unwrap() = Some(path);
+            *state.dirty.lock().unwrap() = false;
+            refresh_title(app);
+            payload
+        }
+        Err(e) => OpenResult {
+            ok: false,
+            file_path: Some(path.to_string_lossy().to_string()),
+            content: None,
+            error: Some(e),
+            canceled: None,
+        },
+    }
+}
+
+// --- Invoke commands ------------------------------------------------------
+
+#[tauri::command]
+fn open_file(app: AppHandle) -> Result<OpenResult, String> {
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter(
+            "Text",
+            &["txt", "md", "log", "json", "csv", "ini", "yml", "yaml", "xml"],
+        )
+        .blocking_pick_file();
+
+    match picked {
+        Some(fp) => {
+            let path = fp.into_path().map_err(|e| e.to_string())?;
+            Ok(finalize_open(&app, path))
+        }
+        None => Ok(OpenResult {
+            ok: false,
+            file_path: None,
+            content: None,
+            error: None,
+            canceled: Some(true),
+        }),
+    }
+}
+
+#[tauri::command]
+fn open_path(app: AppHandle, path: String) -> Result<OpenResult, String> {
+    Ok(finalize_open(&app, PathBuf::from(path)))
+}
+
+fn save_to(app: &AppHandle, target: PathBuf, content: String) -> SaveResult {
+    match std::fs::write(&target, content) {
+        Ok(()) => {
+            let state = app.state::<AppState>();
+            *state.current_path.lock().unwrap() = Some(target.clone());
+            *state.dirty.lock().unwrap() = false;
+            refresh_title(app);
+            SaveResult {
+                ok: true,
+                file_path: Some(target.to_string_lossy().to_string()),
+                error: None,
+                canceled: None,
+            }
+        }
+        Err(e) => SaveResult {
+            ok: false,
+            file_path: Some(target.to_string_lossy().to_string()),
+            error: Some(e.to_string()),
+            canceled: None,
+        },
+    }
+}
+
+fn prompt_save_path(app: &AppHandle, default_name: &str) -> Option<PathBuf> {
+    let picked = app
+        .dialog()
+        .file()
+        .set_file_name(default_name)
+        .blocking_save_file();
+    picked.and_then(|fp| fp.into_path().ok())
+}
+
+#[tauri::command]
+fn save_file(app: AppHandle, content: String) -> Result<SaveResult, String> {
+    let existing = app.state::<AppState>().current_path.lock().unwrap().clone();
+    let target = match existing {
+        Some(p) => p,
+        None => match prompt_save_path(&app, "Untitled.txt") {
+            Some(p) => p,
+            None => {
+                return Ok(SaveResult {
+                    ok: false,
+                    file_path: None,
+                    error: None,
+                    canceled: Some(true),
+                })
+            }
+        },
+    };
+    Ok(save_to(&app, target, content))
+}
+
+#[tauri::command]
+fn save_file_as(app: AppHandle, content: String) -> Result<SaveResult, String> {
+    let default_name = {
+        let cp = app.state::<AppState>().current_path.lock().unwrap();
+        cp.as_ref()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "Untitled.txt".to_string())
+    };
+    match prompt_save_path(&app, &default_name) {
+        Some(target) => Ok(save_to(&app, target, content)),
+        None => Ok(SaveResult {
+            ok: false,
+            file_path: None,
+            error: None,
+            canceled: Some(true),
+        }),
+    }
+}
+
+#[tauri::command]
+fn set_dirty(app: AppHandle, dirty: bool) {
+    let state = app.state::<AppState>();
+    *state.dirty.lock().unwrap() = dirty;
+    refresh_title(&app);
+}
+
+#[tauri::command]
+fn confirm_close(app: AppHandle) {
+    let state = app.state::<AppState>();
+    *state.bypass_close.lock().unwrap() = true;
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.close();
+    }
+}
+
+#[tauri::command]
+fn drain_pending(state: State<'_, AppState>) -> Vec<String> {
+    std::mem::take(&mut *state.pending.lock().unwrap())
+        .into_iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect()
+}
+
+// --- Setup helpers --------------------------------------------------------
+
+fn pick_file_from_argv(argv: &[String]) -> Option<PathBuf> {
+    // argv[0] is the executable. Walk the rest; first non-flag that exists wins.
+    for a in argv.iter().skip(1) {
+        if a.is_empty() || a.starts_with('-') {
+            continue;
+        }
+        let pb = PathBuf::from(a);
+        if pb.exists() {
+            return Some(pb);
+        }
+    }
+    None
+}
+
+fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<Wry>> {
+    let new_item = MenuItemBuilder::new("New")
+        .id("new")
+        .accelerator("CmdOrCtrl+N")
+        .build(app)?;
+    let open_item = MenuItemBuilder::new("Open…")
+        .id("open")
+        .accelerator("CmdOrCtrl+O")
+        .build(app)?;
+    let save_item = MenuItemBuilder::new("Save")
+        .id("save")
+        .accelerator("CmdOrCtrl+S")
+        .build(app)?;
+    let save_as_item = MenuItemBuilder::new("Save As…")
+        .id("save_as")
+        .accelerator("CmdOrCtrl+Shift+S")
+        .build(app)?;
+
+    let file_menu = SubmenuBuilder::new(app, "File")
+        .item(&new_item)
+        .item(&open_item)
+        .separator()
+        .item(&save_item)
+        .item(&save_as_item)
+        .separator()
+        .close_window()
+        .build()?;
+
+    let edit_menu = SubmenuBuilder::new(app, "Edit")
+        .undo()
+        .redo()
+        .separator()
+        .cut()
+        .copy()
+        .paste()
+        .select_all()
+        .build()?;
+
+    let view_menu = SubmenuBuilder::new(app, "View").fullscreen().build()?;
+
+    let window_menu = SubmenuBuilder::new(app, "Window").minimize().build()?;
+
+    let mut top = MenuBuilder::new(app);
+
+    #[cfg(target_os = "macos")]
+    {
+        let app_menu = SubmenuBuilder::new(app, "DedTxt")
+            .about(Some(AboutMetadata {
+                name: Some("DedTxt".to_string()),
+                ..Default::default()
+            }))
+            .separator()
+            .services()
+            .separator()
+            .hide()
+            .hide_others()
+            .show_all()
+            .separator()
+            .quit()
+            .build()?;
+        top = top.item(&app_menu);
+    }
+
+    // Reference AboutMetadata on non-mac too to avoid unused-import warnings.
+    #[cfg(not(target_os = "macos"))]
+    let _ = AboutMetadata::default();
+
+    top.item(&file_menu)
+        .item(&edit_menu)
+        .item(&view_menu)
+        .item(&window_menu)
+        .build()
+}
+
+// --- Entry point ----------------------------------------------------------
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    let state = AppState::default();
+
+    // Seed any CLI-passed file path into the pending queue. The frontend will
+    // drain this on startup via the drain_pending command.
+    if let Some(p) = pick_file_from_argv(&std::env::args().collect::<Vec<_>>()) {
+        state.pending.lock().unwrap().push(p);
+    }
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            // Bring the existing window forward...
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.unminimize();
+                let _ = win.set_focus();
+            }
+            // ...and forward any file path that came in.
+            if let Some(p) = pick_file_from_argv(&argv) {
+                let _ = app.emit("dt://open-path", p.to_string_lossy().to_string());
+            }
+        }))
+        .plugin(tauri_plugin_dialog::init())
+        .manage(state)
+        .invoke_handler(tauri::generate_handler![
+            open_file,
+            open_path,
+            save_file,
+            save_file_as,
+            set_dirty,
+            confirm_close,
+            drain_pending
+        ])
+        .setup(|app| {
+            let menu = build_menu(app.handle())?;
+            app.set_menu(menu)?;
+
+            // Forward menu clicks to the frontend so renderer.js can react.
+            let handle = app.handle().clone();
+            app.on_menu_event(move |_app, event| {
+                let id = event.id().as_ref().to_string();
+                let name = match id.as_str() {
+                    "new" => Some("dt://menu-new"),
+                    "open" => Some("dt://menu-open"),
+                    "save" => Some("dt://menu-save"),
+                    "save_as" => Some("dt://menu-save-as"),
+                    _ => None,
+                };
+                if let Some(n) = name {
+                    let _ = handle.emit(n, ());
+                }
+            });
+
+            // Intercept window close to confirm unsaved changes via the renderer.
+            if let Some(win) = app.get_webview_window("main") {
+                let h = app.handle().clone();
+                win.clone().on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        let state = h.state::<AppState>();
+                        let bypass = *state.bypass_close.lock().unwrap();
+                        let dirty = *state.dirty.lock().unwrap();
+                        if bypass || !dirty {
+                            return;
+                        }
+                        api.prevent_close();
+                        let _ = h.emit("dt://save-and-close", ());
+                    }
+                });
+            }
+
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // macOS-specific: "Open With … DedTxt" from Finder. Fires both at
+            // launch (before window exists) and while the app is already running.
+            #[cfg(target_os = "macos")]
+            if let RunEvent::Opened { urls } = &event {
+                let state = app.state::<AppState>();
+                for url in urls {
+                    if let Ok(path) = url.to_file_path() {
+                        // Buffer for the frontend to drain on init...
+                        state.pending.lock().unwrap().push(path.clone());
+                        // ...and also emit live in case it's already running.
+                        let _ = app.emit("dt://open-path", path.to_string_lossy().to_string());
+                    }
+                }
+            }
+
+            // Silence unused-variable warnings on non-mac builds.
+            let _ = (app, event);
+        });
+}

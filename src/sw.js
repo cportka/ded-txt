@@ -11,7 +11,6 @@ const SHELL = [
   './theme-init.js',
   './renderer.js',
   './platform/index.js',
-  './platform/electron.js',
   './platform/web.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
