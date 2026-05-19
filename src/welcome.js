@@ -65,10 +65,19 @@ function openDialog(highlightAsNew) {
     showOnStart.checked = saved === 'true';
   }
 
-  // Wire up dismiss + close listeners once; subsequent opens reuse them.
+  // Wire up dismiss + close + backdrop-click listeners once; subsequent
+  // opens reuse them.
   if (!listenersAttached) {
     const dismiss = document.getElementById('welcome-dismiss');
     if (dismiss) dismiss.addEventListener('click', () => dialog.close());
+
+    // Click outside the card (i.e. on the backdrop, which is the dialog
+    // element itself with showModal()) dismisses the dialog. Clicks inside
+    // the card bubble up with event.target as the inner element, so we
+    // only act when the click target is the dialog itself.
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
 
     dialog.addEventListener('close', () => {
       const sos = document.getElementById('welcome-show-on-start');
