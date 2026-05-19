@@ -11,6 +11,7 @@ const SHELL = [
   './theme-init.js',
   './renderer.js',
   './welcome.js',
+  './version.js',
   './platform/index.js',
   './platform/web.js',
   './manifest.webmanifest',

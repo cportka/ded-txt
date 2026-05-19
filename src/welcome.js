@@ -1,11 +1,17 @@
-// First-visit welcome dialog. Shown once on desktop only — mobile users
-// don't have keyboard shortcuts and get straight to the editor. The
-// "Don't show this again" checkbox is pre-checked, so dismissing without
-// touching it (the expected path) suppresses the dialog for future visits.
+// First-visit / new-version welcome dialog. Shown once per version on
+// desktop only — mobile users don't have keyboard shortcuts and get
+// straight to the editor. The "Don't show this again" checkbox is
+// pre-checked, so dismissing without touching it (the expected path)
+// records this version as seen.
+//
+// Re-shown automatically when VERSION changes. When the user has seen a
+// previous version, the new version number is visually highlighted.
 //
 // isMobile / isMac / shortcutMap are exported for unit testing (test/).
 
-const STORAGE_KEY = 'dedtxt-welcome-shown';
+import { VERSION } from './version.js';
+
+const VERSION_KEY = 'dedtxt-last-version';
 
 export function isMobile() {
   // No hover-capable pointer = touch-primary device.
@@ -36,11 +42,11 @@ export function shortcutMap() {
 export function maybeShowWelcome() {
   if (isMobile()) return;
 
-  try {
-    if (localStorage.getItem(STORAGE_KEY) === '1') return;
-  } catch (e) {
-    // Private mode: still show the dialog, just don't persist the dismissal.
-  }
+  let lastSeen = null;
+  try { lastSeen = localStorage.getItem(VERSION_KEY); } catch (e) { /* private mode */ }
+
+  // Already dismissed this exact version — stay out of the way.
+  if (lastSeen === VERSION) return;
 
   const dialog = document.getElementById('welcome-dialog');
   if (!dialog || typeof dialog.showModal !== 'function') return;
@@ -52,6 +58,16 @@ export function maybeShowWelcome() {
     if (keys[k]) el.textContent = keys[k];
   });
 
+  // Stamp the version. Highlight as "new" only if the user has previously
+  // seen a DIFFERENT version — first-time visitors don't get the badge.
+  const versionEl = document.getElementById('welcome-version');
+  if (versionEl) {
+    versionEl.textContent = `v${VERSION}`;
+    if (lastSeen && lastSeen !== VERSION) {
+      versionEl.classList.add('new');
+    }
+  }
+
   const dontShow = document.getElementById('welcome-dont-show');
   const dismiss = document.getElementById('welcome-dismiss');
 
@@ -59,7 +75,7 @@ export function maybeShowWelcome() {
 
   dialog.addEventListener('close', () => {
     if (dontShow && dontShow.checked) {
-      try { localStorage.setItem(STORAGE_KEY, '1'); } catch (e) { /* ignore */ }
+      try { localStorage.setItem(VERSION_KEY, VERSION); } catch (e) { /* ignore */ }
     }
   }, { once: true });
 
