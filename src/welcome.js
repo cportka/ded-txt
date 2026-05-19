@@ -1,17 +1,19 @@
-// First-visit / new-version welcome dialog. Shown once per version on
-// desktop only — mobile users don't have keyboard shortcuts and get
-// straight to the editor. The "Don't show this again" checkbox is
-// pre-checked, so dismissing without touching it (the expected path)
-// records this version as seen.
+// First-visit / new-version / on-demand welcome dialog. Shown:
+//   * automatically on first visit and after any version bump (desktop only),
+//   * manually any time the user clicks the hamburger menu (via showWelcome()).
 //
-// Re-shown automatically when VERSION changes. When the user has seen a
-// previous version, the new version number is visually highlighted.
+// The "Don't show this again" checkbox is pre-checked, so dismissing without
+// touching it (the expected path) records this version as seen and the
+// dialog won't auto-fire again until the next version bump. Manual opens
+// via the hamburger ignore both the mobile check and the version state.
 //
 // isMobile / isMac / shortcutMap are exported for unit testing (test/).
 
 import { VERSION } from './version.js';
 
 const VERSION_KEY = 'dedtxt-last-version';
+
+let listenersAttached = false;
 
 export function isMobile() {
   // No hover-capable pointer = touch-primary device.
@@ -39,15 +41,7 @@ export function shortcutMap() {
   };
 }
 
-export function maybeShowWelcome() {
-  if (isMobile()) return;
-
-  let lastSeen = null;
-  try { lastSeen = localStorage.getItem(VERSION_KEY); } catch (e) { /* private mode */ }
-
-  // Already dismissed this exact version — stay out of the way.
-  if (lastSeen === VERSION) return;
-
+function openDialog(highlightAsNew) {
   const dialog = document.getElementById('welcome-dialog');
   if (!dialog || typeof dialog.showModal !== 'function') return;
 
@@ -58,26 +52,44 @@ export function maybeShowWelcome() {
     if (keys[k]) el.textContent = keys[k];
   });
 
-  // Stamp the version. Highlight as "new" only if the user has previously
-  // seen a DIFFERENT version — first-time visitors don't get the badge.
+  // Stamp the version. Highlight only when this is a new-version-vs-last-seen
+  // auto-open — manual hamburger opens never highlight.
   const versionEl = document.getElementById('welcome-version');
   if (versionEl) {
     versionEl.textContent = `v${VERSION}`;
-    if (lastSeen && lastSeen !== VERSION) {
-      versionEl.classList.add('new');
-    }
+    versionEl.classList.toggle('new', !!highlightAsNew);
   }
 
-  const dontShow = document.getElementById('welcome-dont-show');
-  const dismiss = document.getElementById('welcome-dismiss');
+  // Wire up dismiss + close listeners once; subsequent opens reuse them.
+  if (!listenersAttached) {
+    const dismiss = document.getElementById('welcome-dismiss');
+    if (dismiss) dismiss.addEventListener('click', () => dialog.close());
 
-  dismiss.addEventListener('click', () => dialog.close());
-
-  dialog.addEventListener('close', () => {
-    if (dontShow && dontShow.checked) {
-      try { localStorage.setItem(VERSION_KEY, VERSION); } catch (e) { /* ignore */ }
-    }
-  }, { once: true });
+    dialog.addEventListener('close', () => {
+      const dontShow = document.getElementById('welcome-dont-show');
+      if (dontShow && dontShow.checked) {
+        try { localStorage.setItem(VERSION_KEY, VERSION); } catch (e) { /* ignore */ }
+      }
+    });
+    listenersAttached = true;
+  }
 
   dialog.showModal();
+}
+
+// Auto-open on first visit or after a version bump (desktop only).
+export function maybeShowWelcome() {
+  if (isMobile()) return;
+
+  let lastSeen = null;
+  try { lastSeen = localStorage.getItem(VERSION_KEY); } catch (e) { /* private mode */ }
+
+  if (lastSeen === VERSION) return;
+
+  openDialog(!!(lastSeen && lastSeen !== VERSION));
+}
+
+// Force-open from the hamburger menu — ignores mobile check and version state.
+export function showWelcome() {
+  openDialog(false);
 }
