@@ -1,5 +1,5 @@
 import platform from './platform/index.js';
-import { maybeShowWelcome } from './welcome.js';
+import { maybeShowWelcome, showWelcome } from './welcome.js';
 
 const THEME_KEY = 'dedtxt-theme';
 const themeToggle = document.getElementById('theme-toggle');
@@ -17,6 +17,11 @@ if (themeToggle) {
     applyTheme(next);
     try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* private mode */ }
   });
+}
+
+const menuToggle = document.getElementById('menu-toggle');
+if (menuToggle) {
+  menuToggle.addEventListener('click', () => showWelcome());
 }
 
 const editor = document.getElementById('text-editor');
@@ -107,8 +112,8 @@ window.addEventListener('drop', (e) => {
 editor.focus();
 maybeShowWelcome();
 
-// Service worker for offline use; only meaningful in the web build (Electron
-// uses file:// where SW is unavailable, and Capacitor handles its own caching).
+// Service worker for offline use; only meaningful in the web build (Tauri
+// serves over its own protocol where SW is unavailable / unnecessary).
 if (platform.name === 'web' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
