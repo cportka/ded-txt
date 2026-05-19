@@ -106,11 +106,20 @@
       font-size: 22px;
       font-weight: 700;
       letter-spacing: -0.01em;
+      text-align: center;
+    }
+    .welcome-icon {
+      display: block;
+      width: 96px;
+      height: 96px;
+      margin: 12px auto 4px;
+      border-radius: 20px;
     }
     .welcome-sub {
-      margin: 0 0 18px;
+      margin: 0 0 20px;
       color: var(--muted);
       font-size: 14px;
+      text-align: center;
     }
     .welcome-shortcuts {
       display: grid;
@@ -160,6 +169,7 @@
   <dialog id="welcome-dialog" aria-labelledby="welcome-title">
     <form method="dialog" class="welcome-card">
       <h1 id="welcome-title">Welcome to DedTxt</h1>
+      <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
       <p class="welcome-sub">A dead simple plain-text editor.</p>
       <dl class="welcome-shortcuts">
         <dt>New</dt>     <dd data-key="new">Ctrl + N</dd>
@@ -172,7 +182,7 @@
         <input type="checkbox" id="welcome-dont-show" checked />
         Don't show this again
       </label>
-      <button type="button" id="welcome-dismiss" class="welcome-btn">Got it</button>
+      <button type="button" id="welcome-dismiss" class="welcome-btn">Ok</button>
     </form>
   </dialog>
 
