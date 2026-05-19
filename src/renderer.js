@@ -22,7 +22,22 @@ if (themeToggle) {
 
 const menuToggle = document.getElementById('menu-toggle');
 if (menuToggle) {
-  menuToggle.addEventListener('click', () => showWelcome());
+  menuToggle.addEventListener('click', () => {
+    // Restart the spin animation cleanly on every click. Remove the class,
+    // force a reflow so the browser doesn't optimize the no-op toggle away,
+    // then re-add the class.
+    menuToggle.classList.remove('spinning');
+    void menuToggle.offsetWidth;
+    menuToggle.classList.add('spinning');
+    showWelcome();
+  });
+  // Drop the class once the spin finishes so the next click can re-add it.
+  // animationend bubbles up from the inner <img>.
+  menuToggle.addEventListener('animationend', (e) => {
+    if (e.animationName === 'menu-spin') {
+      menuToggle.classList.remove('spinning');
+    }
+  });
 }
 
 const editor = document.getElementById('text-editor');
