@@ -5,9 +5,7 @@ const crypto = require('crypto');
 
 const root = path.join(__dirname, '..');
 const src = path.join(root, 'src');
-const landing = path.join(root, 'landing');
 const out = path.join(root, 'dist-web');
-const appOut = path.join(out, 'app');
 
 const buildId = process.env.GITHUB_SHA
   ? process.env.GITHUB_SHA.slice(0, 12)
@@ -32,27 +30,34 @@ function copyTree(from, to) {
 
 rmRf(out);
 
-// 1. Landing page at the root.
-copyTree(landing, out);
+// 1. Editor lives at root — dedtxt.app/ IS the app.
+copyTree(src, out);
 
-// 2. Reuse the icons from src/ for the landing too — keeps the favicon and
-//    apple-touch-icon working without duplicating files in the repo.
-copyTree(path.join(src, 'icons'), path.join(out, 'icons'));
+// 2. CNAME owns the custom domain on every gh-pages deploy.
+const cnameSrc = path.join(root, 'CNAME');
+if (fs.existsSync(cnameSrc)) {
+  fs.copyFileSync(cnameSrc, path.join(out, 'CNAME'));
+}
 
-// 3. The full PWA app under /app/.
-copyTree(src, appOut);
-
-// 4. Stamp the service worker with the build ID for cache busting.
-const swPath = path.join(appOut, 'sw.js');
+// 3. Stamp the service worker with the build ID for cache busting.
+const swPath = path.join(out, 'sw.js');
 if (fs.existsSync(swPath)) {
   const sw = fs.readFileSync(swPath, 'utf8').replace(/__BUILD_ID__/g, buildId);
   fs.writeFileSync(swPath, sw);
 }
 
-// 5. GitHub Pages fallback for unknown routes — keep visitors on the landing.
+// 4. Legacy bookmark redirect: dedtxt.app/app/ → dedtxt.app/
+const legacyAppDir = path.join(out, 'app');
+fs.mkdirSync(legacyAppDir, { recursive: true });
+fs.writeFileSync(
+  path.join(legacyAppDir, 'index.html'),
+  '<!DOCTYPE html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=/"><title>DedTxt</title><a href="/">DedTxt</a>\n'
+);
+
+// 5. GitHub Pages fallback for unknown routes — serve the editor.
 fs.copyFileSync(path.join(out, 'index.html'), path.join(out, '404.html'));
 
 // 6. Disable Jekyll so files starting with _ are served verbatim.
 fs.writeFileSync(path.join(out, '.nojekyll'), '');
 
-console.log(`Built dist-web/  (landing + /app/, build ${buildId})`);
+console.log(`Built dist-web/  (editor at root, build ${buildId})`);

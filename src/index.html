@@ -125,7 +125,7 @@
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 8px 16px;
-      margin: 0 0 18px;
+      margin: 0 0 16px;
       font-size: 14px;
     }
     .welcome-shortcuts dt { margin: 0; }
@@ -135,6 +135,22 @@
       color: var(--muted);
       text-align: right;
       white-space: nowrap;
+    }
+    .welcome-downloads {
+      margin: 0 0 16px;
+      padding: 12px 0 0;
+      border-top: 1px solid var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+    .welcome-downloads a {
+      color: var(--fg);
+      text-decoration: none;
+      border-bottom: 1px solid var(--muted);
+      padding-bottom: 1px;
+    }
+    .welcome-downloads a:hover {
+      border-bottom-color: var(--fg);
     }
     .welcome-dont-show {
       display: flex;
@@ -178,6 +194,9 @@
         <dt>Save As</dt> <dd data-key="save-as">Ctrl + Shift + S</dd>
         <dt>Quit</dt>    <dd data-key="quit">Alt + F4</dd>
       </dl>
+      <p class="welcome-downloads">
+        <a href="https://github.com/cportka/dedtxt/releases/latest" target="_blank" rel="noopener">Get desktop builds →</a>
+      </p>
       <label class="welcome-dont-show">
         <input type="checkbox" id="welcome-dont-show" checked />
         Don't show this again

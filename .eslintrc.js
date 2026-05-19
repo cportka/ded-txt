@@ -28,16 +28,17 @@ module.exports = {
     {
       files: ['src/sw.js'],
       env: { browser: false, serviceworker: true }
+    },
+    {
+      files: ['test/**/*.js'],
+      env: { node: true, browser: false }
     }
   ],
   ignorePatterns: [
     'node_modules/',
     'dist/',
     'dist-web/',
-    'dist-mobile/',
-    'android/',
-    'ios/',
-    'out/',
+    'src-tauri/target/',
     'package-lock.json'
   ]
 };

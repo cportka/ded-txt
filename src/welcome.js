@@ -2,22 +2,24 @@
 // don't have keyboard shortcuts and get straight to the editor. The
 // "Don't show this again" checkbox is pre-checked, so dismissing without
 // touching it (the expected path) suppresses the dialog for future visits.
+//
+// isMobile / isMac / shortcutMap are exported for unit testing (test/).
 
 const STORAGE_KEY = 'dedtxt-welcome-shown';
 
-function isMobile() {
+export function isMobile() {
   // No hover-capable pointer = touch-primary device.
   if (typeof window === 'undefined' || !window.matchMedia) return false;
   return !window.matchMedia('(any-hover: hover)').matches;
 }
 
-function isMac() {
+export function isMac() {
   const plat = (navigator.platform || '').toLowerCase();
   if (plat.includes('mac') || plat.includes('iphone') || plat.includes('ipad') || plat.includes('ipod')) return true;
   return /Mac/i.test(navigator.userAgent || '');
 }
 
-function shortcutMap() {
+export function shortcutMap() {
   const mac = isMac();
   const mod = mac ? '⌘' : 'Ctrl';
   const shift = mac ? '⇧' : 'Shift';

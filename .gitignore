@@ -7,7 +7,6 @@ node_modules/
 # build artifacts
 dist/
 dist-web/
-out/
 
 # Tauri (Rust build outputs)
 src-tauri/target/
