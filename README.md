@@ -13,55 +13,68 @@ No hidden text. No formatting. No settings to fiddle with. Just a textarea
 and your file. Raw bytes in, raw bytes out — UTF-8 by default, no BOM, no
 line-ending munging.
 
-Three targets, same code: macOS / Windows / Linux desktop via Electron, and
-a PWA at <https://cportka.github.io/dedtxt/> that installs from any modern
-browser (including iOS and Android via "Add to Home Screen").
+Two targets, same code:
+
+- **Desktop** — macOS / Windows / Linux native via [Tauri 2](https://v2.tauri.app/) (~5–15 MB installers).
+- **PWA** at <https://cportka.github.io/dedtxt/> — installs from any modern
+  browser (including iOS and Android via "Add to Home Screen").
+
+## Requirements
+
+- **Node 20+** (see `.nvmrc`)
+- **Rust** stable (`rustup install stable`) for desktop builds. Web-only
+  development doesn't need Rust.
 
 ## Run from source
 
-Requires Node 20+.
-
 ```sh
 npm install
-npm start                 # Electron desktop
+npm start                 # Tauri dev window (Rust toolchain required)
 npm run serve:web         # Web build at http://127.0.0.1:5173
 ```
 
 ## Project structure
 
 ```
-main.js, preload.js       Electron main + preload
 src/                      The app itself — shared by every platform
   index.html              Single textarea, no chrome
   renderer.js             Editor logic; talks only to platform/
   platform/
     index.js              Detects runtime, picks an implementation
-    electron.js           IPC to main.js via window.dt
+    tauri.js              Bridges to Rust via window.__TAURI__ globals
     web.js                File System Access API + download fallback
   sw.js                   Service worker for offline web
   manifest.webmanifest    PWA manifest
+src-tauri/                Rust crate — the desktop "main process"
+  Cargo.toml              Crate manifest
+  tauri.conf.json         Window + bundle config
+  src/lib.rs              Menus, dialogs, file I/O, OS events
+  icons/                  Generated platform icons (32x32.png, icon.icns, etc.)
 landing/                  Marketing/download page served at the root
-build/                    Icon source + electron-builder resources
+build/                    Icon source (icon.svg) + master icon outputs
 scripts/                  Build scripts (web, icons, social preview)
 ```
 
 The renderer is platform-agnostic: it imports `platform/index.js`, which
-returns one of two modules with the same interface. Adding a new platform
-means writing a new module and teaching `platform/index.js` how to detect
-it.
+returns one of two modules with the same interface (`tauri.js` for the
+desktop app, `web.js` for the PWA). Adding a new platform means writing a
+new module and teaching `platform/index.js` how to detect it.
 
 ## Build desktop installers
 
+Each OS builds its own installers locally (Tauri uses the host platform's
+build tooling — codesign, nsis, dpkg, etc.):
+
 ```sh
-npm run build:mac         # .dmg + .zip (x64 + arm64)
-npm run build:win         # NSIS installer + portable .exe
+npm run build:mac         # .dmg + .app.tar.gz (host arch)
+npm run build:win         # .msi + NSIS .exe
 npm run build:linux       # AppImage + .deb + .rpm
 ```
 
-Outputs go to `dist/`. Each OS must build its own installers locally,
-except Linux, which can also be built from macOS. For full cross-platform
+Outputs go to `src-tauri/target/release/bundle/`. For full cross-platform
 builds, push a `v*` tag (or trigger the workflow manually) — the GitHub
-Actions workflow builds all three and attaches them to a Release.
+Actions workflow builds all three on the matching runner OS and attaches
+them to a Release.
 
 ## Build the web app
 
@@ -83,7 +96,7 @@ via GitHub Actions; the site lives at <https://cportka.github.io/dedtxt/>.
 The app icon lives at `build/icon.svg`. Edit it, then run:
 
 ```sh
-npm run gen:icons         # regenerates .png, .icns, .ico, and PWA icons
+npm run gen:icons         # regenerates Tauri, PWA, and macOS/Windows icon sets
 npm run gen:social        # regenerates build/social-preview.png
 ```
 

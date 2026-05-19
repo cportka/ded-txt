@@ -1,0 +1,4 @@
+target/
+gen/
+# Tauri 2 generates these on first build; safe to ignore.
+WixTools/

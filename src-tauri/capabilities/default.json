@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for the main DedTxt window. All file I/O happens via app-defined commands in lib.rs, so no plugin permissions are needed beyond core defaults.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

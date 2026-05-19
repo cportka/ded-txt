@@ -7,14 +7,14 @@ node_modules/
 # build artifacts
 dist/
 dist-web/
-dist-mobile/
 out/
+
+# Tauri (Rust build outputs)
+src-tauri/target/
+src-tauri/gen/
+src-tauri/WixTools/
 
 # editor / OS
 *.log
 .idea/
-
-# iOS Capacitor build outputs (project itself is committed once generated)
-ios/App/Pods/
-ios/App/build/
-ios/DerivedData/
+.vscode/
