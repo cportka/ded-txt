@@ -224,21 +224,48 @@
       border-radius: 4px;
       font-weight: 600;
     }
+
+    /* Clickable shortcut rows. Each runs its associated editor action when
+       clicked (Save saves, New starts a new file, etc.). */
     .welcome-shortcuts {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
       margin: 0 0 16px;
-      font-size: 14px;
     }
-    .welcome-shortcuts dt { margin: 0; }
-    .welcome-shortcuts dd {
-      margin: 0;
+    .welcome-shortcut {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 6px 10px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--fg);
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      transition: background 0.1s ease, border-color 0.1s ease;
+    }
+    .welcome-shortcut:hover,
+    .welcome-shortcut:focus-visible {
+      background: rgba(127, 127, 127, 0.12);
+      border-color: var(--muted);
+      outline: none;
+    }
+    .welcome-shortcut:active {
+      background: rgba(127, 127, 127, 0.18);
+    }
+    .welcome-shortcut-key {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       color: var(--muted);
-      text-align: right;
       white-space: nowrap;
+      font-size: 13px;
     }
+
     .welcome-downloads {
       margin: 0 0 16px;
       padding: 12px 0 0;
@@ -302,13 +329,28 @@
       <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
       <p class="welcome-sub">A dead simple plain-text editor.</p>
       <p class="welcome-version"><span id="welcome-version">v0.0.0</span></p>
-      <dl class="welcome-shortcuts">
-        <dt>New</dt>     <dd data-key="new">Ctrl + N</dd>
-        <dt>Open</dt>    <dd data-key="open">Ctrl + O</dd>
-        <dt>Save</dt>    <dd data-key="save">Ctrl + S</dd>
-        <dt>Save As</dt> <dd data-key="save-as">Ctrl + Shift + S</dd>
-        <dt>Quit</dt>    <dd data-key="quit">Alt + F4</dd>
-      </dl>
+      <div class="welcome-shortcuts">
+        <button type="button" class="welcome-shortcut" data-action="new">
+          <span>New</span>
+          <span class="welcome-shortcut-key" data-key="new">Ctrl + N</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="open">
+          <span>Open</span>
+          <span class="welcome-shortcut-key" data-key="open">Ctrl + O</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="save">
+          <span>Save</span>
+          <span class="welcome-shortcut-key" data-key="save">Ctrl + S</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="save-as">
+          <span>Save As</span>
+          <span class="welcome-shortcut-key" data-key="save-as">Ctrl + Shift + S</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="quit">
+          <span>Quit</span>
+          <span class="welcome-shortcut-key" data-key="quit">Alt + F4</span>
+        </button>
+      </div>
       <p class="welcome-downloads">
         <a href="https://github.com/cportka/dedtxt/releases/latest" target="_blank" rel="noopener">Get desktop builds →</a>
       </p>

@@ -157,11 +157,26 @@ const web = {
     updateTitle();
   },
 
+  newFile() {
+    // Drop the current file association so the next Save prompts for a path.
+    currentHandle = null;
+    currentName = null;
+    dirty = false;
+    updateTitle();
+  },
+
+  quit() {
+    // window.close() only works for windows opened by script or in installed
+    // PWAs. In a regular tab it's a silent no-op — which is the right default.
+    try { window.close(); } catch (e) { /* ignore */ }
+  },
+
   onLoad(cb) {
     loadCb = cb;
     // Surface the original name on the next setName/load so the title is correct.
   },
 
+  onMenuNew(_cb) { /* no system menus on web */ },
   onMenuSave(_cb) { /* no system menus on web */ },
   onMenuSaveAs(_cb) { /* no system menus on web */ },
 
