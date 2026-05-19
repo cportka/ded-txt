@@ -12,6 +12,7 @@ const invoke = t ? t.core.invoke : null;
 const listen = t ? t.event.listen : null;
 
 let loadCb = null;
+let newCb = null;
 let saveCb = null;
 let saveAsCb = null;
 let saveAndCloseCb = null;
@@ -36,6 +37,7 @@ if (listen) {
   listen('dt://open-path', (e) => { openByPath(e.payload); });
 
   // Menu actions from the system menu bar.
+  listen('dt://menu-new', () => { if (newCb) newCb(); });
   listen('dt://menu-save', () => { if (saveCb) saveCb(); });
   listen('dt://menu-save-as', () => { if (saveAsCb) saveAsCb(); });
   listen('dt://save-and-close', () => { if (saveAndCloseCb) saveAndCloseCb(); });
@@ -81,10 +83,21 @@ const tauri = {
     // Title is computed in Rust from the current file path; nothing to do here.
   },
 
+  newFile() {
+    if (invoke) invoke('reset_state');
+  },
+
+  quit() {
+    // request_close triggers Rust's CloseRequested handler which honours the
+    // unsaved-changes guard (and falls through to actually closing if clean).
+    if (invoke) invoke('request_close');
+  },
+
   onLoad(cb) {
     loadCb = cb;
     while (pendingLoads.length) cb(pendingLoads.shift());
   },
+  onMenuNew(cb) { newCb = cb; },
   onMenuSave(cb) { saveCb = cb; },
   onMenuSaveAs(cb) { saveAsCb = cb; },
   onSaveAndClose(cb) { saveAndCloseCb = cb; },

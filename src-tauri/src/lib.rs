@@ -231,6 +231,26 @@ fn drain_pending(state: State<'_, AppState>) -> Vec<String> {
         .collect()
 }
 
+// Reset for "New": drop the current path and clear the dirty flag. The
+// renderer separately clears the textarea contents; this is just the
+// native-side state that follows the file.
+#[tauri::command]
+fn reset_state(app: AppHandle, state: State<'_, AppState>) {
+    *state.current_path.lock().unwrap() = None;
+    *state.dirty.lock().unwrap() = false;
+    refresh_title(&app);
+}
+
+// Politely ask the window to close. Falls through the normal CloseRequested
+// handler so the unsaved-changes guard still runs (unlike confirm_close,
+// which explicitly bypasses it after the renderer has saved).
+#[tauri::command]
+fn request_close(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.close();
+    }
+}
+
 // --- Setup helpers --------------------------------------------------------
 
 fn pick_file_from_argv(argv: &[String]) -> Option<PathBuf> {
@@ -354,7 +374,9 @@ pub fn run() {
             save_file_as,
             set_dirty,
             confirm_close,
-            drain_pending
+            drain_pending,
+            reset_state,
+            request_close
         ])
         .setup(|app| {
             let menu = build_menu(app.handle())?;

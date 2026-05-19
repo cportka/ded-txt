@@ -65,6 +65,45 @@ async function doOpen() {
   return result;
 }
 
+function doNew() {
+  if (dirty) {
+    const ok = window.confirm('Discard unsaved changes?');
+    if (!ok) return;
+  }
+  editor.value = '';
+  savedSnapshot = '';
+  setDirty(false);
+  if (typeof platform.newFile === 'function') platform.newFile();
+  refreshLineNumbers();
+  editor.focus();
+}
+
+function doQuit() {
+  if (typeof platform.quit === 'function') platform.quit();
+}
+
+// Map welcome-dialog shortcut buttons to their handlers. Clicking a button
+// closes the dialog first (so the user sees the resulting save/open dialog)
+// and then runs the action.
+const SHORTCUT_ACTIONS = {
+  'new': doNew,
+  'open': doOpen,
+  'save': doSave,
+  'save-as': doSaveAs,
+  'quit': doQuit
+};
+
+document.querySelectorAll('.welcome-shortcut').forEach((btn) => {
+  const action = btn.getAttribute('data-action');
+  const handler = SHORTCUT_ACTIONS[action];
+  if (!handler) return;
+  btn.addEventListener('click', () => {
+    const dialog = document.getElementById('welcome-dialog');
+    if (dialog && dialog.open) dialog.close();
+    handler();
+  });
+});
+
 editor.addEventListener('input', recomputeDirty);
 
 editor.addEventListener('keydown', (e) => {
@@ -96,6 +135,7 @@ platform.onLoad(({ content }) => {
   refreshLineNumbers();
 });
 
+platform.onMenuNew?.(doNew);
 platform.onMenuSave(doSave);
 platform.onMenuSaveAs(doSaveAs);
 
