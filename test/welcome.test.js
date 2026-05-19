@@ -3,7 +3,14 @@ const { test, describe, before } = require('node:test');
 const assert = require('node:assert/strict');
 
 function setNav(platform, userAgent = '') {
-  globalThis.navigator = { platform, userAgent };
+  // Node 21+ exposes `navigator` as a getter-only global. Use defineProperty
+  // so this works regardless of whether the platform's `navigator` is the
+  // built-in or already overridden.
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { platform, userAgent },
+    configurable: true,
+    writable: true
+  });
 }
 
 let mod;

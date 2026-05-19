@@ -12,6 +12,7 @@ const SHELL = [
   './renderer.js',
   './welcome.js',
   './version.js',
+  './line-numbers.js',
   './platform/index.js',
   './platform/web.js',
   './manifest.webmanifest',
