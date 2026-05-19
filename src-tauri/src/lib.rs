@@ -16,8 +16,10 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{
     menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
-    AppHandle, Emitter, Manager, RunEvent, State, WindowEvent, Wry,
+    AppHandle, Emitter, Manager, State, WindowEvent, Wry,
 };
+#[cfg(target_os = "macos")]
+use tauri::RunEvent;
 use tauri_plugin_dialog::DialogExt;
 
 #[derive(Default)]
@@ -190,7 +192,12 @@ fn save_file(app: AppHandle, content: String) -> Result<SaveResult, String> {
 #[tauri::command]
 fn save_file_as(app: AppHandle, content: String) -> Result<SaveResult, String> {
     let default_name = {
-        let cp = app.state::<AppState>().current_path.lock().unwrap();
+        // Bind `state` to a local so its lifetime extends through the lock
+        // guard's scope; chaining `app.state::<AppState>().current_path...`
+        // creates a temporary State that's dropped at the end of the let
+        // statement, leaving the lock guard dangling (rustc E0716).
+        let state = app.state::<AppState>();
+        let cp = state.current_path.lock().unwrap();
         cp.as_ref()
             .and_then(|p| p.file_name())
             .map(|n| n.to_string_lossy().to_string())
@@ -309,6 +316,8 @@ fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<Wry>> {
 
     let window_menu = SubmenuBuilder::new(app, "Window").minimize().build()?;
 
+    // `mut` is needed only on macOS where the App menu is prepended below.
+    #[cfg_attr(not(target_os = "macos"), allow(unused_mut))]
     let mut top = MenuBuilder::new(app);
 
     #[cfg(target_os = "macos")]
