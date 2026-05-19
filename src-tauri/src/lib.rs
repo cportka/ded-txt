@@ -417,3 +417,80 @@ pub fn run() {
             let _ = (app, event);
         });
 }
+
+// --- Tests ----------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn make_title_untitled_clean() {
+        assert_eq!(make_title(None, false), "Untitled — DedTxt");
+    }
+
+    #[test]
+    fn make_title_untitled_dirty() {
+        assert_eq!(make_title(None, true), "Untitled • — DedTxt");
+    }
+
+    #[test]
+    fn make_title_with_path_clean() {
+        let pb = PathBuf::from("/tmp/example.txt");
+        assert_eq!(make_title(Some(&pb), false), "example.txt — DedTxt");
+    }
+
+    #[test]
+    fn make_title_with_path_dirty() {
+        let pb = PathBuf::from("/tmp/example.txt");
+        assert_eq!(make_title(Some(&pb), true), "example.txt • — DedTxt");
+    }
+
+    #[test]
+    fn pick_file_from_argv_returns_none_for_only_exe() {
+        let argv: Vec<String> = vec!["dedtxt".to_string()];
+        assert_eq!(pick_file_from_argv(&argv), None);
+    }
+
+    #[test]
+    fn pick_file_from_argv_skips_flags() {
+        let argv: Vec<String> = vec![
+            "dedtxt".to_string(),
+            "--verbose".to_string(),
+            "-x".to_string(),
+        ];
+        assert_eq!(pick_file_from_argv(&argv), None);
+    }
+
+    #[test]
+    fn pick_file_from_argv_returns_none_for_nonexistent_path() {
+        let argv: Vec<String> = vec![
+            "dedtxt".to_string(),
+            "/this/path/does/not/exist/anywhere_xyz_42.txt".to_string(),
+        ];
+        assert_eq!(pick_file_from_argv(&argv), None);
+    }
+
+    #[test]
+    fn pick_file_from_argv_finds_existing_path() {
+        let dir = std::env::temp_dir();
+        let path = dir.join(format!(
+            "dedtxt_test_{}_{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        std::fs::write(&path, b"hello").expect("write tempfile");
+
+        let argv: Vec<String> = vec![
+            "dedtxt".to_string(),
+            path.to_string_lossy().to_string(),
+        ];
+        let picked = pick_file_from_argv(&argv);
+        assert_eq!(picked, Some(path.clone()));
+
+        let _ = std::fs::remove_file(&path);
+    }
+}
