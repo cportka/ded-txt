@@ -1,5 +1,6 @@
 import platform from './platform/index.js';
 import { maybeShowWelcome, showWelcome } from './welcome.js';
+import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 
 const THEME_KEY = 'dedtxt-theme';
 const themeToggle = document.getElementById('theme-toggle');
@@ -91,6 +92,8 @@ platform.onLoad(({ content }) => {
   savedSnapshot = editor.value;
   setDirty(false);
   editor.focus();
+  // Setting .value doesn't fire 'input' — nudge the gutter manually.
+  refreshLineNumbers();
 });
 
 platform.onMenuSave(doSave);
@@ -110,6 +113,7 @@ window.addEventListener('drop', (e) => {
 });
 
 editor.focus();
+initLineNumbers();
 maybeShowWelcome();
 
 // Service worker for offline use; only meaningful in the web build (Tauri
