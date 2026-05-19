@@ -1,25 +1,20 @@
 // First-visit / new-version / on-demand welcome dialog. Shown:
-//   * automatically on first visit and after any version bump (desktop only),
+//   * automatically on first visit and after any version bump,
 //   * manually any time the user clicks the hamburger menu (via showWelcome()).
 //
 // The "Don't show this again" checkbox is pre-checked, so dismissing without
 // touching it (the expected path) records this version as seen and the
 // dialog won't auto-fire again until the next version bump. Manual opens
-// via the hamburger ignore both the mobile check and the version state.
+// via the hamburger ignore the version state. Mobile is no longer skipped —
+// the shortcut rows are clickable so the dialog is useful with touch too.
 //
-// isMobile / isMac / shortcutMap are exported for unit testing (test/).
+// isMac / shortcutMap are exported for unit testing (test/).
 
 import { VERSION } from './version.js';
 
 const VERSION_KEY = 'dedtxt-last-version';
 
 let listenersAttached = false;
-
-export function isMobile() {
-  // No hover-capable pointer = touch-primary device.
-  if (typeof window === 'undefined' || !window.matchMedia) return false;
-  return !window.matchMedia('(any-hover: hover)').matches;
-}
 
 export function isMac() {
   const plat = (navigator.platform || '').toLowerCase();
@@ -77,10 +72,9 @@ function openDialog(highlightAsNew) {
   dialog.showModal();
 }
 
-// Auto-open on first visit or after a version bump (desktop only).
+// Auto-open on first visit or after a version bump. No mobile bail-out:
+// touch users can still tap the shortcut rows to run their actions.
 export function maybeShowWelcome() {
-  if (isMobile()) return;
-
   let lastSeen = null;
   try { lastSeen = localStorage.getItem(VERSION_KEY); } catch (e) { /* private mode */ }
 
@@ -89,7 +83,7 @@ export function maybeShowWelcome() {
   openDialog(!!(lastSeen && lastSeen !== VERSION));
 }
 
-// Force-open from the hamburger menu — ignores mobile check and version state.
+// Force-open from the hamburger menu — ignores version state.
 export function showWelcome() {
   openDialog(false);
 }
