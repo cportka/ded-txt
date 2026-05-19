@@ -1,4 +1,5 @@
 import platform from './platform/index.js';
+import { maybeShowWelcome } from './welcome.js';
 
 const THEME_KEY = 'dedtxt-theme';
 const themeToggle = document.getElementById('theme-toggle');
@@ -104,6 +105,7 @@ window.addEventListener('drop', (e) => {
 });
 
 editor.focus();
+maybeShowWelcome();
 
 // Service worker for offline use; only meaningful in the web build (Electron
 // uses file:// where SW is unavailable, and Capacitor handles its own caching).
