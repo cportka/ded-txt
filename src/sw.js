@@ -10,6 +10,7 @@ const SHELL = [
   './index.html',
   './theme-init.js',
   './renderer.js',
+  './welcome.js',
   './platform/index.js',
   './platform/electron.js',
   './platform/web.js',
