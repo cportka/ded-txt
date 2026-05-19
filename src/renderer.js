@@ -83,8 +83,8 @@ function doQuit() {
 }
 
 // Map welcome-dialog shortcut buttons to their handlers. Clicking a button
-// closes the dialog first (so the user sees the resulting save/open dialog)
-// and then runs the action.
+// briefly plays a flash animation on the row (so taps register visually,
+// especially on touch), then closes the dialog and runs the action.
 const SHORTCUT_ACTIONS = {
   'new': doNew,
   'open': doOpen,
@@ -92,15 +92,20 @@ const SHORTCUT_ACTIONS = {
   'save-as': doSaveAs,
   'quit': doQuit
 };
+const ACTIVATE_DURATION_MS = 180;
 
 document.querySelectorAll('.welcome-shortcut').forEach((btn) => {
   const action = btn.getAttribute('data-action');
   const handler = SHORTCUT_ACTIONS[action];
   if (!handler) return;
   btn.addEventListener('click', () => {
-    const dialog = document.getElementById('welcome-dialog');
-    if (dialog && dialog.open) dialog.close();
-    handler();
+    btn.classList.add('activating');
+    setTimeout(() => {
+      btn.classList.remove('activating');
+      const dialog = document.getElementById('welcome-dialog');
+      if (dialog && dialog.open) dialog.close();
+      handler();
+    }, ACTIVATE_DURATION_MS);
   });
 });
 
