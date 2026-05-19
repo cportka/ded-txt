@@ -247,13 +247,15 @@
 
     /* Clickable shortcut rows. Each runs its associated editor action when
        clicked (Save saves, New starts a new file, etc.).
+       Subtle at-rest affordance (faint background + faint border) so the
+       rows read as tappable buttons even on touch where there's no hover.
        :hover and :focus-visible are styled differently so programmatic
        focus (which iOS Safari treats as :focus-visible) doesn't make "New"
        look pre-selected on dialog open. */
     .welcome-shortcuts {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 6px;
       margin: 0 0 16px;
     }
     .welcome-shortcut {
@@ -261,10 +263,10 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 6px 10px;
-      border: 1px solid transparent;
+      padding: 8px 12px;
+      background: rgba(127, 127, 127, 0.05);
+      border: 1px solid rgba(127, 127, 127, 0.18);
       border-radius: 6px;
-      background: transparent;
       color: var(--fg);
       font: inherit;
       font-size: 14px;
@@ -274,7 +276,7 @@
       transition: background 0.1s ease, border-color 0.1s ease;
     }
     .welcome-shortcut:hover {
-      background: rgba(127, 127, 127, 0.12);
+      background: rgba(127, 127, 127, 0.18);
       border-color: var(--muted);
     }
     .welcome-shortcut:focus-visible {
@@ -282,7 +284,7 @@
       outline-offset: -2px;
     }
     .welcome-shortcut:active {
-      background: rgba(127, 127, 127, 0.2);
+      background: rgba(127, 127, 127, 0.25);
     }
     /* Click-feedback flash. Triggered by JS adding .activating on click,
        removed once the action runs. Visible on both touch and mouse so
@@ -292,7 +294,7 @@
     }
     @keyframes welcome-flash {
       0%, 40% { background: rgba(127, 127, 127, 0.45); border-color: var(--fg); }
-      100%    { background: rgba(127, 127, 127, 0);   border-color: transparent; }
+      100%    { background: rgba(127, 127, 127, 0.05); border-color: rgba(127, 127, 127, 0.18); }
     }
     .welcome-shortcut-key {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
