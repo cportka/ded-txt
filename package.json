@@ -1,7 +1,7 @@
 {
   "name": "dedtxt",
   "productName": "DedTxt",
-  "version": "1.0.0-rc.11",
+  "version": "1.0.0-rc.12",
   "description": "DedTxt — a dead simple plain-text editor.",
   "author": {
     "name": "Chris Portka"
@@ -24,7 +24,7 @@
     "start": "node scripts/build-icons.js && tauri dev",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "test": "node --test --test-reporter=spec test/*.test.js",
+    "test": "node --test --test-reporter=spec",
     "gen:icons": "node scripts/build-icons.js",
     "build:mac": "node scripts/build-icons.js && tauri build",
     "build:win": "node scripts/build-icons.js && tauri build",
