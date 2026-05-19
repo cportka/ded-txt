@@ -14,6 +14,10 @@
 // gets its number followed by (rows-1) blank entries so wrapped
 // continuations are visually unnumbered.
 
+// Zero-width space (U+200B). Declared via String.fromCharCode so the
+// source file stays ASCII and eslint's no-irregular-whitespace stays happy.
+const ZWSP = String.fromCharCode(0x200B);
+
 let gutter, gutterInner, mirror, editor;
 let lineHeightPx = 0;
 let rafPending = false;
@@ -31,13 +35,12 @@ function render() {
 
   const lines = editor.value.split('\n');
 
-  // Populate mirror with one <div> per logical line. ​ (zero-width
-  // space) gives empty lines a non-zero height so .offsetHeight still
-  // reports the correct row count.
+  // Populate mirror with one <div> per logical line. Empty lines get a
+  // zero-width space (U+200B) so .offsetHeight still reports a real row.
   const frag = document.createDocumentFragment();
   for (const line of lines) {
     const d = document.createElement('div');
-    d.textContent = line === '' ? '​' : line;
+    d.textContent = line === '' ? ZWSP : line;
     frag.appendChild(d);
   }
   mirror.replaceChildren(frag);
