@@ -218,9 +218,9 @@
       background: var(--bg);
       border: 1px solid var(--muted);
       border-radius: 12px;
-      padding: 24px;
+      padding: 16px 22px;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      line-height: 1.45;
+      line-height: 1.4;
       /* Use viewport units directly, not `100%` of parent. The parent <form>
          inside <dialog> has no explicit height (only a max-height on the
          dialog), so `max-height: 100%` resolves unpredictably across
@@ -231,28 +231,21 @@
       overflow-y: auto;
       box-sizing: border-box;
     }
-    .welcome-card h1 {
-      margin: 0 0 4px;
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      text-align: center;
-    }
     .welcome-icon {
       display: block;
-      width: 96px;
-      height: 96px;
-      margin: 12px auto 4px;
-      border-radius: 20px;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 4px;
+      border-radius: 16px;
     }
     .welcome-sub {
-      margin: 0 0 6px;
+      margin: 0 0 2px;
       color: var(--muted);
       font-size: 14px;
       text-align: center;
     }
     .welcome-version {
-      margin: 0 0 20px;
+      margin: 0 0 12px;
       text-align: center;
       font-size: 12px;
       color: var(--muted);
@@ -275,15 +268,15 @@
     .welcome-shortcuts {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin: 0 0 16px;
+      gap: 4px;
+      margin: 0 0 12px;
     }
     .welcome-shortcut {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 8px 12px;
+      padding: 6px 12px;
       background: rgba(127, 127, 127, 0.05);
       border: 1px solid rgba(127, 127, 127, 0.18);
       border-radius: 6px;
@@ -329,8 +322,8 @@
     }
 
     .welcome-downloads {
-      margin: 0 0 16px;
-      padding: 12px 0 0;
+      margin: 0 0 12px;
+      padding: 8px 0 0;
       border-top: 1px solid var(--muted);
       text-align: center;
       font-size: 14px;
@@ -348,7 +341,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: 0 0 16px;
+      margin: 0 0 8px;
       font-size: 13px;
       color: var(--muted);
       cursor: pointer;
@@ -382,12 +375,15 @@
     <img src="./icons/icon-192.png" alt="" aria-hidden="true" />
   </button>
 
-  <dialog id="welcome-dialog" aria-labelledby="welcome-title">
+  <dialog id="welcome-dialog" aria-label="DedTxt menu">
     <form method="dialog" class="welcome-card">
-      <h1 id="welcome-title">Welcome to DedTxt</h1>
       <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
       <p class="welcome-sub">A dead simple plain-text editor.</p>
       <p class="welcome-version"><span id="welcome-version">v0.0.0</span></p>
+      <label class="welcome-show-on-start">
+        <input type="checkbox" id="welcome-show-on-start" />
+        Show on start
+      </label>
       <div class="welcome-shortcuts">
         <button type="button" class="welcome-shortcut" data-action="new">
           <span>New</span>
@@ -413,10 +409,6 @@
       <p class="welcome-downloads">
         <a href="https://github.com/cportka/dedtxt/releases/latest" target="_blank" rel="noopener">Get desktop builds →</a>
       </p>
-      <label class="welcome-show-on-start">
-        <input type="checkbox" id="welcome-show-on-start" />
-        Show on start
-      </label>
       <button type="button" id="welcome-dismiss" class="welcome-btn">Ok</button>
     </form>
   </dialog>
