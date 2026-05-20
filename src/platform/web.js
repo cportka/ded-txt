@@ -103,6 +103,8 @@ const web = {
   async openFile() { return pickAndRead(); },
 
   async saveFile(content) {
+    // Re-save to the same file once we have a handle; otherwise prompt the
+    // user for a path/name on the first save and remember it from then on.
     if (currentHandle) {
       try {
         await writeHandle(currentHandle, content);
@@ -111,10 +113,6 @@ const web = {
         return { ok: false, error: err.message };
       }
     }
-    return web.saveFileAs(content);
-  },
-
-  async saveFileAs(content) {
     if (hasFsAccess() && typeof window.showSaveFilePicker === 'function') {
       try {
         const handle = await window.showSaveFilePicker({
@@ -131,6 +129,8 @@ const web = {
         return { ok: false, error: err.message };
       }
     }
+    // Safari / Firefox fallback: trigger a one-shot download. Without an FS
+    // handle there's nothing to re-save to, so this path repeats every save.
     const name = currentName || 'Untitled.txt';
     downloadFallback(content, name);
     currentName = name;
@@ -170,12 +170,6 @@ const web = {
     updateTitle();
   },
 
-  quit() {
-    // window.close() only works for windows opened by script or in installed
-    // PWAs. In a regular tab it's a silent no-op — which is the right default.
-    try { window.close(); } catch (e) { /* ignore */ }
-  },
-
   onLoad(cb) {
     loadCb = cb;
     // Surface the original name on the next setName/load so the title is correct.
@@ -183,7 +177,6 @@ const web = {
 
   onMenuNew(_cb) { /* no system menus on web */ },
   onMenuSave(_cb) { /* no system menus on web */ },
-  onMenuSaveAs(_cb) { /* no system menus on web */ },
 
   onSaveAndClose(_cb) { /* not applicable in browser */ },
   confirmClose() { /* not applicable in browser */ }

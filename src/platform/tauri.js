@@ -14,7 +14,6 @@ const listen = t ? t.event.listen : null;
 let loadCb = null;
 let newCb = null;
 let saveCb = null;
-let saveAsCb = null;
 let saveAndCloseCb = null;
 const pendingLoads = [];
 
@@ -39,7 +38,6 @@ if (listen) {
   // Menu actions from the system menu bar.
   listen('dt://menu-new', () => { if (newCb) newCb(); });
   listen('dt://menu-save', () => { if (saveCb) saveCb(); });
-  listen('dt://menu-save-as', () => { if (saveAsCb) saveAsCb(); });
   listen('dt://save-and-close', () => { if (saveAndCloseCb) saveAndCloseCb(); });
 
   // Tauri's native drag-drop event — unlike DOM drop, this includes real
@@ -65,10 +63,6 @@ const tauri = {
     return invoke('save_file', { content });
   },
 
-  async saveFileAs(content) {
-    return invoke('save_file_as', { content });
-  },
-
   async openDroppedFile(_file) {
     // Tauri's native drag-drop listener (above) handles real-path opening.
     // The DOM File object passed here has no usable path, so this is a no-op.
@@ -87,19 +81,12 @@ const tauri = {
     if (invoke) invoke('reset_state');
   },
 
-  quit() {
-    // request_close triggers Rust's CloseRequested handler which honours the
-    // unsaved-changes guard (and falls through to actually closing if clean).
-    if (invoke) invoke('request_close');
-  },
-
   onLoad(cb) {
     loadCb = cb;
     while (pendingLoads.length) cb(pendingLoads.shift());
   },
   onMenuNew(cb) { newCb = cb; },
   onMenuSave(cb) { saveCb = cb; },
-  onMenuSaveAs(cb) { saveAsCb = cb; },
   onSaveAndClose(cb) { saveAndCloseCb = cb; },
   confirmClose() { if (invoke) invoke('confirm_close'); }
 };

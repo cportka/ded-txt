@@ -193,31 +193,6 @@ fn save_file(app: AppHandle, content: String) -> Result<SaveResult, String> {
 }
 
 #[tauri::command]
-fn save_file_as(app: AppHandle, content: String) -> Result<SaveResult, String> {
-    let default_name = {
-        // Bind `state` to a local so its lifetime extends through the lock
-        // guard's scope; chaining `app.state::<AppState>().current_path...`
-        // creates a temporary State that's dropped at the end of the let
-        // statement, leaving the lock guard dangling (rustc E0716).
-        let state = app.state::<AppState>();
-        let cp = state.current_path.lock().unwrap();
-        cp.as_ref()
-            .and_then(|p| p.file_name())
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "Untitled.txt".to_string())
-    };
-    match prompt_save_path(&app, &default_name) {
-        Some(target) => Ok(save_to(&app, target, content)),
-        None => Ok(SaveResult {
-            ok: false,
-            file_path: None,
-            error: None,
-            canceled: Some(true),
-        }),
-    }
-}
-
-#[tauri::command]
 fn set_dirty(app: AppHandle, dirty: bool) {
     let state = app.state::<AppState>();
     *state.dirty.lock().unwrap() = dirty;
@@ -290,17 +265,12 @@ fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<Wry>> {
         .id("save")
         .accelerator("CmdOrCtrl+S")
         .build(app)?;
-    let save_as_item = MenuItemBuilder::new("Save As…")
-        .id("save_as")
-        .accelerator("CmdOrCtrl+Shift+S")
-        .build(app)?;
 
     let file_menu = SubmenuBuilder::new(app, "File")
         .item(&new_item)
         .item(&open_item)
         .separator()
         .item(&save_item)
-        .item(&save_as_item)
         .separator()
         .close_window()
         .build()?;
@@ -383,7 +353,6 @@ pub fn run() {
             open_file,
             open_path,
             save_file,
-            save_file_as,
             set_dirty,
             confirm_close,
             drain_pending,
@@ -402,7 +371,6 @@ pub fn run() {
                     "new" => Some("dt://menu-new"),
                     "open" => Some("dt://menu-open"),
                     "save" => Some("dt://menu-save"),
-                    "save_as" => Some("dt://menu-save-as"),
                     _ => None,
                 };
                 if let Some(n) = name {

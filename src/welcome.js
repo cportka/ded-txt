@@ -22,15 +22,12 @@ export function isMac() {
 export function shortcutMap() {
   const mac = isMac();
   const mod = mac ? '⌘' : 'Ctrl';
-  const shift = mac ? '⇧' : 'Shift';
   const plus = mac ? ' ' : ' + ';
   return {
     'this-dialog': 'ESC',
     'new':         `${mod}${plus}N`,
     'open':        `${mod}${plus}O`,
-    'save':        `${mod}${plus}S`,
-    'save-as':     `${mod}${plus}${shift}${plus}S`,
-    'quit':        mac ? `${mod} Q` : 'Alt + F4'
+    'save':        `${mod}${plus}S`
   };
 }
 
