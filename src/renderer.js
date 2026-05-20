@@ -124,16 +124,39 @@ document.querySelectorAll('.welcome-shortcut').forEach((btn) => {
   });
 });
 
-// Welcome icon click — spin once + reveal a small info popup.
+// Welcome icon click — spin once + toggle the info popup. The popup is a
+// fixed-position bubble anchored to the right of the icon (positioned via
+// JS so it survives the dialog's internal overflow on small screens).
 const welcomeIconBtn = document.getElementById('welcome-icon-btn');
 const infoPopup = document.getElementById('info-popup');
-const infoPopupClose = document.getElementById('info-popup-close');
+
+function positionInfoPopup() {
+  if (!welcomeIconBtn || !infoPopup) return;
+  const rect = welcomeIconBtn.getBoundingClientRect();
+  infoPopup.style.top = (rect.top + rect.height / 2) + 'px';
+  infoPopup.style.left = (rect.right + 14) + 'px';
+}
+
+function showInfoPopup() {
+  if (!infoPopup) return;
+  positionInfoPopup();
+  infoPopup.hidden = false;
+}
+
+function hideInfoPopup() {
+  if (infoPopup) infoPopup.hidden = true;
+}
+
 if (welcomeIconBtn) {
-  welcomeIconBtn.addEventListener('click', () => {
+  welcomeIconBtn.addEventListener('click', (e) => {
     welcomeIconBtn.classList.remove('spinning');
     void welcomeIconBtn.offsetWidth;
     welcomeIconBtn.classList.add('spinning');
-    if (infoPopup) infoPopup.hidden = false;
+    if (infoPopup && infoPopup.hidden) showInfoPopup();
+    else hideInfoPopup();
+    // Don't let the document-level "click anywhere dismisses popup" handler
+    // immediately close what this click just opened.
+    e.stopPropagation();
   });
   welcomeIconBtn.addEventListener('animationend', (e) => {
     if (e.animationName === 'menu-spin') {
@@ -141,9 +164,25 @@ if (welcomeIconBtn) {
     }
   });
 }
-if (infoPopupClose && infoPopup) {
-  infoPopupClose.addEventListener('click', () => { infoPopup.hidden = true; });
-}
+
+// Any click anywhere closes the popup (including clicks on the link, which
+// still navigate first thanks to target="_blank"). The icon's own click
+// handler above stops propagation, so the click that opens the popup
+// doesn't immediately close it.
+document.addEventListener('click', () => {
+  if (infoPopup && !infoPopup.hidden) hideInfoPopup();
+});
+
+// Any keypress closes the popup. Capture phase so we run before the
+// dialog's auto-dismiss handler; stopImmediatePropagation prevents that
+// handler from also firing and triggering a dialog dismiss + insert.
+document.addEventListener('keydown', (e) => {
+  if (infoPopup && !infoPopup.hidden) {
+    hideInfoPopup();
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }
+}, true);
 
 // When the welcome dialog is open and the user starts typing, dismiss the
 // dialog and forward the first character into the textarea so nothing is
@@ -176,6 +215,17 @@ if (welcomeDialog) {
     refreshLineNumbers();
   });
 }
+
+// Escape toggles the welcome dialog. When the dialog is open the browser
+// already closes it on Escape (native <dialog> behavior). When it's closed,
+// pressing Escape opens it again.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (welcomeDialog && !welcomeDialog.open) {
+    e.preventDefault();
+    showWelcome();
+  }
+});
 
 editor.addEventListener('input', recomputeDirty);
 
