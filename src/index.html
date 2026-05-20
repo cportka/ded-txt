@@ -206,7 +206,7 @@
       padding: 0;
       background: transparent;
       color: var(--fg);
-      max-width: min(420px, calc(100% - 32px));
+      max-width: min(240px, calc(100% - 32px));
       max-height: calc(100vh - 32px);
       max-height: calc(100dvh - 32px);
       outline: none;
@@ -362,6 +362,7 @@
       align-items: center;
       gap: 8px;
       margin: 0 0 8px;
+      padding-left: 16px;
       font-size: 13px;
       color: var(--muted);
       cursor: pointer;
@@ -383,47 +384,57 @@
     }
     .welcome-btn:hover { opacity: 0.92; }
 
-    /* Info popup shown when the icon is clicked. Sibling of the form so it
-       doesn't scroll with the card's overflow. Absolute-positioned at the
-       dialog's center, sitting in the dialog's top-layer stacking context. */
+    /* Info popup shown when the icon is clicked. Positioned via JS based on
+       the icon's bounding rect. Position: fixed so it survives the dialog's
+       internal overflow (the dialog is in the top layer, so fixed children
+       render above the backdrop). White bubble with black outline + text,
+       and a left-pointing chevron that anchors visually to the icon. */
     .info-popup {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: var(--bg);
-      border: 1px solid var(--muted);
-      border-radius: 10px;
-      padding: 18px 26px 14px;
-      font-size: 14px;
-      text-align: center;
-      min-width: 220px;
-      max-width: calc(100% - 40px);
-      z-index: 20;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      position: fixed;
+      transform: translateY(-50%);
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #000000;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      min-width: 160px;
+      max-width: 220px;
+      z-index: 9999;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     }
     .info-popup[hidden] { display: none; }
-    .info-popup p { margin: 0; line-height: 1.4; }
-    .info-popup p + p { margin-top: 6px; }
+    .info-popup p { margin: 0; line-height: 1.4; color: #000000; }
+    .info-popup p + p { margin-top: 4px; }
     .info-popup a {
-      color: var(--fg);
+      color: #000000;
       text-decoration: underline;
       text-underline-offset: 2px;
     }
-    .info-popup-close {
+    /* Chevron: two stacked triangles (outline + fill) on the popup's left
+       edge, pointing at the icon. */
+    .info-popup::before,
+    .info-popup::after {
+      content: "";
       position: absolute;
-      top: 2px;
-      right: 4px;
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      font: inherit;
-      font-size: 18px;
-      line-height: 1;
-      cursor: pointer;
-      padding: 4px 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
     }
-    .info-popup-close:hover { color: var(--fg); }
+    .info-popup::before {
+      right: 100%;
+      border-top: 8px solid transparent;
+      border-bottom: 8px solid transparent;
+      border-right: 8px solid #000000;
+    }
+    .info-popup::after {
+      right: 100%;
+      margin-right: -1px;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-right: 7px solid #ffffff;
+    }
   </style>
 </head>
 <body>
@@ -476,7 +487,6 @@
       <button type="button" id="welcome-dismiss" class="welcome-btn">Ok</button>
     </form>
     <div id="info-popup" class="info-popup" hidden>
-      <button type="button" id="info-popup-close" class="info-popup-close" aria-label="Close">×</button>
       <p>by chris portka</p>
       <p><a href="https://venmo.com/portka" target="_blank" rel="noopener">venmo me a donation</a></p>
     </div>
