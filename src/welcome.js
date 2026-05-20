@@ -1,19 +1,15 @@
-// First-visit / new-version / on-demand welcome dialog. Shown:
-//   * automatically on first visit and after any version bump,
-//   * automatically on every start if the user opted in via "Show on start",
-//   * manually any time the user clicks the hamburger menu (via showWelcome()).
+// First-visit / on-demand welcome dialog.
 //
-// The "Show on start" checkbox is unchecked by default. If checked, the
-// dialog reappears on every page load. If unchecked, it stays out of the
-// way until the next version bump (which always shows once, to surface
-// what changed).
+// Auto-shows exactly once per browser / install: if the user has ever
+// dismissed the dialog before, it never auto-opens again (not even after a
+// version bump). Manual opens via the hamburger icon or the Escape key
+// always work; they just don't trigger the persistence guard differently.
 //
 // isMac / shortcutMap are exported for unit testing (test/).
 
 import { VERSION } from './version.js';
 
-const VERSION_KEY = 'dedtxt-last-version';
-const SHOW_ON_START_KEY = 'dedtxt-show-on-start';
+const WELCOMED_KEY = 'dedtxt-welcomed';
 
 let listenersAttached = false;
 
@@ -29,15 +25,16 @@ export function shortcutMap() {
   const shift = mac ? '⇧' : 'Shift';
   const plus = mac ? ' ' : ' + ';
   return {
-    'new':     `${mod}${plus}N`,
-    'open':    `${mod}${plus}O`,
-    'save':    `${mod}${plus}S`,
-    'save-as': `${mod}${plus}${shift}${plus}S`,
-    'quit':    mac ? `${mod} Q` : 'Alt + F4'
+    'this-dialog': 'Escape Key',
+    'new':         `${mod}${plus}N`,
+    'open':        `${mod}${plus}O`,
+    'save':        `${mod}${plus}S`,
+    'save-as':     `${mod}${plus}${shift}${plus}S`,
+    'quit':        mac ? `${mod} Q` : 'Alt + F4'
   };
 }
 
-function openDialog(highlightAsNew) {
+function openDialog() {
   const dialog = document.getElementById('welcome-dialog');
   if (!dialog || typeof dialog.showModal !== 'function') return;
 
@@ -48,22 +45,10 @@ function openDialog(highlightAsNew) {
     if (keys[k]) el.textContent = keys[k];
   });
 
-  // Stamp the version. Highlight only when this is a new-version-vs-last-seen
-  // auto-open — manual hamburger opens never highlight.
+  // Stamp the version. No highlight state any more — show-once means we
+  // never re-trigger the dialog to draw attention to an upgrade.
   const versionEl = document.getElementById('welcome-version');
-  if (versionEl) {
-    versionEl.textContent = `v${VERSION}`;
-    versionEl.classList.toggle('new', !!highlightAsNew);
-  }
-
-  // Restore the user's saved "show on start" preference so the next dismiss
-  // can persist their (possibly unchanged) choice.
-  const showOnStart = document.getElementById('welcome-show-on-start');
-  if (showOnStart) {
-    let saved = null;
-    try { saved = localStorage.getItem(SHOW_ON_START_KEY); } catch (e) { /* ignore */ }
-    showOnStart.checked = saved === 'true';
-  }
+  if (versionEl) versionEl.textContent = `v${VERSION}`;
 
   // Wire up dismiss + close + backdrop-click listeners once; subsequent
   // opens reuse them.
@@ -79,43 +64,33 @@ function openDialog(highlightAsNew) {
       if (e.target === dialog) dialog.close();
     });
 
+    // Any close — auto, manual, Escape, backdrop, button — marks the user
+    // as having been welcomed. Future visits skip the auto-open.
     dialog.addEventListener('close', () => {
-      const sos = document.getElementById('welcome-show-on-start');
-      const checked = !!(sos && sos.checked);
-      try {
-        localStorage.setItem(VERSION_KEY, VERSION);
-        localStorage.setItem(SHOW_ON_START_KEY, checked ? 'true' : 'false');
-      } catch (e) { /* ignore */ }
+      try { localStorage.setItem(WELCOMED_KEY, 'true'); } catch (e) { /* ignore */ }
     });
     listenersAttached = true;
   }
 
   // Avoid auto-focusing the first shortcut button (which iOS Safari paints
-  // with the same border as :hover, making "New" look pre-selected). Move
-  // focus to the dialog itself; Tab from here still lands on the first
+  // with the same border as :hover, making the first row look pre-selected).
+  // Move focus to the dialog itself; Tab from here still lands on the first
   // shortcut for keyboard users.
   dialog.setAttribute('tabindex', '-1');
   dialog.showModal();
   try { dialog.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
 }
 
-// Auto-open on first visit, after any version bump, or if the user opted
-// in to "Show on start".
+// Auto-open exactly once. After the first dismissal, this is a no-op
+// forever (unless the user clears their localStorage).
 export function maybeShowWelcome() {
-  let lastSeen = null;
-  let showOnStart = false;
-  try {
-    lastSeen = localStorage.getItem(VERSION_KEY);
-    showOnStart = localStorage.getItem(SHOW_ON_START_KEY) === 'true';
-  } catch (e) { /* private mode */ }
-
-  // Skip only if the user has seen THIS exact version AND hasn't opted in.
-  if (lastSeen === VERSION && !showOnStart) return;
-
-  openDialog(!!(lastSeen && lastSeen !== VERSION));
+  let welcomed = false;
+  try { welcomed = localStorage.getItem(WELCOMED_KEY) === 'true'; } catch (e) { /* private mode */ }
+  if (welcomed) return;
+  openDialog();
 }
 
-// Force-open from the hamburger menu — ignores version state.
+// Force-open from the hamburger menu or the Escape key.
 export function showWelcome() {
-  openDialog(false);
+  openDialog();
 }
