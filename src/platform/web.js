@@ -20,9 +20,14 @@ function hasFsAccess() {
 }
 
 function updateTitle() {
-  const base = currentName || 'Untitled';
+  // No file open → bare "DedTxt". Only show a name (and dirty bullet) once
+  // the user has actually opened or named a file.
+  if (!currentName) {
+    document.title = 'DedTxt';
+    return;
+  }
   const dot = dirty ? ' •' : '';
-  document.title = `${base}${dot} — DedTxt`;
+  document.title = `${currentName}${dot} — DedTxt`;
 }
 
 function fireLoad(name, content) {

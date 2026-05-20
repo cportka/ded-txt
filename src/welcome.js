@@ -25,7 +25,7 @@ export function shortcutMap() {
   const shift = mac ? '⇧' : 'Shift';
   const plus = mac ? ' ' : ' + ';
   return {
-    'this-dialog': 'Escape Key',
+    'this-dialog': 'ESC',
     'new':         `${mod}${plus}N`,
     'open':        `${mod}${plus}O`,
     'save':        `${mod}${plus}S`,
