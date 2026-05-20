@@ -31,14 +31,22 @@ function updateTitle() {
 }
 
 function fireLoad(name, content) {
+  // Clear local dirty before firing the load callback so the title we paint
+  // afterwards reflects the fresh file, not a leftover bullet from the
+  // previously-loaded file.
   currentName = name;
+  dirty = false;
   if (loadCb) loadCb({ filePath: name, content });
+  updateTitle();
 }
 
 async function pickAndRead() {
   if (hasFsAccess()) {
     try {
-      const [handle] = await window.showOpenFilePicker({ types: [TEXT_TYPES], multiple: false });
+      // mode: 'readwrite' grants write permission up front so a subsequent
+      // Save can call createWritable() on this handle silently. Without it
+      // Chrome treats the handle as read-only and re-prompts on first write.
+      const [handle] = await window.showOpenFilePicker({ types: [TEXT_TYPES], multiple: false, mode: 'readwrite' });
       const file = await handle.getFile();
       const content = await file.text();
       currentHandle = handle;
@@ -80,6 +88,16 @@ async function pickAndRead() {
 }
 
 async function writeHandle(handle, content) {
+  // Chrome may downgrade an FSA permission after the tab has been idle.
+  // Query first and re-request only if needed so the common (already-granted)
+  // path stays prompt-free.
+  if (typeof handle.queryPermission === 'function') {
+    const state = await handle.queryPermission({ mode: 'readwrite' });
+    if (state !== 'granted') {
+      const req = await handle.requestPermission({ mode: 'readwrite' });
+      if (req !== 'granted') throw new Error('Write permission denied');
+    }
+  }
   const writable = await handle.createWritable();
   await writable.write(content);
   await writable.close();
@@ -122,6 +140,9 @@ const web = {
         await writeHandle(handle, content);
         currentHandle = handle;
         currentName = handle.name;
+        // Clear dirty before painting so the first frame after the picker
+        // closes shows "foo.txt — DedTxt" without a stale bullet.
+        dirty = false;
         updateTitle();
         return { ok: true, filePath: handle.name };
       } catch (err) {
