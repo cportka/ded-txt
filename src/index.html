@@ -231,12 +231,32 @@
       overflow-y: auto;
       box-sizing: border-box;
     }
+    .welcome-icon-btn {
+      display: block;
+      width: 100%;
+      margin: 0 auto 6px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .welcome-icon-btn:focus-visible {
+      outline: 2px solid var(--muted);
+      outline-offset: 2px;
+    }
     .welcome-icon {
       display: block;
-      width: 72px;
-      height: 72px;
-      margin: 0 auto 4px;
+      width: 100%;
+      height: auto;
       border-radius: 16px;
+    }
+    /* Spin animation on icon click — reuses the menu-spin keyframe from
+       the top-right hamburger so the easing/timing matches: snap to speed
+       then decelerate over 1 s. */
+    .welcome-icon-btn.spinning .welcome-icon {
+      animation: menu-spin 1000ms cubic-bezier(0.05, 0.9, 0.25, 1);
     }
     .welcome-sub {
       margin: 0 0 2px;
@@ -362,6 +382,48 @@
       cursor: pointer;
     }
     .welcome-btn:hover { opacity: 0.92; }
+
+    /* Info popup shown when the icon is clicked. Sibling of the form so it
+       doesn't scroll with the card's overflow. Absolute-positioned at the
+       dialog's center, sitting in the dialog's top-layer stacking context. */
+    .info-popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg);
+      border: 1px solid var(--muted);
+      border-radius: 10px;
+      padding: 18px 26px 14px;
+      font-size: 14px;
+      text-align: center;
+      min-width: 220px;
+      max-width: calc(100% - 40px);
+      z-index: 20;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    .info-popup[hidden] { display: none; }
+    .info-popup p { margin: 0; line-height: 1.4; }
+    .info-popup p + p { margin-top: 6px; }
+    .info-popup a {
+      color: var(--fg);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .info-popup-close {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font: inherit;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .info-popup-close:hover { color: var(--fg); }
   </style>
 </head>
 <body>
@@ -377,7 +439,9 @@
 
   <dialog id="welcome-dialog" aria-label="DedTxt menu">
     <form method="dialog" class="welcome-card">
-      <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
+      <button type="button" class="welcome-icon-btn" id="welcome-icon-btn" aria-label="About DedTxt">
+        <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
+      </button>
       <p class="welcome-sub">A dead simple plain-text editor.</p>
       <p class="welcome-version"><span id="welcome-version">v0.0.0</span></p>
       <label class="welcome-show-on-start">
@@ -411,6 +475,11 @@
       </p>
       <button type="button" id="welcome-dismiss" class="welcome-btn">Ok</button>
     </form>
+    <div id="info-popup" class="info-popup" hidden>
+      <button type="button" id="info-popup-close" class="info-popup-close" aria-label="Close">×</button>
+      <p>by chris portka</p>
+      <p><a href="https://venmo.com/portka" target="_blank" rel="noopener">venmo me a donation</a></p>
+    </div>
   </dialog>
 
   <script type="module" src="./renderer.js"></script>

@@ -124,6 +124,59 @@ document.querySelectorAll('.welcome-shortcut').forEach((btn) => {
   });
 });
 
+// Welcome icon click — spin once + reveal a small info popup.
+const welcomeIconBtn = document.getElementById('welcome-icon-btn');
+const infoPopup = document.getElementById('info-popup');
+const infoPopupClose = document.getElementById('info-popup-close');
+if (welcomeIconBtn) {
+  welcomeIconBtn.addEventListener('click', () => {
+    welcomeIconBtn.classList.remove('spinning');
+    void welcomeIconBtn.offsetWidth;
+    welcomeIconBtn.classList.add('spinning');
+    if (infoPopup) infoPopup.hidden = false;
+  });
+  welcomeIconBtn.addEventListener('animationend', (e) => {
+    if (e.animationName === 'menu-spin') {
+      welcomeIconBtn.classList.remove('spinning');
+    }
+  });
+}
+if (infoPopupClose && infoPopup) {
+  infoPopupClose.addEventListener('click', () => { infoPopup.hidden = true; });
+}
+
+// When the welcome dialog is open and the user starts typing, dismiss the
+// dialog and forward the first character into the textarea so nothing is
+// lost. Skip Enter/Space when an interactive child has focus so buttons
+// and the checkbox still activate normally.
+const welcomeDialog = document.getElementById('welcome-dialog');
+if (welcomeDialog) {
+  welcomeDialog.addEventListener('keydown', (e) => {
+    if (!welcomeDialog.open) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const tag = e.target && e.target.tagName;
+    const isInteractive = tag === 'BUTTON' || tag === 'INPUT' || tag === 'A' || tag === 'TEXTAREA' || tag === 'SELECT';
+    const isActivation = e.key === 'Enter' || e.key === ' ';
+    if (isInteractive && isActivation) return;
+
+    let ch = null;
+    if (e.key.length === 1) ch = e.key;
+    else if (e.key === 'Enter') ch = '\n';
+    if (ch === null) return;
+
+    e.preventDefault();
+    welcomeDialog.close();
+
+    editor.focus();
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    editor.setRangeText(ch, start, end, 'end');
+    recomputeDirty();
+    refreshLineNumbers();
+  });
+}
+
 editor.addEventListener('input', recomputeDirty);
 
 editor.addEventListener('keydown', (e) => {
