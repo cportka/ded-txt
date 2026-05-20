@@ -57,12 +57,15 @@ struct SaveResult {
 }
 
 fn make_title(path: Option<&PathBuf>, dirty: bool) -> String {
-    let name = path
-        .and_then(|p| p.file_name())
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "Untitled".to_string());
-    let dot = if dirty { " •" } else { "" };
-    format!("{name}{dot} — DedTxt")
+    // No file open → bare "DedTxt". Only show a name (and dirty bullet) once
+    // the user has actually opened or saved a file.
+    match path.and_then(|p| p.file_name()).map(|n| n.to_string_lossy().to_string()) {
+        Some(name) => {
+            let dot = if dirty { " •" } else { "" };
+            format!("{name}{dot} — DedTxt")
+        }
+        None => "DedTxt".to_string(),
+    }
 }
 
 fn refresh_title(app: &AppHandle) {
@@ -456,13 +459,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn make_title_untitled_clean() {
-        assert_eq!(make_title(None, false), "Untitled — DedTxt");
+    fn make_title_no_file_clean() {
+        assert_eq!(make_title(None, false), "DedTxt");
     }
 
     #[test]
-    fn make_title_untitled_dirty() {
-        assert_eq!(make_title(None, true), "Untitled • — DedTxt");
+    fn make_title_no_file_dirty() {
+        // No name → no bullet either; the bullet only makes sense relative
+        // to a named file. User asked for "nothing but DedTxt" when no file
+        // is open.
+        assert_eq!(make_title(None, true), "DedTxt");
     }
 
     #[test]
