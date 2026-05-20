@@ -270,14 +270,6 @@
       font-size: 12px;
       color: var(--muted);
     }
-    .welcome-version #welcome-version.new {
-      background: var(--fg);
-      color: var(--bg);
-      padding: 1px 8px;
-      border-radius: 4px;
-      font-weight: 600;
-    }
-
     /* Clickable shortcut rows. Each runs its associated editor action when
        clicked (Save saves, New starts a new file, etc.).
        Subtle at-rest affordance (faint background + faint border) so the
@@ -357,27 +349,17 @@
     .welcome-downloads a:hover {
       border-bottom-color: var(--fg);
     }
-    .welcome-show-on-start {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0 0 8px;
-      padding-left: 16px;
-      font-size: 13px;
-      color: var(--muted);
-      cursor: pointer;
-      user-select: none;
-    }
-    .welcome-show-on-start input { margin: 0; cursor: pointer; }
     .welcome-btn {
       display: block;
       margin: 0 auto;
       min-width: 100px;
       padding: 8px 24px;
       border-radius: 8px;
-      border: 1px solid var(--fg);
-      background: var(--fg);
-      color: var(--bg);
+      /* Fixed gray (not theme-following) so it rhymes with the icon-popup
+         bubble — both use the same soft gray + black-outline treatment. */
+      border: 1px solid #000000;
+      background: #d0d0d0;
+      color: #000000;
       font: inherit;
       font-weight: 600;
       cursor: pointer;
@@ -387,12 +369,12 @@
     /* Info popup shown when the icon is clicked. Positioned via JS based on
        the icon's bounding rect. Position: fixed so it survives the dialog's
        internal overflow (the dialog is in the top layer, so fixed children
-       render above the backdrop). White bubble with black outline + text,
-       and a left-pointing chevron that anchors visually to the icon. */
+       render above the backdrop). Soft gray bubble with black outline +
+       text, and a left-pointing chevron that anchors visually to the icon. */
     .info-popup {
       position: fixed;
       transform: translateY(-50%);
-      background: #ffffff;
+      background: #d0d0d0;
       color: #000000;
       border: 1px solid #000000;
       border-radius: 8px;
@@ -433,7 +415,7 @@
       margin-right: -1px;
       border-top: 7px solid transparent;
       border-bottom: 7px solid transparent;
-      border-right: 7px solid #ffffff;
+      border-right: 7px solid #d0d0d0;
     }
   </style>
 </head>
@@ -455,11 +437,11 @@
       </button>
       <p class="welcome-sub">A dead simple plain-text editor.</p>
       <p class="welcome-version"><span id="welcome-version">v0.0.0</span></p>
-      <label class="welcome-show-on-start">
-        <input type="checkbox" id="welcome-show-on-start" />
-        Show on start
-      </label>
       <div class="welcome-shortcuts">
+        <button type="button" class="welcome-shortcut" data-action="this-dialog">
+          <span>This Dialog</span>
+          <span class="welcome-shortcut-key" data-key="this-dialog">Escape Key</span>
+        </button>
         <button type="button" class="welcome-shortcut" data-action="new">
           <span>New</span>
           <span class="welcome-shortcut-key" data-key="new">Ctrl + N</span>

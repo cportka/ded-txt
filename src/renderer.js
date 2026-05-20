@@ -101,6 +101,10 @@ function doQuit() {
 // briefly plays a flash animation on the row (so taps register visually,
 // especially on touch), then closes the dialog and runs the action.
 const SHORTCUT_ACTIONS = {
+  // The row's job is just to surface the Escape-key binding. Closing the
+  // dialog is the action, and the click handler below already does that
+  // for every row — this entry just keeps `handler()` from throwing.
+  'this-dialog': () => {},
   'new': doNew,
   'open': doOpen,
   'save': doSave,
