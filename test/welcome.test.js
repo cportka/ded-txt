@@ -50,32 +50,36 @@ describe('src/welcome.js', () => {
   });
 
   describe('shortcutMap()', () => {
-    test('on Mac uses Cmd + Shift symbols', () => {
+    test('on Mac uses Cmd symbol', () => {
       setNav('MacIntel');
       const m = mod.shortcutMap();
       assert.equal(m.new, '⌘ N');
       assert.equal(m.open, '⌘ O');
       assert.equal(m.save, '⌘ S');
-      assert.equal(m['save-as'], '⌘ ⇧ S');
-      assert.equal(m.quit, '⌘ Q');
+      assert.equal(m['this-dialog'], 'ESC');
     });
 
-    test('on Windows uses Ctrl + ... and Alt + F4 for Quit', () => {
+    test('on Windows uses Ctrl + ...', () => {
       setNav('Win32');
       const m = mod.shortcutMap();
       assert.equal(m.new, 'Ctrl + N');
       assert.equal(m.open, 'Ctrl + O');
       assert.equal(m.save, 'Ctrl + S');
-      assert.equal(m['save-as'], 'Ctrl + Shift + S');
-      assert.equal(m.quit, 'Alt + F4');
+      assert.equal(m['this-dialog'], 'ESC');
     });
 
     test('on Linux uses Ctrl + ... like Windows', () => {
       setNav('Linux x86_64');
       const m = mod.shortcutMap();
       assert.equal(m.new, 'Ctrl + N');
-      assert.equal(m['save-as'], 'Ctrl + Shift + S');
-      assert.equal(m.quit, 'Alt + F4');
+      assert.equal(m.save, 'Ctrl + S');
+    });
+
+    test('does not expose save-as or quit', () => {
+      setNav('MacIntel');
+      const m = mod.shortcutMap();
+      assert.equal('save-as' in m, false);
+      assert.equal('quit' in m, false);
     });
   });
 });

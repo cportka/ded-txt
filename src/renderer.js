@@ -55,16 +55,9 @@ function recomputeDirty() {
 }
 
 async function doSave() {
+  // First save on an unnamed buffer prompts for a filename inside the
+  // platform; every save after that writes silently to the same file.
   const result = await platform.saveFile(editor.value);
-  if (result && result.ok) {
-    savedSnapshot = editor.value;
-    setDirty(false);
-  }
-  return result;
-}
-
-async function doSaveAs() {
-  const result = await platform.saveFileAs(editor.value);
   if (result && result.ok) {
     savedSnapshot = editor.value;
     setDirty(false);
@@ -93,10 +86,6 @@ function doNew() {
   editor.focus();
 }
 
-function doQuit() {
-  if (typeof platform.quit === 'function') platform.quit();
-}
-
 // Map welcome-dialog shortcut buttons to their handlers. Clicking a button
 // briefly plays a flash animation on the row (so taps register visually,
 // especially on touch), then closes the dialog and runs the action.
@@ -107,9 +96,7 @@ const SHORTCUT_ACTIONS = {
   'this-dialog': () => {},
   'new': doNew,
   'open': doOpen,
-  'save': doSave,
-  'save-as': doSaveAs,
-  'quit': doQuit
+  'save': doSave
 };
 const ACTIVATE_DURATION_MS = 180;
 
@@ -246,7 +233,7 @@ editor.addEventListener('keydown', (e) => {
   if (!mod) return;
   if (e.key === 's' || e.key === 'S') {
     e.preventDefault();
-    if (e.shiftKey) doSaveAs(); else doSave();
+    doSave();
   } else if (e.key === 'o' || e.key === 'O') {
     e.preventDefault();
     doOpen();
@@ -264,7 +251,6 @@ platform.onLoad(({ content }) => {
 
 platform.onMenuNew?.(doNew);
 platform.onMenuSave(doSave);
-platform.onMenuSaveAs(doSaveAs);
 
 platform.onSaveAndClose(async () => {
   const result = await doSave();
