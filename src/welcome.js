@@ -47,6 +47,14 @@ function openDialog() {
   const versionEl = document.getElementById('welcome-version');
   if (versionEl) versionEl.textContent = `v${VERSION}`;
 
+  // Surface the non-FSA save limitation on Firefox / Safari / iOS only.
+  // Same heuristic web.js uses via its own hasFsAccess() — kept inline here
+  // to avoid pulling the platform shim into the welcome layer.
+  const noticeEl = dialog.querySelector('.welcome-fsa-notice');
+  if (noticeEl) {
+    noticeEl.hidden = typeof window.showOpenFilePicker === 'function';
+  }
+
   // Wire up dismiss + close + backdrop-click listeners once; subsequent
   // opens reuse them.
   if (!listenersAttached) {
