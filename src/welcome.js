@@ -42,6 +42,15 @@ function openDialog() {
     if (keys[k]) el.textContent = keys[k];
   });
 
+  // Cmd/Ctrl+N is reserved by every browser for "new window" and cannot be
+  // intercepted from JS. Tauri's native menu DOES intercept it, so the hint
+  // stays only on desktop. The "New" button itself is always clickable.
+  const onTauri = typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined';
+  if (!onTauri) {
+    const newKeyEl = dialog.querySelector('[data-key="new"]');
+    if (newKeyEl) newKeyEl.hidden = true;
+  }
+
   // Stamp the version. No highlight state any more — show-once means we
   // never re-trigger the dialog to draw attention to an upgrade.
   const versionEl = document.getElementById('welcome-version');

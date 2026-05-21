@@ -149,7 +149,7 @@ describe('src/platform/web.js', () => {
       const web = await freshWeb();
       await web.openDroppedFile(makeFakeFile('a.txt', 'hi'));
       web.setDirty(true);
-      assert.equal(document.title, 'a.txt • — DedTxt');
+      assert.equal(document.title, '• a.txt • — DedTxt');
 
       web.newFile();
       assert.equal(document.title, 'DedTxt');
@@ -180,12 +180,29 @@ describe('src/platform/web.js', () => {
       assert.equal(document.title, 'notes.md — DedTxt');
     });
 
-    test('named file dirty → "name • — DedTxt"', async () => {
+    test('named file dirty → "• name • — DedTxt"', async () => {
       installGlobals();
       const web = await freshWeb();
       web.setName('notes.md');
       web.setDirty(true);
-      assert.equal(document.title, 'notes.md • — DedTxt');
+      assert.equal(document.title, '• notes.md • — DedTxt');
+    });
+
+    test('clean → dirty → clean transitions never leak bullets or stray spaces', async () => {
+      // Pins the branching format: the dirty bullets must appear ONLY when
+      // dirty, with no trailing-bullet or double-space residue when clean.
+      // Regression guard for the rc.24 single-side `${name}${dot} —` format
+      // that silently grew a stale " • " into the clean title if any future
+      // refactor reverts to suffix-only concatenation.
+      installGlobals();
+      const web = await freshWeb();
+      web.setName('readme.md');
+      web.setDirty(false);
+      assert.equal(document.title, 'readme.md — DedTxt');
+      web.setDirty(true);
+      assert.equal(document.title, '• readme.md • — DedTxt');
+      web.setDirty(false);
+      assert.equal(document.title, 'readme.md — DedTxt');
     });
   });
 
@@ -223,7 +240,7 @@ describe('src/platform/web.js', () => {
 
       await web.openDroppedFile(makeFakeFile('A.txt', 'one'));
       web.setDirty(true);
-      assert.equal(document.title, 'A.txt • — DedTxt');
+      assert.equal(document.title, '• A.txt • — DedTxt');
 
       await web.openDroppedFile(makeFakeFile('B.txt', 'two'));
       assert.equal(document.title, 'B.txt — DedTxt');
@@ -529,7 +546,7 @@ describe('src/platform/web.js', () => {
       const web = await freshWeb();
       web.setName('foo.txt');
       web.setDirty(1);
-      assert.equal(document.title, 'foo.txt • — DedTxt');
+      assert.equal(document.title, '• foo.txt • — DedTxt');
       web.setDirty(0);
       assert.equal(document.title, 'foo.txt — DedTxt');
     });
@@ -651,7 +668,7 @@ describe('src/platform/web.js', () => {
       assert.equal(document.title, 'workflow.txt — DedTxt');
 
       web.setDirty(true);
-      assert.equal(document.title, 'workflow.txt • — DedTxt');
+      assert.equal(document.title, '• workflow.txt • — DedTxt');
       await web.saveFile('edit one');
 
       web.setDirty(true);
