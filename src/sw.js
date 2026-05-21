@@ -8,7 +8,6 @@ const CACHE = `dedtxt-${VERSION}`;
 const SHELL = [
   './',
   './index.html',
-  './theme-init.js',
   './renderer.js',
   './welcome.js',
   './version.js',

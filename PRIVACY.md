@@ -6,13 +6,14 @@ no servers, no accounts.
 **Your text** lives only where you put it: in your browser, on your disk,
 or in a download you triggered. DedTxt never transmits it.
 
-**Local storage** holds two purely functional values:
-- `dedtxt-theme` — your light/dark preference.
-- `dedtxt-welcomed` — a flag so the first-visit dialog only auto-opens once.
+**Local storage** holds one purely functional value:
+- `dedtxt-welcomed` — set when you dismiss the welcome dialog so it
+  doesn't auto-open on every visit. You can re-open it any time by
+  clicking the icon in the top-right corner or pressing Escape.
 
 Nothing else is read or written. Clear your site data at any time to reset
-both. The desktop builds (Tauri) behave identically — settings live next to
-the app's own data directory on disk and are never uploaded.
+it. The desktop builds (Tauri) behave identically — no preferences are
+stored on disk.
 
 **Hosting**: the web app at <https://dedtxt.app/> is a static site served
 from GitHub Pages. Standard GitHub server logs (IP, user-agent) apply to
