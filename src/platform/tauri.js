@@ -88,7 +88,10 @@ const tauri = {
   onMenuNew(cb) { newCb = cb; },
   onMenuSave(cb) { saveCb = cb; },
   onSaveAndClose(cb) { saveAndCloseCb = cb; },
-  confirmClose() { if (invoke) invoke('confirm_close'); }
+  confirmClose() { if (invoke) invoke('confirm_close'); },
+
+  // Tauri uses native OS save dialogs — no in-app filename prompt needed.
+  setNameAsker(_fn) {}
 };
 
 // Once the DOM is up, pull any paths Rust buffered before the frontend

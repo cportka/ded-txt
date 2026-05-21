@@ -14,6 +14,10 @@ let currentName = null;
 let dirty = false;
 
 let loadCb = null;
+// Renderer-supplied async prompter: askName(suggested) → Promise<string|null>.
+// Only used in the non-FSA download-fallback path so Firefox/Safari users
+// get a tab title + a consistent download name on first save.
+let askName = null;
 
 function hasFsAccess() {
   return typeof window !== 'undefined' && typeof window.showOpenFilePicker === 'function';
@@ -152,10 +156,15 @@ const web = {
     }
     // Safari / Firefox fallback: trigger a one-shot download. Without an FS
     // handle there's nothing to re-save to, so this path repeats every save.
-    // Deliberately do NOT assign currentName here — the download doesn't
-    // establish a writable association with a specific file, so claiming
-    // "Untitled.txt" in the tab title would be misleading. Leave currentName
-    // as whatever it was (a real opened filename, or null for plain "DedTxt").
+    // If currentName is null AND the renderer registered a prompter, ask
+    // once for a filename so the tab can show something meaningful and
+    // future saves reuse the same suggested download name.
+    if (!currentName && askName) {
+      const picked = await askName('Untitled.txt');
+      if (picked == null) return { ok: false, canceled: true };
+      currentName = picked;
+      updateTitle();
+    }
     const suggestedName = currentName || 'Untitled.txt';
     downloadFallback(content, suggestedName);
     return { ok: true, filePath: suggestedName };
@@ -206,7 +215,9 @@ const web = {
   onMenuSave(_cb) { /* no system menus on web */ },
 
   onSaveAndClose(_cb) { /* not applicable in browser */ },
-  confirmClose() { /* not applicable in browser */ }
+  confirmClose() { /* not applicable in browser */ },
+
+  setNameAsker(fn) { askName = fn; }
 };
 
 export default web;

@@ -252,6 +252,57 @@ platform.onLoad(({ content }) => {
 platform.onMenuNew?.(doNew);
 platform.onMenuSave(doSave);
 
+// In-app "Save as" prompt used by the web shim on non-FSA browsers
+// (Firefox / Safari / iOS). Returns the picked name, or null if cancelled.
+// Wires up backdrop-click + Escape + close events so all the natural ways
+// to dismiss a <dialog> resolve to null exactly once.
+function promptForFilename(suggested) {
+  const dialog = document.getElementById('save-as-dialog');
+  const input = document.getElementById('save-as-name');
+  const okBtn = document.getElementById('save-as-ok');
+  const cancelBtn = document.getElementById('save-as-cancel');
+  if (!dialog || !input || !okBtn || !cancelBtn) {
+    // Should not happen, but degrade gracefully if the markup is missing.
+    return Promise.resolve(suggested || 'Untitled.txt');
+  }
+  return new Promise((resolve) => {
+    input.value = suggested || 'Untitled.txt';
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      dialog.removeEventListener('close', onClose);
+      dialog.removeEventListener('click', onBackdrop);
+      input.removeEventListener('keydown', onKey);
+      if (dialog.open) dialog.close();
+      resolve(value);
+    };
+    const onOk = () => {
+      const trimmed = (input.value || '').trim();
+      finish(trimmed || 'Untitled.txt');
+    };
+    const onCancel = () => finish(null);
+    const onClose = () => finish(null);
+    const onBackdrop = (e) => { if (e.target === dialog) finish(null); };
+    const onKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+    };
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    dialog.addEventListener('close', onClose);
+    dialog.addEventListener('click', onBackdrop);
+    input.addEventListener('keydown', onKey);
+
+    dialog.showModal();
+    // Focus + select-all so Enter-to-confirm or just-typing is one keystroke.
+    try { input.focus(); input.select(); } catch (e) { /* ignore */ }
+  });
+}
+platform.setNameAsker?.(promptForFilename);
+
 platform.onSaveAndClose(async () => {
   const result = await doSave();
   if (result && result.ok) platform.confirmClose();

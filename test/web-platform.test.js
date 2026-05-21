@@ -535,6 +535,101 @@ describe('src/platform/web.js', () => {
     });
   });
 
+  describe('non-FSA save: in-app filename prompter', () => {
+    // Firefox / Safari / iOS have no File System Access API. The renderer
+    // registers an async name-asker via web.setNameAsker so the first save
+    // in those browsers can capture a filename, paint it in the tab, and
+    // reuse it as the suggested download name on subsequent saves.
+
+    test('first save with null currentName invokes the asker', async () => {
+      const env = installGlobals(); // no FSA stubs → download-fallback path
+      const web = await freshWeb();
+      let askedWith = null;
+      web.setNameAsker(async (suggested) => { askedWith = suggested; return 'notes.txt'; });
+
+      const res = await web.saveFile('hi');
+      assert.equal(askedWith, 'Untitled.txt');
+      assert.deepEqual(res, { ok: true, filePath: 'notes.txt' });
+      // currentName persists; title reflects it.
+      assert.equal(document.title, 'notes.txt — DedTxt');
+      // Blob carries the actual content.
+      assert.equal(env.blobs.length, 1);
+      assert.deepEqual(env.blobs[0].parts, ['hi']);
+    });
+
+    test('asker returning null cancels the save without state changes', async () => {
+      const env = installGlobals();
+      const web = await freshWeb();
+      web.setNameAsker(async () => null);
+
+      const res = await web.saveFile('hi');
+      assert.deepEqual(res, { ok: false, canceled: true });
+      // No blob created, currentName not set, title untouched.
+      assert.equal(env.blobs.length, 0);
+      assert.equal(document.title, 'DedTxt');
+    });
+
+    test('second save reuses currentName and does NOT re-invoke the asker', async () => {
+      const env = installGlobals();
+      const web = await freshWeb();
+      let askCount = 0;
+      web.setNameAsker(async () => { askCount += 1; return 'foo.txt'; });
+
+      await web.saveFile('one');
+      await web.saveFile('two');
+      await web.saveFile('three');
+
+      assert.equal(askCount, 1, 'asker fires once total');
+      assert.equal(env.blobs.length, 3);
+      assert.deepEqual(env.blobs.map(b => b.parts[0]), ['one', 'two', 'three']);
+      assert.equal(document.title, 'foo.txt — DedTxt');
+    });
+
+    test('opening a file first skips the prompt — currentName already set', async () => {
+      const env = installGlobals();
+      const web = await freshWeb();
+      web.onLoad(() => {});
+      let askCount = 0;
+      web.setNameAsker(async () => { askCount += 1; return 'should-not-be-asked.txt'; });
+
+      await web.openDroppedFile(makeFakeFile('readme.md', 'old'));
+      assert.equal(document.title, 'readme.md — DedTxt');
+
+      const res = await web.saveFile('new');
+      assert.equal(askCount, 0);
+      assert.equal(res.filePath, 'readme.md');
+      assert.equal(env.blobs.length, 1);
+      assert.equal(document.title, 'readme.md — DedTxt');
+    });
+
+    test('no asker registered → falls back to silent "Untitled.txt" download', async () => {
+      // Backwards-compat with rc.22-23 behaviour for any caller that
+      // doesn't wire up the prompter.
+      const env = installGlobals();
+      const web = await freshWeb();
+
+      const res = await web.saveFile('content');
+      assert.deepEqual(res, { ok: true, filePath: 'Untitled.txt' });
+      assert.equal(env.blobs.length, 1);
+      assert.deepEqual(env.blobs[0].parts, ['content']);
+      // Title still doesn't claim "Untitled.txt" — rc.22 invariant.
+      assert.equal(document.title, 'DedTxt');
+    });
+
+    test('asker is only consulted on the non-FSA path, not on FSA saves', async () => {
+      const handle = makeFakeHandle('fsa.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      let askCount = 0;
+      web.setNameAsker(async () => { askCount += 1; return 'wrong.txt'; });
+
+      const res = await web.saveFile('payload');
+      assert.equal(res.ok, true);
+      assert.equal(res.filePath, 'fsa.txt');
+      assert.equal(askCount, 0, 'FSA save-picker path must not call the in-app asker');
+    });
+  });
+
   describe('cross-method state interactions', () => {
     test('open → modify → save → modify → save: only one picker total', async () => {
       // The full workflow the user described in their bug report.

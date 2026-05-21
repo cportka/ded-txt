@@ -423,6 +423,80 @@
       border-bottom: 7px solid transparent;
       border-right: 7px solid #f2bbd1;
     }
+
+    /* Non-FSA notice shown in the welcome dialog only when the browser
+       lacks showOpenFilePicker (Firefox / Safari / iOS). Sets expectations
+       so users don't think the app is broken when every save downloads. */
+    .welcome-fsa-notice {
+      margin: 0 0 12px;
+      padding: 8px 10px;
+      border: 1px solid var(--muted);
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+    .welcome-fsa-notice a {
+      color: var(--fg);
+      text-decoration: underline;
+    }
+
+    /* In-app "Save as" prompt for non-FSA browsers. Reuses the welcome
+       dialog's card styling for visual consistency. */
+    dialog#save-as-dialog {
+      border: none;
+      padding: 0;
+      background: transparent;
+      color: var(--fg);
+      max-width: min(280px, calc(100% - 32px));
+      outline: none;
+    }
+    dialog#save-as-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .save-as-card {
+      /* Width override; everything else inherits from .welcome-card */
+      max-width: 100%;
+    }
+    .save-as-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+    }
+    #save-as-name {
+      display: block;
+      box-sizing: border-box;
+      width: 100%;
+      margin: 0 0 12px;
+      padding: 8px 10px;
+      border: 1px solid var(--muted);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+      font-size: 14px;
+    }
+    #save-as-name:focus {
+      outline: 2px solid var(--muted);
+      outline-offset: -2px;
+    }
+    .save-as-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .save-as-actions .welcome-btn {
+      flex: 1 1 0;
+      min-width: 0;
+      margin: 0;
+    }
+    /* Secondary (Cancel) variant of the welcome button — transparent so
+       Save reads as the primary action. */
+    .save-as-cancel-btn {
+      background: transparent;
+      color: var(--fg);
+      border-color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -461,6 +535,10 @@
           <span class="welcome-shortcut-key" data-key="save">Ctrl + S</span>
         </button>
       </div>
+      <p class="welcome-fsa-notice" hidden>
+        Heads up — your browser can't silently save changes. Each save downloads a fresh copy.
+        For native-like save, use Chrome / Edge, or the desktop app.
+      </p>
       <p class="welcome-downloads">
         <a href="https://github.com/cportka/dedtxt/releases/latest" target="_blank" rel="noopener">Get desktop builds →</a>
       </p>
@@ -470,6 +548,17 @@
       <p>by chris portka</p>
       <p><a href="https://venmo.com/portka" target="_blank" rel="noopener">venmo me a donation</a></p>
     </div>
+  </dialog>
+
+  <dialog id="save-as-dialog" aria-label="Save as">
+    <form method="dialog" class="welcome-card save-as-card">
+      <p class="save-as-title">Save as</p>
+      <input type="text" id="save-as-name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <div class="save-as-actions">
+        <button type="button" id="save-as-cancel" class="welcome-btn save-as-cancel-btn">Cancel</button>
+        <button type="button" id="save-as-ok" class="welcome-btn">Save</button>
+      </div>
+    </form>
   </dialog>
 
   <script type="module" src="./renderer.js"></script>
