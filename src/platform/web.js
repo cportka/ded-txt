@@ -152,11 +152,13 @@ const web = {
     }
     // Safari / Firefox fallback: trigger a one-shot download. Without an FS
     // handle there's nothing to re-save to, so this path repeats every save.
-    const name = currentName || 'Untitled.txt';
-    downloadFallback(content, name);
-    currentName = name;
-    updateTitle();
-    return { ok: true, filePath: name };
+    // Deliberately do NOT assign currentName here — the download doesn't
+    // establish a writable association with a specific file, so claiming
+    // "Untitled.txt" in the tab title would be misleading. Leave currentName
+    // as whatever it was (a real opened filename, or null for plain "DedTxt").
+    const suggestedName = currentName || 'Untitled.txt';
+    downloadFallback(content, suggestedName);
+    return { ok: true, filePath: suggestedName };
   },
 
   async openDroppedFile(file) {
