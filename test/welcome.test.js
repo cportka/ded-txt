@@ -82,4 +82,72 @@ describe('src/welcome.js', () => {
       assert.equal('quit' in m, false);
     });
   });
+
+  describe('headsUpNotices()', () => {
+    // headsUpNotices(env) is a pure function — `env` is the synthetic
+    // `{ hasFsa, onTauri, isTouchOnly }` triple that the welcome dialog
+    // would normally derive at runtime. Tests pin which notices fire in
+    // each environment so adding a new notice can't silently break the
+    // existing two.
+
+    test('Tauri desktop + FSA available → no notices', () => {
+      const active = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: false });
+      assert.deepEqual(active, []);
+    });
+
+    test('Chromium web (FSA, not Tauri) → only the Cmd+N notice', () => {
+      const active = mod.headsUpNotices({ hasFsa: true, onTauri: false, isTouchOnly: false });
+      assert.equal(active.length, 1);
+      assert.equal(active[0].id, 'no-cmd-n');
+      assert.match(active[0].text, /Cmd\/Ctrl\+N/);
+    });
+
+    test('Firefox/Safari desktop (no FSA, not Tauri) → both notices, FSA first', () => {
+      const active = mod.headsUpNotices({ hasFsa: false, onTauri: false, isTouchOnly: false });
+      assert.equal(active.length, 2);
+      assert.deepEqual(active.map(n => n.id), ['no-fsa', 'no-cmd-n']);
+    });
+
+    test('Tauri without FSA (theoretical) → only the FSA notice', () => {
+      // Tauri's webview ships with FSA in practice, but the predicates
+      // are independent — verify the registry treats them that way.
+      const active = mod.headsUpNotices({ hasFsa: false, onTauri: true, isTouchOnly: false });
+      assert.equal(active.length, 1);
+      assert.equal(active[0].id, 'no-fsa');
+    });
+
+    test('touch-only mobile (no FSA, not Tauri) → only the FSA notice, no Cmd+N', () => {
+      // Touch users have no keyboard — surfacing a keyboard-shortcut
+      // limitation would just confuse. The CSS already hides shortcut
+      // hints on touch via the same media query.
+      const active = mod.headsUpNotices({ hasFsa: false, onTauri: false, isTouchOnly: true });
+      assert.equal(active.length, 1);
+      assert.equal(active[0].id, 'no-fsa');
+    });
+
+    test('touch-only with FSA (Android Chrome) → no notices', () => {
+      const active = mod.headsUpNotices({ hasFsa: true, onTauri: false, isTouchOnly: true });
+      assert.deepEqual(active, []);
+    });
+
+    test('returned items expose only { id, text } — no leaking the predicate fn', () => {
+      // Defensive: predicates are an implementation detail. Callers get
+      // plain data they can render or serialise without surprises.
+      const active = mod.headsUpNotices({ hasFsa: false, onTauri: false, isTouchOnly: false });
+      for (const item of active) {
+        assert.deepEqual(Object.keys(item).sort(), ['id', 'text']);
+        assert.equal(typeof item.text, 'string');
+        // Notice text must NOT include "Heads up" — the renderer prefixes
+        // it in the correct grammatical form for 1-vs-many active items.
+        assert.doesNotMatch(item.text, /Heads up/i);
+      }
+    });
+
+    test('predicates handle missing env keys without throwing', () => {
+      // Defensive contract: callers shouldn't have to construct a complete
+      // env object just to ask "what notices fire here?"
+      assert.doesNotThrow(() => mod.headsUpNotices({}));
+      assert.doesNotThrow(() => mod.headsUpNotices({ hasFsa: undefined, onTauri: undefined, isTouchOnly: undefined }));
+    });
+  });
 });

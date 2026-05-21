@@ -424,10 +424,11 @@
       border-right: 7px solid #f2bbd1;
     }
 
-    /* Non-FSA notice shown in the welcome dialog only when the browser
-       lacks showOpenFilePicker (Firefox / Safari / iOS). Sets expectations
-       so users don't think the app is broken when every save downloads. */
-    .welcome-fsa-notice {
+    /* Heads-up notices in the welcome dialog. Data-driven by
+       headsUpNotices() in welcome.js — single active notice renders
+       inline ("Heads up — …"); multiple render under a shared "Heads up:"
+       header with a bulleted list. */
+    .welcome-heads-up {
       margin: 0 0 12px;
       padding: 8px 10px;
       border: 1px solid var(--muted);
@@ -436,9 +437,26 @@
       line-height: 1.4;
       color: var(--muted);
     }
-    .welcome-fsa-notice a {
+    .welcome-heads-up a {
       color: var(--fg);
       text-decoration: underline;
+    }
+    .welcome-heads-up p {
+      margin: 0;
+    }
+    .welcome-heads-up strong {
+      color: var(--fg);
+      font-weight: 600;
+    }
+    .welcome-heads-up-intro {
+      margin: 0 0 4px;
+    }
+    .welcome-heads-up-items {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .welcome-heads-up-items li {
+      margin: 2px 0;
     }
 
     /* In-app "Save as" prompt for non-FSA browsers. Reuses the welcome
@@ -535,10 +553,7 @@
           <span class="welcome-shortcut-key" data-key="save">Ctrl + S</span>
         </button>
       </div>
-      <p class="welcome-fsa-notice" hidden>
-        Heads up — your browser can't silently save changes. Each save downloads a fresh copy.
-        For native-like save, use Chrome / Edge, or the desktop app.
-      </p>
+      <div class="welcome-heads-up" hidden></div>
       <p class="welcome-downloads">
         <a href="https://github.com/cportka/dedtxt/releases/latest" target="_blank" rel="noopener">Get desktop builds →</a>
       </p>
