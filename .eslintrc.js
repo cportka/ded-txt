@@ -31,7 +31,16 @@ module.exports = {
     },
     {
       files: ['test/**/*.js'],
-      env: { node: true, browser: false }
+      env: { node: true, browser: false },
+      // Tests in this directory mock browser globals onto globalThis and then
+      // assert against the same names. Whitelist the ones we install so the
+      // bare references don't trip no-undef.
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        Blob: 'readonly',
+        URL: 'readonly'
+      }
     }
   ],
   ignorePatterns: [

@@ -186,11 +186,15 @@ const web = {
   },
 
   newFile() {
-    // Drop the current file association so the next Save prompts for a path.
+    // Drop the current file association so the next Save prompts for a
+    // path. Clear the onbeforeunload guard too — otherwise a fresh, clean
+    // buffer still prompts "unsaved changes?" on tab close because the
+    // guard was installed by the previous file's dirty state.
     currentHandle = null;
     currentName = null;
     dirty = false;
     updateTitle();
+    window.onbeforeunload = null;
   },
 
   onLoad(cb) {
