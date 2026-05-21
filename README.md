@@ -127,7 +127,9 @@ file. Open a different file and Save targets the new one — there is no
 "save as a different file" path.
 
 The tab title is bare "DedTxt" until you've actually opened or saved a real
-file; after that it's `<name> — DedTxt` (with a `•` bullet when dirty).
+file; after that it's `<name> — DedTxt` when clean and `• <name> • — DedTxt`
+when there are unsaved changes (the dirty bullets flank the filename so the
+state survives heavy title truncation by the OS window chrome).
 
 **Chromium browsers** (Chrome, Edge, Brave, Arc, Opera) implement the File
 System Access API, so opened files have a real writable handle and re-saves

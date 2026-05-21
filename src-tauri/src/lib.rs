@@ -57,12 +57,17 @@ struct SaveResult {
 }
 
 fn make_title(path: Option<&PathBuf>, dirty: bool) -> String {
-    // No file open → bare "DedTxt". Only show a name (and dirty bullet) once
-    // the user has actually opened or saved a file.
+    // No file open → bare "DedTxt". Only show a name (and dirty bullets) once
+    // the user has actually opened or saved a file. The dirty marker flanks
+    // the filename on both sides so the unsaved state survives heavy title
+    // truncation by the OS window chrome.
     match path.and_then(|p| p.file_name()).map(|n| n.to_string_lossy().to_string()) {
         Some(name) => {
-            let dot = if dirty { " •" } else { "" };
-            format!("{name}{dot} — DedTxt")
+            if dirty {
+                format!("• {name} • — DedTxt")
+            } else {
+                format!("{name} — DedTxt")
+            }
         }
         None => "DedTxt".to_string(),
     }
@@ -448,7 +453,7 @@ mod tests {
     #[test]
     fn make_title_with_path_dirty() {
         let pb = PathBuf::from("/tmp/example.txt");
-        assert_eq!(make_title(Some(&pb), true), "example.txt • — DedTxt");
+        assert_eq!(make_title(Some(&pb), true), "• example.txt • — DedTxt");
     }
 
     #[test]
