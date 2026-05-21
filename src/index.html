@@ -1,30 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self';" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#111111" id="theme-color-meta" />
+  <meta name="theme-color" content="#111111" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="DedTxt" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icons/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="./icons/icon-512.png" />
-  <script src="./theme-init.js"></script>
   <title>DedTxt</title>
   <style>
-    :root[data-theme="dark"] {
+    :root {
       color-scheme: dark;
       --bg: #111111;
       --fg: #f4f4f4;
       --muted: #666666;
-    }
-    :root[data-theme="light"] {
-      color-scheme: light;
-      --bg: #ffffff;
-      --fg: #111111;
-      --muted: #999999;
     }
     html, body {
       width: 100%;
@@ -128,27 +121,6 @@
       min-height: 1.45em;
     }
 
-    #theme-toggle {
-      position: fixed;
-      bottom: max(6px, env(safe-area-inset-bottom));
-      right: max(6px, env(safe-area-inset-right));
-      width: 12px;
-      height: 12px;
-      padding: 0;
-      margin: 0;
-      border-radius: 50%;
-      background: linear-gradient(90deg, var(--fg) 0 50%, var(--bg) 50% 100%);
-      border: 1px solid var(--fg);
-      cursor: pointer;
-      opacity: 0.2;
-      transition: opacity 0.15s ease;
-      z-index: 10;
-    }
-    #theme-toggle:hover,
-    #theme-toggle:focus-visible {
-      opacity: 1;
-      outline: none;
-    }
     #menu-toggle {
       position: fixed;
       top: max(8px, env(safe-area-inset-top));
@@ -523,7 +495,6 @@
     <textarea id="text-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft"></textarea>
     <div id="editor-mirror" aria-hidden="true"></div>
   </div>
-  <button id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme"></button>
   <button id="menu-toggle" type="button" aria-label="Show menu" title="Menu">
     <img src="./icons/icon-192.png" alt="" aria-hidden="true" />
   </button>
@@ -560,8 +531,8 @@
       <button type="button" id="welcome-dismiss" class="welcome-btn">Ok</button>
     </form>
     <div id="info-popup" class="info-popup" hidden>
-      <p>by chris portka</p>
       <p><a href="https://venmo.com/portka" target="_blank" rel="noopener">venmo me a donation</a></p>
+      <p>by chris portka</p>
       <p><a href="https://github.com/cportka/dedtxt/blob/main/PRIVACY.md" target="_blank" rel="noopener">privacy</a></p>
     </div>
   </dialog>

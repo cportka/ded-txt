@@ -60,7 +60,7 @@ export function headsUpNotices(env) {
       // keyboard shortcuts don't apply (the shortcut hint is hidden by
       // CSS there too, so calling it out would just confuse).
       active: (e) => !e.onTauri && !e.isTouchOnly,
-      text: 'Cmd/Ctrl+N opens a new browser window, not a new DedTxt file — use the New row above instead.'
+      text: "Cmd/Ctrl+N won't work on web — click New above."
     }
   ];
   return all
