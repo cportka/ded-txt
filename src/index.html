@@ -372,12 +372,12 @@
     /* Info popup shown when the icon is clicked. Positioned via JS based on
        the icon's bounding rect. Position: fixed so it survives the dialog's
        internal overflow (the dialog is in the top layer, so fixed children
-       render above the backdrop). Soft gray bubble with black outline +
-       text, and a left-pointing chevron that anchors visually to the icon. */
+       render above the backdrop). Pink bubble with black outline, mint-green
+       byline, and a left-pointing chevron that anchors visually to the icon. */
     .info-popup {
       position: fixed;
       transform: translateY(-50%);
-      background: #d0d0d0;
+      background: #f2bbd1;
       color: #000000;
       border: 1px solid #000000;
       border-radius: 8px;
@@ -389,7 +389,7 @@
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     }
     .info-popup[hidden] { display: none; }
-    .info-popup p { margin: 0; line-height: 1.4; color: #000000; }
+    .info-popup p { margin: 0; line-height: 1.4; color: #77ddb0; }
     .info-popup p + p { margin-top: 4px; }
     .info-popup a {
       /* Classic hyperlink blue — high contrast against the gray bubble
@@ -421,7 +421,7 @@
       margin-right: -1px;
       border-top: 7px solid transparent;
       border-bottom: 7px solid transparent;
-      border-right: 7px solid #d0d0d0;
+      border-right: 7px solid #f2bbd1;
     }
   </style>
 </head>
