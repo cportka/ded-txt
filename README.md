@@ -6,7 +6,7 @@
 
 A dead simple plain-text editor.
 
-> "because everything fucking sucked for this sort of thing" — cportka
+> "because everything sucked for this sort of thing"
 
 A bit like TextEdit or Notepad, but even simpler and with fewer features.
 No hidden text. No formatting. No settings to fiddle with. Just a textarea
@@ -109,17 +109,35 @@ npm run gen:icons         # regenerates Tauri, PWA, and macOS/Windows icon sets
 
 ## Keys
 
-| Action     | macOS              | Win/Linux         |
-| ---------- | ------------------ | ----------------- |
-| New        | `Cmd + N`          | `Ctrl + N`        |
-| Open       | `Cmd + O`          | `Ctrl + O`        |
-| Save       | `Cmd + S`          | `Ctrl + S`        |
-| Save As    | `Cmd + Shift + S`  | `Ctrl + Shift + S`|
-| Close      | `Cmd + W`          | `Ctrl + W`        |
-| Quit       | `Cmd + Q`          | `Alt + F4`        |
+| Action            | macOS        | Win/Linux  |
+| ----------------- | ------------ | ---------- |
+| New               | `Cmd + N`    | `Ctrl + N` |
+| Open              | `Cmd + O`    | `Ctrl + O` |
+| Save              | `Cmd + S`    | `Ctrl + S` |
+| Toggle welcome    | `Esc`        | `Esc`      |
 
 Drop a file onto the window to open it. The OS "Open with…" menu lists
 DedTxt for txt/md/log/json/csv/ini/yml/yaml/xml.
+
+## Save behavior
+
+There's one Save, not Save / Save As. The first save on an unnamed buffer
+prompts for a filename; every save after that writes silently to that same
+file. Open a different file and Save targets the new one — there is no
+"save as a different file" path. On browsers without the File System Access
+API (Safari, Firefox today) every save triggers a download instead, since
+there's no other way to write back to a real path.
+
+The tab title is bare "DedTxt" until you've actually opened or saved a real
+file; after that it's `<name> — DedTxt` (with a `•` bullet when dirty).
+
+## Welcome dialog
+
+Shown automatically once per browser / install. After you dismiss it,
+the auto-open never fires again — not even after a version bump. To
+re-open: click the icon in the top-right corner of the editor, or press
+`Esc`. Pressing `Esc` again (or clicking outside the card, or typing any
+character) closes it.
 
 ## License
 
