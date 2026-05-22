@@ -43,6 +43,12 @@ struct OpenResult {
     error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     canceled: Option<bool>,
+    #[serde(rename = "isBinary", skip_serializing_if = "Option::is_none")]
+    is_binary: Option<bool>,
+    #[serde(rename = "mimeType", skip_serializing_if = "Option::is_none")]
+    mime_type: Option<&'static str>,
+    #[serde(rename = "contentBase64", skip_serializing_if = "Option::is_none")]
+    content_base64: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -82,15 +88,112 @@ fn refresh_title(app: &AppHandle) {
     }
 }
 
+fn guess_mime(path: &PathBuf) -> &'static str {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_ascii_lowercase())
+        .unwrap_or_default();
+    match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "bmp" => "image/bmp",
+        "ico" => "image/x-icon",
+        "avif" => "image/avif",
+        "pdf" => "application/pdf",
+        "mp3" => "audio/mpeg",
+        "ogg" => "audio/ogg",
+        "wav" => "audio/wav",
+        "flac" => "audio/flac",
+        "m4a" => "audio/mp4",
+        "mp4" | "m4v" => "video/mp4",
+        "webm" => "video/webm",
+        "mov" => "video/quicktime",
+        "mkv" => "video/x-matroska",
+        _ => "", // empty = unknown, try as text
+    }
+}
+
+const MAX_BINARY_PREVIEW: u64 = 25 * 1024 * 1024; // 25 MB
+
 fn read_file(path: &PathBuf) -> Result<OpenResult, String> {
-    let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    Ok(OpenResult {
-        ok: true,
-        file_path: Some(path.to_string_lossy().to_string()),
-        content: Some(content),
-        error: None,
-        canceled: None,
-    })
+    use base64::{engine::general_purpose::STANDARD, Engine};
+
+    let fp = Some(path.to_string_lossy().to_string());
+    let mime = guess_mime(path);
+
+    if !mime.is_empty() {
+        // Known binary type — skip the text attempt entirely.
+        let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
+        if meta.len() > MAX_BINARY_PREVIEW {
+            return Ok(OpenResult {
+                ok: true,
+                file_path: fp,
+                content: None,
+                error: None,
+                canceled: None,
+                is_binary: Some(true),
+                mime_type: Some(mime),
+                content_base64: None,
+            });
+        }
+        let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+        return Ok(OpenResult {
+            ok: true,
+            file_path: fp,
+            content: None,
+            error: None,
+            canceled: None,
+            is_binary: Some(true),
+            mime_type: Some(mime),
+            content_base64: Some(STANDARD.encode(&bytes)),
+        });
+    }
+
+    // Unknown extension — try UTF-8 text first.
+    match std::fs::read_to_string(path) {
+        Ok(content) => Ok(OpenResult {
+            ok: true,
+            file_path: fp,
+            content: Some(content),
+            error: None,
+            canceled: None,
+            is_binary: None,
+            mime_type: None,
+            content_base64: None,
+        }),
+        Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+            // Binary content with unrecognised extension.
+            let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
+            if meta.len() > MAX_BINARY_PREVIEW {
+                return Ok(OpenResult {
+                    ok: true,
+                    file_path: fp,
+                    content: None,
+                    error: None,
+                    canceled: None,
+                    is_binary: Some(true),
+                    mime_type: Some("application/octet-stream"),
+                    content_base64: None,
+                });
+            }
+            let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+            Ok(OpenResult {
+                ok: true,
+                file_path: fp,
+                content: None,
+                error: None,
+                canceled: None,
+                is_binary: Some(true),
+                mime_type: Some("application/octet-stream"),
+                content_base64: Some(STANDARD.encode(&bytes)),
+            })
+        }
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
@@ -108,6 +211,9 @@ fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
             content: None,
             error: Some(e),
             canceled: None,
+            is_binary: None,
+            mime_type: None,
+            content_base64: None,
         },
     }
 }
@@ -116,14 +222,7 @@ fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
 
 #[tauri::command]
 fn open_file(app: AppHandle) -> Result<OpenResult, String> {
-    let picked = app
-        .dialog()
-        .file()
-        .add_filter(
-            "Text",
-            &["txt", "md", "log", "json", "csv", "ini", "yml", "yaml", "xml"],
-        )
-        .blocking_pick_file();
+    let picked = app.dialog().file().blocking_pick_file();
 
     match picked {
         Some(fp) => {
@@ -136,6 +235,9 @@ fn open_file(app: AppHandle) -> Result<OpenResult, String> {
             content: None,
             error: None,
             canceled: Some(true),
+            is_binary: None,
+            mime_type: None,
+            content_base64: None,
         }),
     }
 }
@@ -262,7 +364,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<Wry>> {
         .id("new")
         .accelerator("CmdOrCtrl+N")
         .build(app)?;
-    let open_item = MenuItemBuilder::new("Open…")
+    let open_item = MenuItemBuilder::new("Open\u{2026}")
         .id("open")
         .accelerator("CmdOrCtrl+O")
         .build(app)?;

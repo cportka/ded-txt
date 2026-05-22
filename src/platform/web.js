@@ -2,14 +2,39 @@
 // a download/upload fallback for Safari & Firefox. The renderer treats
 // this just like Electron's window.dt.
 
-const TEXT_TYPES = {
-  description: 'Text files',
-  accept: {
-    'text/plain': ['.txt', '.md', '.log', '.json', '.csv', '.ini', '.yml', '.yaml', '.xml']
-  }
-};
+const TEXT_SUBTYPES = new Set([
+  'application/json', 'application/xml', 'application/javascript',
+  'application/typescript', 'application/x-yaml', 'application/x-sh',
+  'application/x-httpd-php',
+]);
+
+function guessMime(name, browserMime) {
+  if (browserMime) return browserMime;
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const MAP = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+    webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+    ico: 'image/x-icon', avif: 'image/avif',
+    pdf: 'application/pdf',
+    mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav',
+    flac: 'audio/flac', m4a: 'audio/mp4',
+    mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+    mkv: 'video/x-matroska',
+  };
+  return MAP[ext] || 'text/plain';
+}
+
+function classifyMime(mime) {
+  if (!mime || mime.startsWith('text/') || TEXT_SUBTYPES.has(mime)) return 'text';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime === 'application/pdf') return 'pdf';
+  if (mime.startsWith('audio/')) return 'audio';
+  if (mime.startsWith('video/')) return 'video';
+  return 'binary';
+}
 
 let currentHandle = null;
+let currentBlobUrl = null;
 let currentName = null;
 let dirty = false;
 
@@ -38,13 +63,16 @@ function updateTitle() {
     : `${currentName} — DedTxt`;
 }
 
-function fireLoad(name, content) {
+function fireLoad(name, payload) {
+  // Revoke the previous blob URL before overwriting it to avoid memory leaks.
+  if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+  if (payload.blobUrl) currentBlobUrl = payload.blobUrl;
   // Clear local dirty before firing the load callback so the title we paint
   // afterwards reflects the fresh file, not a leftover bullet from the
   // previously-loaded file.
   currentName = name;
   dirty = false;
-  if (loadCb) loadCb({ filePath: name, content });
+  if (loadCb) loadCb({ filePath: name, ...payload });
   updateTitle();
 }
 
@@ -54,11 +82,19 @@ async function pickAndRead() {
       // mode: 'readwrite' grants write permission up front so a subsequent
       // Save can call createWritable() on this handle silently. Without it
       // Chrome treats the handle as read-only and re-prompts on first write.
-      const [handle] = await window.showOpenFilePicker({ types: [TEXT_TYPES], multiple: false, mode: 'readwrite' });
+      const [handle] = await window.showOpenFilePicker({ multiple: false, mode: 'readwrite' });
       const file = await handle.getFile();
-      const content = await file.text();
-      currentHandle = handle;
-      fireLoad(file.name, content);
+      const mime = guessMime(file.name, file.type);
+      const category = classifyMime(mime);
+      if (category === 'text') {
+        const content = await file.text();
+        currentHandle = handle;
+        fireLoad(file.name, { content });
+      } else {
+        const blobUrl = URL.createObjectURL(file);
+        currentHandle = null;
+        fireLoad(file.name, { mimeType: mime, blobUrl, isBinary: true });
+      }
       return { ok: true };
     } catch (err) {
       if (err && err.name === 'AbortError') return { ok: false, canceled: true };
@@ -68,7 +104,6 @@ async function pickAndRead() {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.txt,.md,.log,.json,.csv,.ini,.yml,.yaml,.xml,text/plain';
     input.style.display = 'none';
     document.body.appendChild(input);
     let settled = false;
@@ -78,9 +113,16 @@ async function pickAndRead() {
       cleanup();
       if (!file) { settled = true; return resolve({ ok: false, canceled: true }); }
       try {
-        const content = await file.text();
+        const mime = guessMime(file.name, file.type);
+        const category = classifyMime(mime);
         currentHandle = null;
-        fireLoad(file.name, content);
+        if (category === 'text') {
+          const content = await file.text();
+          fireLoad(file.name, { content });
+        } else {
+          const blobUrl = URL.createObjectURL(file);
+          fireLoad(file.name, { mimeType: mime, blobUrl, isBinary: true });
+        }
         settled = true;
         resolve({ ok: true });
       } catch (err) {
@@ -143,7 +185,6 @@ const web = {
       try {
         const handle = await window.showSaveFilePicker({
           suggestedName: currentName || 'Untitled.txt',
-          types: [TEXT_TYPES]
         });
         await writeHandle(handle, content);
         currentHandle = handle;
@@ -176,9 +217,16 @@ const web = {
 
   async openDroppedFile(file) {
     try {
-      const content = await file.text();
+      const mime = guessMime(file.name, file.type);
+      const category = classifyMime(mime);
       currentHandle = null;
-      fireLoad(file.name, content);
+      if (category === 'text') {
+        const content = await file.text();
+        fireLoad(file.name, { content });
+      } else {
+        const blobUrl = URL.createObjectURL(file);
+        fireLoad(file.name, { mimeType: mime, blobUrl, isBinary: true });
+      }
       return { ok: true };
     } catch (err) {
       return { ok: false, error: err.message };
@@ -203,6 +251,7 @@ const web = {
     // path. Clear the onbeforeunload guard too — otherwise a fresh, clean
     // buffer still prompts "unsaved changes?" on tab close because the
     // guard was installed by the previous file's dirty state.
+    if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
     currentHandle = null;
     currentName = null;
     dirty = false;

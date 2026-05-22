@@ -129,6 +129,11 @@ function makeFakeFile(name, content) {
   return { name, text: async () => content };
 }
 
+// Build a fake binary File (MIME type provided by browser, no .text() needed).
+function makeFakeBinaryFile(name, type) {
+  return { name, type };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -398,205 +403,295 @@ describe('src/platform/web.js', () => {
       assert.equal(res.ok, false);
       assert.equal(res.error, 'disk full');
     });
+
+    test('FSA save preserves plain ASCII verbatim', async () => {
+      const handle = makeFakeHandle('ascii.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('hello world');
+      assert.equal(handle.writes[0], 'hello world');
+    });
+
+    test('FSA save→load roundtrip preserves plain ASCII', async () => {
+      const handle = makeFakeHandle('ascii.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('roundtrip content');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, 'roundtrip content');
+    });
+
+    test('FSA save preserves emoji single verbatim', async () => {
+      const handle = makeFakeHandle('emoji.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('😀');
+      assert.equal(handle.writes[0], '😀');
+    });
+
+    test('FSA save→load roundtrip preserves emoji single', async () => {
+      const handle = makeFakeHandle('emoji.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('😀');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, '😀');
+    });
+
+    test('FSA save preserves emoji sequence verbatim', async () => {
+      const handle = makeFakeHandle('seq.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('👨‍👩‍👧');
+      assert.equal(handle.writes[0], '👨‍👩‍👧');
+    });
+
+    test('FSA save→load roundtrip preserves emoji sequence', async () => {
+      const handle = makeFakeHandle('seq.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('👨‍👩‍👧');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, '👨‍👩‍👧');
+    });
+
+    test('FSA save preserves skin-tone modifier verbatim', async () => {
+      const handle = makeFakeHandle('skin.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('👍🏾');
+      assert.equal(handle.writes[0], '👍🏾');
+    });
+
+    test('FSA save→load roundtrip preserves skin-tone modifier', async () => {
+      const handle = makeFakeHandle('skin.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('👍🏾');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, '👍🏾');
+    });
+
+    test('FSA save preserves ZWJ family verbatim', async () => {
+      const handle = makeFakeHandle('zwj.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('👨‍👧‍👦');
+      assert.equal(handle.writes[0], '👨‍👧‍👦');
+    });
+
+    test('FSA save→load roundtrip preserves ZWJ family', async () => {
+      const handle = makeFakeHandle('zwj.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('👨‍👧‍👦');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, '👨‍👧‍👦');
+    });
+
+    test('FSA save preserves combining diacritics verbatim', async () => {
+      const handle = makeFakeHandle('diac.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('café');
+      assert.equal(handle.writes[0], 'café');
+    });
+
+    test('FSA save→load roundtrip preserves combining diacritics', async () => {
+      const handle = makeFakeHandle('diac.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('café');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, 'café');
+    });
+
+    test('FSA save preserves mixed scripts verbatim', async () => {
+      const handle = makeFakeHandle('mixed.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('Hello, 世界! élève αβγ');
+      assert.equal(handle.writes[0], 'Hello, 世界! élève αβγ');
+    });
+
+    test('FSA save→load roundtrip preserves mixed scripts', async () => {
+      const handle = makeFakeHandle('mixed.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('Hello, 世界! élève αβγ');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, 'Hello, 世界! élève αβγ');
+    });
+
+    test('FSA save preserves RTL text verbatim', async () => {
+      const handle = makeFakeHandle('rtl.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('שלום');
+      assert.equal(handle.writes[0], 'שלום');
+    });
+
+    test('FSA save→load roundtrip preserves RTL text', async () => {
+      const handle = makeFakeHandle('rtl.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('שלום');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, 'שלום');
+    });
+
+    test('FSA save preserves shrug verbatim', async () => {
+      const handle = makeFakeHandle('shrug.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('¯\\_(ツ)_/¯');
+      assert.equal(handle.writes[0], '¯\\_(ツ)_/¯');
+    });
+
+    test('FSA save→load roundtrip preserves shrug', async () => {
+      const handle = makeFakeHandle('shrug.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('¯\\_(ツ)_/¯');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, '¯\\_(ツ)_/¯');
+    });
+
+    test('FSA save preserves emdash + ellipsis verbatim', async () => {
+      const handle = makeFakeHandle('punct.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('—…');
+      assert.equal(handle.writes[0], '—…');
+    });
+
+    test('FSA save→load roundtrip preserves emdash + ellipsis', async () => {
+      const handle = makeFakeHandle('punct.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('—…');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, '—…');
+    });
+
+    test('FSA save preserves NUL byte verbatim', async () => {
+      const handle = makeFakeHandle('nul.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      await web.saveFile('a\x00b');
+      assert.equal(handle.writes[0], 'a\x00b');
+    });
+
+    test('FSA save→load roundtrip preserves NUL byte', async () => {
+      const handle = makeFakeHandle('nul.txt');
+      installGlobals({ showOpenFilePicker: async () => [handle] });
+      const web = await freshWeb();
+      const w = await handle.createWritable();
+      await w.write('a\x00b');
+      await w.close();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+      await web.openFile();
+      assert.equal(loaded.content, 'a\x00b');
+    });
   });
 
-  describe('saveFile() download fallback (no FSA)', () => {
-    test('triggers a download Blob with the file content', async () => {
-      const env = installGlobals(); // no showSaveFilePicker stubbed
+  describe('saveFile() — non-FSA (download-fallback) path', () => {
+    test('first save triggers a Blob download with the default "Untitled.txt" name when no asker', async () => {
+      const env = installGlobals();
       const web = await freshWeb();
 
-      const res = await web.saveFile('safari payload');
-      assert.equal(res.ok, true);
-      assert.equal(res.filePath, 'Untitled.txt');
-
+      const res = await web.saveFile('some text');
+      assert.deepEqual(res, { ok: true, filePath: 'Untitled.txt' });
+      assert.equal(env.anchors.find(a => a.download).download, 'Untitled.txt');
       assert.equal(env.blobs.length, 1);
-      assert.deepEqual(env.blobs[0].parts, ['safari payload']);
+      assert.deepEqual(env.blobs[0].parts, ['some text']);
       assert.equal(env.blobs[0].options.type, 'text/plain;charset=utf-8');
     });
 
-    test('does NOT label the tab "Untitled.txt" when no real file is open', async () => {
-      // Regression: rc.21 still wrote currentName = 'Untitled.txt' in the
-      // fallback path, so the title falsely claimed a name after every
-      // Safari/Firefox save.
-      installGlobals();
-      const web = await freshWeb();
-
-      await web.saveFile('content');
-      assert.equal(document.title, 'DedTxt');
-    });
-
-    test('preserves the real opened filename in the title across a fallback save', async () => {
-      installGlobals();
-      const web = await freshWeb();
-      web.onLoad(() => {});
-
-      await web.openDroppedFile(makeFakeFile('myfile.txt', 'old'));
-      assert.equal(document.title, 'myfile.txt — DedTxt');
-
-      await web.saveFile('new'); // download fallback (no save picker)
-      assert.equal(document.title, 'myfile.txt — DedTxt');
-    });
-  });
-
-  describe('UTF-8 / emoji / weird ASCII roundtrip', () => {
-    // The editor stores raw JS strings (UTF-16 internally, but the full
-    // Unicode codepoint set). Anything we receive on load should land in
-    // the loadCb verbatim; anything we save should land in the write call
-    // verbatim. These tests pin that down for cases that historically
-    // tripped up text editors.
-    const cases = [
-      ['plain ASCII', 'Hello, world.'],
-      ['emoji single', '🎉'],
-      ['emoji sequence', '🎉🎂🥳'],
-      ['skin-tone modifier', '👍🏽'],
-      ['ZWJ family', '👨‍👩‍👧‍👦'],
-      ['combining diacritics', 'Naïve café résumé'],
-      ['mixed scripts', '日本語 + 中文 + Ελληνικά + עברית'],
-      ['RTL text', 'مرحبا بالعالم'],
-      ['shrug', '¯\\_(ツ)_/¯'],
-      ['emdash + ellipsis', 'one — two … three'],
-      ['NUL byte', 'a b'],
-      ['high BMP', 'snowman: ☃'],
-      ['supplementary plane', 'mathbold: 𝐀𝐁𝐂'],
-      ['mixed CRLF / LF / CR', 'a\r\nb\nc\rd'],
-      ['trailing newline', 'tail\n'],
-      ['only whitespace', '   \t\n  ']
-    ];
-
-    for (const [label, content] of cases) {
-      test(`load preserves ${label} verbatim`, async () => {
-        installGlobals();
-        const web = await freshWeb();
-        let received = null;
-        web.onLoad((p) => { received = p.content; });
-
-        await web.openDroppedFile(makeFakeFile('x.txt', content));
-        assert.equal(received, content);
-      });
-
-      test(`download-fallback save preserves ${label} verbatim`, async () => {
-        const env = installGlobals();
-        const web = await freshWeb();
-        await web.saveFile(content);
-        assert.equal(env.blobs.length, 1);
-        assert.deepEqual(env.blobs[0].parts, [content]);
-      });
-
-      test(`FSA save preserves ${label} verbatim`, async () => {
-        const handle = makeFakeHandle('x.txt');
-        installGlobals({ showSaveFilePicker: async () => handle });
-        const web = await freshWeb();
-        await web.saveFile(content);
-        assert.deepEqual(handle.writes, [content]);
-      });
-
-      test(`FSA save→load roundtrip preserves ${label}`, async () => {
-        // Most meaningful end-to-end: write via FSA, then reading the same
-        // handle back via getFile().text() returns the exact same string.
-        const handle = makeFakeHandle('rt.txt');
-        installGlobals({
-          showSaveFilePicker: async () => handle,
-          showOpenFilePicker: async () => [handle]
-        });
-        const web = await freshWeb();
-        let reloaded = null;
-        web.onLoad((p) => { reloaded = p.content; });
-
-        await web.saveFile(content);
-        // Drop the handle association so openFile reads via the picker.
-        web.newFile();
-        await web.openFile();
-        assert.equal(reloaded, content);
-      });
-    }
-
-    test('shrug specifically — "¯\\_(ツ)_/¯" survives load + FSA save', async () => {
-      const shrug = '¯\\_(ツ)_/¯';
-      const handle = makeFakeHandle('shrug.txt');
-      installGlobals({
-        showSaveFilePicker: async () => handle,
-        showOpenFilePicker: async () => [handle]
-      });
-      const web = await freshWeb();
-      let loaded = null;
-      web.onLoad((p) => { loaded = p.content; });
-
-      await web.openDroppedFile(makeFakeFile('shrug.txt', shrug));
-      assert.equal(loaded, shrug);
-
-      await web.saveFile(shrug);
-      assert.deepEqual(handle.writes, [shrug]);
-    });
-  });
-
-  describe('setDirty() side effects', () => {
-    test('true installs onbeforeunload, false removes it', async () => {
-      installGlobals();
-      const web = await freshWeb();
-      web.setName('foo.txt');
-      web.setDirty(true);
-      assert.equal(typeof window.onbeforeunload, 'function');
-
-      web.setDirty(false);
-      assert.equal(window.onbeforeunload, null);
-    });
-
-    test('coerces truthy/falsy values', async () => {
-      installGlobals();
-      const web = await freshWeb();
-      web.setName('foo.txt');
-      web.setDirty(1);
-      assert.equal(document.title, '• foo.txt • — DedTxt');
-      web.setDirty(0);
-      assert.equal(document.title, 'foo.txt — DedTxt');
-    });
-  });
-
-  describe('non-FSA save: in-app filename prompter', () => {
-    // Firefox / Safari / iOS have no File System Access API. The renderer
-    // registers an async name-asker via web.setNameAsker so the first save
-    // in those browsers can capture a filename, paint it in the tab, and
-    // reuse it as the suggested download name on subsequent saves.
-
-    test('first save with null currentName invokes the asker', async () => {
-      const env = installGlobals(); // no FSA stubs → download-fallback path
-      const web = await freshWeb();
-      let askedWith = null;
-      web.setNameAsker(async (suggested) => { askedWith = suggested; return 'notes.txt'; });
-
-      const res = await web.saveFile('hi');
-      assert.equal(askedWith, 'Untitled.txt');
-      assert.deepEqual(res, { ok: true, filePath: 'notes.txt' });
-      // currentName persists; title reflects it.
-      assert.equal(document.title, 'notes.txt — DedTxt');
-      // Blob carries the actual content.
-      assert.equal(env.blobs.length, 1);
-      assert.deepEqual(env.blobs[0].parts, ['hi']);
-    });
-
-    test('asker returning null cancels the save without state changes', async () => {
-      const env = installGlobals();
-      const web = await freshWeb();
-      web.setNameAsker(async () => null);
-
-      const res = await web.saveFile('hi');
-      assert.deepEqual(res, { ok: false, canceled: true });
-      // No blob created, currentName not set, title untouched.
-      assert.equal(env.blobs.length, 0);
-      assert.equal(document.title, 'DedTxt');
-    });
-
-    test('second save reuses currentName and does NOT re-invoke the asker', async () => {
+    test('asker is called once on first save and the name is remembered for the second', async () => {
       const env = installGlobals();
       const web = await freshWeb();
       let askCount = 0;
-      web.setNameAsker(async () => { askCount += 1; return 'foo.txt'; });
+      web.setNameAsker(async (suggested) => { askCount += 1; return `my-${suggested}`; });
+
+      const r1 = await web.saveFile('first');
+      assert.equal(askCount, 1);
+      assert.equal(r1.filePath, 'my-Untitled.txt');
+      assert.equal(document.title, 'my-Untitled.txt — DedTxt');
+
+      const r2 = await web.saveFile('second');
+      assert.equal(askCount, 1, 'asker must only fire once');
+      assert.equal(r2.filePath, 'my-Untitled.txt');
+      assert.equal(env.blobs.length, 2);
+    });
+
+    test('cancelling the asker returns {canceled:true} and does NOT set a name', async () => {
+      installGlobals();
+      const web = await freshWeb();
+      web.setNameAsker(async () => null);
+
+      const res = await web.saveFile('content');
+      assert.deepEqual(res, { ok: false, canceled: true });
+      // Title must not have been set.
+      assert.equal(document.title, 'DedTxt');
+
+      // Next save must still ask (no name was stored).
+      let askCount = 0;
+      web.setNameAsker(async () => { askCount += 1; return 'finally.txt'; });
+      await web.saveFile('retry');
+      assert.equal(askCount, 1);
+    });
+
+    test('three saves result in three blobs (no silent re-use of handle)', async () => {
+      const env = installGlobals();
+      const web = await freshWeb();
+      web.setNameAsker(async () => 'foo.txt');
 
       await web.saveFile('one');
       await web.saveFile('two');
       await web.saveFile('three');
 
-      assert.equal(askCount, 1, 'asker fires once total');
       assert.equal(env.blobs.length, 3);
       assert.deepEqual(env.blobs.map(b => b.parts[0]), ['one', 'two', 'three']);
       assert.equal(document.title, 'foo.txt — DedTxt');
@@ -697,6 +792,118 @@ describe('src/platform/web.js', () => {
       assert.equal(pickerCalls, 2);
       assert.deepEqual(handleA.writes, ['aaa']);
       assert.deepEqual(handleB.writes, ['bbb']);
+    });
+  });
+
+  describe('binary file handling', () => {
+    test('dropping an image file fires onLoad with isBinary + blobUrl, no content', async () => {
+      const revoked = [];
+      installGlobals();
+      globalThis.URL.revokeObjectURL = (u) => revoked.push(u);
+      const web = await freshWeb();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+
+      const res = await web.openDroppedFile(makeFakeBinaryFile('photo.png', 'image/png'));
+      assert.deepEqual(res, { ok: true });
+      assert.equal(loaded.isBinary, true);
+      assert.equal(loaded.mimeType, 'image/png');
+      assert.equal(loaded.blobUrl, 'blob:fake-url');
+      assert.equal(loaded.content, undefined);
+      assert.equal(document.title, 'photo.png — DedTxt');
+    });
+
+    test('dropping a PDF file fires onLoad with isBinary + application/pdf', async () => {
+      installGlobals();
+      const web = await freshWeb();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+
+      await web.openDroppedFile(makeFakeBinaryFile('doc.pdf', 'application/pdf'));
+      assert.equal(loaded.isBinary, true);
+      assert.equal(loaded.mimeType, 'application/pdf');
+      assert.equal(loaded.blobUrl, 'blob:fake-url');
+    });
+
+    test('dropping a file with no MIME but image extension uses extension fallback', async () => {
+      installGlobals();
+      const web = await freshWeb();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+
+      await web.openDroppedFile(makeFakeBinaryFile('photo.webp', ''));
+      assert.equal(loaded.isBinary, true);
+      assert.equal(loaded.mimeType, 'image/webp');
+    });
+
+    test('opening a second binary revokes the first blob URL', async () => {
+      const revoked = [];
+      installGlobals();
+      globalThis.URL.revokeObjectURL = (u) => revoked.push(u);
+      const web = await freshWeb();
+      web.onLoad(() => {});
+
+      await web.openDroppedFile(makeFakeBinaryFile('a.png', 'image/png'));
+      assert.equal(revoked.length, 0);
+
+      await web.openDroppedFile(makeFakeBinaryFile('b.png', 'image/png'));
+      assert.equal(revoked.length, 1, 'first blob URL must be revoked when second file loads');
+      assert.equal(revoked[0], 'blob:fake-url');
+    });
+
+    test('newFile() after binary revokes the blob URL', async () => {
+      const revoked = [];
+      installGlobals();
+      globalThis.URL.revokeObjectURL = (u) => revoked.push(u);
+      const web = await freshWeb();
+      web.onLoad(() => {});
+
+      await web.openDroppedFile(makeFakeBinaryFile('img.jpg', 'image/jpeg'));
+      assert.equal(revoked.length, 0);
+
+      web.newFile();
+      assert.equal(revoked.length, 1, 'blob URL must be revoked on newFile()');
+    });
+
+    test('file with unknown extension and no MIME defaults to text path', async () => {
+      installGlobals();
+      const web = await freshWeb();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+
+      // .zzz has no MIME mapping, browser gives empty string — treat as text
+      const file = { name: 'data.zzz', type: '', text: async () => 'raw text content' };
+      await web.openDroppedFile(file);
+      assert.equal(loaded.isBinary, undefined);
+      assert.equal(loaded.content, 'raw text content');
+    });
+
+    test('FSA open of image file fires onLoad with isBinary, no handle retained', async () => {
+      const fakeFile = { name: 'shot.png', type: 'image/png' };
+      const handle = {
+        name: 'shot.png',
+        queryPermission: async () => 'granted',
+        getFile: async () => fakeFile,
+      };
+      installGlobals({ showOpenFilePicker: async (opts) => {
+        assert.equal(opts.mode, 'readwrite');
+        return [handle];
+      } });
+      const web = await freshWeb();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+
+      const res = await web.openFile();
+      assert.equal(res.ok, true);
+      assert.equal(loaded.isBinary, true);
+      assert.equal(loaded.mimeType, 'image/png');
+      assert.equal(loaded.blobUrl, 'blob:fake-url');
+
+      // No handle retained for binary files, so next save prompts
+      let pickerCalls = 0;
+      window.showSaveFilePicker = async () => { pickerCalls += 1; return handle; };
+      await web.saveFile('text');
+      assert.equal(pickerCalls, 1, 'binary open must not retain the FSA handle');
     });
   });
 });

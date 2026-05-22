@@ -22,11 +22,21 @@ function emitLoad(payload) {
   else pendingLoads.push(payload);
 }
 
+function buildLoadPayload(result) {
+  if (result.isBinary) {
+    const blobUrl = result.contentBase64
+      ? `data:${result.mimeType};base64,${result.contentBase64}`
+      : null;
+    return { filePath: result.filePath, mimeType: result.mimeType, blobUrl, isBinary: true };
+  }
+  return { filePath: result.filePath, content: result.content };
+}
+
 async function openByPath(path) {
   if (!invoke || !path) return;
   const result = await invoke('open_path', { path });
   if (result && result.ok) {
-    emitLoad({ filePath: result.filePath, content: result.content });
+    emitLoad(buildLoadPayload(result));
   }
 }
 
@@ -54,7 +64,7 @@ const tauri = {
   async openFile() {
     const result = await invoke('open_file');
     if (result && result.ok) {
-      emitLoad({ filePath: result.filePath, content: result.content });
+      emitLoad(buildLoadPayload(result));
     }
     return result ? { ok: result.ok, filePath: result.filePath, canceled: result.canceled, error: result.error } : { ok: false };
   },
