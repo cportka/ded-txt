@@ -222,7 +222,15 @@ fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
 
 #[tauri::command]
 fn open_file(app: AppHandle) -> Result<OpenResult, String> {
-    let picked = app.dialog().file().blocking_pick_file();
+    // Explicit wildcard so macOS/Windows don't fall back to the bundle's
+    // declared document types and grey out anything that isn't a registered
+    // file association. DedTxt now opens (and previews) any file the OS lets
+    // us read.
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("All Files", &["*"])
+        .blocking_pick_file();
 
     match picked {
         Some(fp) => {
