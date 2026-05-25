@@ -103,8 +103,9 @@ async function freshWeb() {
   return mod.default;
 }
 
-// Build a fake FSA handle that captures every write and exposes them via
-// getFile().text() so we can verify true save→load roundtrips.
+// Build a fake FSA handle that captures every write and exposes the
+// stored payload back through getFile() with the full File-ish surface
+// web.js now reads from (arrayBuffer + size, plus text() for legacy).
 function makeFakeHandle(name) {
   let stored = '';
   const writes = [];
@@ -114,24 +115,49 @@ function makeFakeHandle(name) {
     queryPermission: async () => 'granted',
     requestPermission: async () => 'granted',
     createWritable: async () => ({
-      write: async (content) => { writes.push(content); stored = content; },
+      write: async (payload) => { writes.push(payload); stored = payload; },
       close: async () => {}
     }),
-    getFile: async () => ({
-      name,
-      text: async () => stored
-    })
+    getFile: async () => {
+      const bytes = stored instanceof Uint8Array
+        ? stored
+        : new TextEncoder().encode(stored);
+      return {
+        name,
+        size: bytes.byteLength,
+        text: async () => stored instanceof Uint8Array
+          ? new TextDecoder().decode(bytes)
+          : stored,
+        arrayBuffer: async () => {
+          const ab = new ArrayBuffer(bytes.length);
+          new Uint8Array(ab).set(bytes);
+          return ab;
+        },
+      };
+    }
   };
 }
 
-// Build a fake dropped/picked File whose .text() yields the given content.
+// Build a fake dropped/picked File. `content` is a string (UTF-8 encoded)
+// or a Uint8Array of raw bytes. The stub exposes both `.text()` (legacy)
+// and the .arrayBuffer() + .size that web.js now uses for the universal
+// raw-bytes read path.
 function makeFakeFile(name, content) {
-  return { name, text: async () => content };
-}
-
-// Build a fake binary File (MIME type provided by browser, no .text() needed).
-function makeFakeBinaryFile(name, type) {
-  return { name, type };
+  const bytes = typeof content === 'string'
+    ? new TextEncoder().encode(content)
+    : content instanceof Uint8Array ? content : new Uint8Array(content);
+  return {
+    name,
+    size: bytes.byteLength,
+    text: async () => typeof content === 'string'
+      ? content
+      : new TextDecoder().decode(bytes),
+    arrayBuffer: async () => {
+      const ab = new ArrayBuffer(bytes.length);
+      new Uint8Array(ab).set(bytes);
+      return ab;
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -251,12 +277,13 @@ describe('src/platform/web.js', () => {
       assert.equal(document.title, 'B.txt — DedTxt');
     });
 
-    test('returns {ok:false} when file.text() throws', async () => {
+    test('returns {ok:false} when file.arrayBuffer() throws', async () => {
       installGlobals();
       const web = await freshWeb();
       const res = await web.openDroppedFile({
         name: 'broken.txt',
-        text: async () => { throw new Error('boom'); }
+        size: 5,
+        arrayBuffer: async () => { throw new Error('boom'); }
       });
       assert.equal(res.ok, false);
       assert.equal(res.error, 'boom');
@@ -795,115 +822,97 @@ describe('src/platform/web.js', () => {
     });
   });
 
-  describe('binary file handling', () => {
-    test('dropping an image file fires onLoad with isBinary + blobUrl, no content', async () => {
-      const revoked = [];
-      installGlobals();
-      globalThis.URL.revokeObjectURL = (u) => revoked.push(u);
-      const web = await freshWeb();
-      let loaded = null;
-      web.onLoad((p) => { loaded = p; });
-
-      const res = await web.openDroppedFile(makeFakeBinaryFile('photo.png', 'image/png'));
-      assert.deepEqual(res, { ok: true });
-      assert.equal(loaded.isBinary, true);
-      assert.equal(loaded.mimeType, 'image/png');
-      assert.equal(loaded.blobUrl, 'blob:fake-url');
-      assert.equal(loaded.content, undefined);
-      assert.equal(document.title, 'photo.png — DedTxt');
-    });
-
-    test('dropping a PDF file fires onLoad with isBinary + application/pdf', async () => {
+  describe('raw-file decoding (UTF-8 text vs Latin-1 binary)', () => {
+    test('valid-UTF-8 file with no NULL bytes → text mode, no isBinary flag', async () => {
       installGlobals();
       const web = await freshWeb();
       let loaded = null;
       web.onLoad((p) => { loaded = p; });
 
-      await web.openDroppedFile(makeFakeBinaryFile('doc.pdf', 'application/pdf'));
-      assert.equal(loaded.isBinary, true);
-      assert.equal(loaded.mimeType, 'application/pdf');
-      assert.equal(loaded.blobUrl, 'blob:fake-url');
-    });
-
-    test('dropping a file with no MIME but image extension uses extension fallback', async () => {
-      installGlobals();
-      const web = await freshWeb();
-      let loaded = null;
-      web.onLoad((p) => { loaded = p; });
-
-      await web.openDroppedFile(makeFakeBinaryFile('photo.webp', ''));
-      assert.equal(loaded.isBinary, true);
-      assert.equal(loaded.mimeType, 'image/webp');
-    });
-
-    test('opening a second binary revokes the first blob URL', async () => {
-      const revoked = [];
-      installGlobals();
-      globalThis.URL.revokeObjectURL = (u) => revoked.push(u);
-      const web = await freshWeb();
-      web.onLoad(() => {});
-
-      await web.openDroppedFile(makeFakeBinaryFile('a.png', 'image/png'));
-      assert.equal(revoked.length, 0);
-
-      await web.openDroppedFile(makeFakeBinaryFile('b.png', 'image/png'));
-      assert.equal(revoked.length, 1, 'first blob URL must be revoked when second file loads');
-      assert.equal(revoked[0], 'blob:fake-url');
-    });
-
-    test('newFile() after binary revokes the blob URL', async () => {
-      const revoked = [];
-      installGlobals();
-      globalThis.URL.revokeObjectURL = (u) => revoked.push(u);
-      const web = await freshWeb();
-      web.onLoad(() => {});
-
-      await web.openDroppedFile(makeFakeBinaryFile('img.jpg', 'image/jpeg'));
-      assert.equal(revoked.length, 0);
-
-      web.newFile();
-      assert.equal(revoked.length, 1, 'blob URL must be revoked on newFile()');
-    });
-
-    test('file with unknown extension and no MIME defaults to text path', async () => {
-      installGlobals();
-      const web = await freshWeb();
-      let loaded = null;
-      web.onLoad((p) => { loaded = p; });
-
-      // .zzz has no MIME mapping, browser gives empty string — treat as text
-      const file = { name: 'data.zzz', type: '', text: async () => 'raw text content' };
-      await web.openDroppedFile(file);
+      await web.openDroppedFile(makeFakeFile('greeting.txt', 'héllo'));
+      assert.equal(loaded.content, 'héllo');
       assert.equal(loaded.isBinary, undefined);
-      assert.equal(loaded.content, 'raw text content');
     });
 
-    test('FSA open of image file fires onLoad with isBinary, no handle retained', async () => {
-      const fakeFile = { name: 'shot.png', type: 'image/png' };
-      const handle = {
-        name: 'shot.png',
-        queryPermission: async () => 'granted',
-        getFile: async () => fakeFile,
-      };
-      installGlobals({ showOpenFilePicker: async (opts) => {
-        assert.equal(opts.mode, 'readwrite');
-        return [handle];
-      } });
+    test('invalid-UTF-8 bytes → binary mode, Latin-1 one-char-per-byte', async () => {
+      installGlobals();
       const web = await freshWeb();
       let loaded = null;
       web.onLoad((p) => { loaded = p; });
 
-      const res = await web.openFile();
-      assert.equal(res.ok, true);
+      // PNG magic + a NULL + 0xFF. Not valid UTF-8 (0xFF cannot begin a UTF-8
+      // sequence), so the decoder must fall back to Latin-1.
+      const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff]);
+      await web.openDroppedFile(makeFakeFile('photo.png', bytes));
       assert.equal(loaded.isBinary, true);
-      assert.equal(loaded.mimeType, 'image/png');
-      assert.equal(loaded.blobUrl, 'blob:fake-url');
+      assert.equal(loaded.content.length, 6);
+      assert.equal(loaded.content.charCodeAt(0), 0x89);
+      assert.equal(loaded.content.charCodeAt(1), 0x50); // 'P'
+      assert.equal(loaded.content.charCodeAt(4), 0x00);
+      assert.equal(loaded.content.charCodeAt(5), 0xff);
+    });
 
-      // No handle retained for binary files, so next save prompts
-      let pickerCalls = 0;
-      window.showSaveFilePicker = async () => { pickerCalls += 1; return handle; };
-      await web.saveFile('text');
-      assert.equal(pickerCalls, 1, 'binary open must not retain the FSA handle');
+    test('valid UTF-8 with an embedded NULL → binary mode (NULL forces it)', async () => {
+      installGlobals();
+      const web = await freshWeb();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+
+      // "hi\0there" is technically valid UTF-8 but the NULL marks it binary.
+      const bytes = new Uint8Array([0x68, 0x69, 0x00, 0x74, 0x68, 0x65, 0x72, 0x65]);
+      await web.openDroppedFile(makeFakeFile('mix.bin', bytes));
+      assert.equal(loaded.isBinary, true);
+      assert.equal(loaded.content.length, 8);
+      assert.equal(loaded.content.charCodeAt(2), 0x00);
+    });
+
+    test('binary save writes a Uint8Array whose bytes equal the source file', async () => {
+      // Round-trip pin: open binary → textarea has Latin-1 string → saveFile
+      // with isBinary=true must encode each char's low byte back to the
+      // original file bytes.
+      const original = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0x42]);
+      const handle = makeFakeHandle('photo.png');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+      let loaded = null;
+      web.onLoad((p) => { loaded = p; });
+
+      await web.openDroppedFile(makeFakeFile('photo.png', original));
+      assert.equal(loaded.isBinary, true);
+
+      const res = await web.saveFile(loaded.content, true);
+      assert.equal(res.ok, true);
+      assert.equal(handle.writes.length, 1);
+      const written = handle.writes[0];
+      assert.ok(written instanceof Uint8Array, 'binary save must write a Uint8Array');
+      assert.deepEqual(Array.from(written), Array.from(original));
+    });
+
+    test('text save still writes a string (text-mode behaviour unchanged)', async () => {
+      const handle = makeFakeHandle('notes.txt');
+      installGlobals({ showSaveFilePicker: async () => handle });
+      const web = await freshWeb();
+
+      await web.saveFile('plain content', false);
+      assert.deepEqual(handle.writes, ['plain content']);
+    });
+
+    test('file over the 25 MB cap is refused with an error, onLoad never fires', async () => {
+      installGlobals();
+      const web = await freshWeb();
+      let loadedCalled = false;
+      web.onLoad(() => { loadedCalled = true; });
+
+      // Stub a file too large to read; .arrayBuffer() should never be called.
+      const huge = {
+        name: 'huge.bin',
+        size: 26 * 1024 * 1024,
+        arrayBuffer: async () => { throw new Error('should not be called for oversized files'); },
+      };
+      const res = await web.openDroppedFile(huge);
+      assert.equal(res.ok, false);
+      assert.match(res.error, /too large/i);
+      assert.equal(loadedCalled, false);
     });
   });
 });
