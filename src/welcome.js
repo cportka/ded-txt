@@ -152,12 +152,11 @@ function openDialog() {
   // Heads-up box: data-driven from the headsUpNotices() registry above.
   renderHeadsUp(dialog, headsUpNotices(env));
 
-  // Wire up dismiss + close + backdrop-click listeners once; subsequent
-  // opens reuse them.
+  // Wire up close + backdrop-click listeners once; subsequent opens
+  // reuse them. The dialog has no explicit dismiss button — Escape (the
+  // built-in <dialog> behavior), backdrop click, and any shortcut row
+  // all close it.
   if (!listenersAttached) {
-    const dismiss = document.getElementById('welcome-dismiss');
-    if (dismiss) dismiss.addEventListener('click', () => dialog.close());
-
     // Click outside the card (i.e. on the backdrop, which is the dialog
     // element itself with showModal()) dismisses the dialog. Clicks inside
     // the card bubble up with event.target as the inner element, so we

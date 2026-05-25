@@ -249,14 +249,14 @@ body {
 
 /* First-visit / version-bump welcome dialog. Themed via the same CSS
    variables as the editor so it follows light/dark automatically.
-   Caps at viewport height so phones never lose the "Ok" button below
+   Caps at viewport height so phones never lose the bottom row below
    the chrome bar — the card scrolls internally if content overflows. */
 dialog#welcome-dialog {
   border: none;
   padding: 0;
   background: transparent;
   color: var(--fg);
-  max-width: min(240px, calc(100% - 32px));
+  max-width: min(320px, calc(100% - 32px));
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   outline: none;
@@ -283,7 +283,10 @@ dialog#welcome-dialog::backdrop {
 }
 .welcome-icon-btn {
   display: block;
+  /* Cap the icon at the size it was at the old 240px card width so the
+     wider dialog gets its extra room without inflating the hero. */
   width: 100%;
+  max-width: 196px;
   margin: 0 auto 6px;
   padding: 0;
   background: transparent;
@@ -315,13 +318,10 @@ dialog#welcome-dialog::backdrop {
   animation: menu-spin 1000ms cubic-bezier(0.05, 0.9, 0.25, 1);
 }
 .welcome-sub {
-  /* Negative horizontal margins let the tagline extend past the card's
-     22px side padding so the full sentence fits on one line at 14px. */
-  margin: 0 -18px 2px;
+  margin: 0 0 2px;
   color: #7A8590;
   font-size: 14px;
   text-align: center;
-  white-space: nowrap;
 }
 .welcome-version {
   margin: 0 0 12px;
@@ -342,12 +342,18 @@ dialog#welcome-dialog::backdrop {
    rows read as tappable buttons even on touch where there's no hover.
    :hover and :focus-visible are styled differently so programmatic
    focus (which iOS Safari treats as :focus-visible) doesn't make "New"
-   look pre-selected on dialog open. */
+   look pre-selected on dialog open.
+   Layout: 2-column grid (This/New, Open/Save) with Find spanning the
+   full width on its own row. Compactifies the vertical footprint so the
+   heads-up notice gets horizontal room instead of stacking down. */
 .welcome-shortcuts {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 4px;
   margin: 0 0 12px;
+}
+.welcome-shortcut[data-action="find"] {
+  grid-column: 1 / -1;
 }
 .welcome-shortcut {
   display: flex;
