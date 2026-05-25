@@ -170,7 +170,16 @@ fn open_file(app: AppHandle) -> Result<OpenResult, String> {
 
 #[tauri::command]
 fn open_path(app: AppHandle, path: String) -> Result<OpenResult, String> {
-    Ok(finalize_open(&app, PathBuf::from(path)))
+    // Defense in depth: the renderer should never send a relative path
+    // (file pickers return absolutes; single-instance argv is filtered
+    // through `pick_file_from_argv` which already requires `exists()`).
+    // Reject relatives here so a hypothetical XSS in the renderer can't
+    // probe `../../etc/passwd`.
+    let pb = PathBuf::from(&path);
+    if !pb.is_absolute() {
+        return Err("Absolute path required".into());
+    }
+    Ok(finalize_open(&app, pb))
 }
 
 fn save_to(app: &AppHandle, target: PathBuf, content: String, is_binary: bool) -> SaveResult {

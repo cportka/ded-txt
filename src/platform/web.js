@@ -14,8 +14,17 @@ function decode(bytes) {
     const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     if (!text.includes('\0')) return { content: text, isBinary: false };
   } catch (_) { /* fall through to Latin-1 */ }
+  // Latin-1: byte 0xNN → codepoint U+00NN. NB: `TextDecoder('latin1')` is
+  // not what we want — WHATWG aliases that label to windows-1252, which
+  // maps bytes 0x80-0x9F to non-Latin-1 codepoints (€, ‰, …) and breaks
+  // the round-trip on save. Chunked `String.fromCharCode.apply` is the
+  // round-trip-safe fast path: ~10x quicker than per-byte concatenation
+  // on a 25 MB binary while still producing exactly U+0000..U+00FF.
   let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  const CHUNK = 8192;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
   return { content: s, isBinary: true };
 }
 
@@ -147,7 +156,14 @@ function downloadFallback(payload, suggestedName, mime) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = suggestedName || 'Untitled.txt';
+  // Strip path separators and leading dots so a hostile or careless filename
+  // can't write outside the user's intended save target. Browsers also
+  // refuse path separators in `download` themselves, but being explicit
+  // means we don't depend on that and confusion ("Save As" prefilling with
+  // ../../foo.txt) doesn't reach the user.
+  a.download = (suggestedName || 'Untitled.txt')
+    .replace(/[/\\]/g, '_')
+    .replace(/^\.+/, '_');
   document.body.appendChild(a);
   a.click();
   a.remove();
