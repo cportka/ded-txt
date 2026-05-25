@@ -15,7 +15,7 @@ line-ending munging.
 
 Two targets, same code:
 
-- **Desktop** — macOS / Windows / Linux native via [Tauri 2](https://v2.tauri.app/) (~5–15 MB installers).
+- **Desktop** — macOS / Windows / Linux native via [Tauri 2](https://v2.tauri.app/) (~5–15 MB installers). Builds are unsigned; on first launch macOS asks you to right-click → Open and Windows SmartScreen needs "More info" → "Run anyway".
 - **Web** at <https://dedtxt.app/> — the editor itself, installable as a PWA
   from any modern browser (including iOS and Android via "Add to Home Screen").
 
