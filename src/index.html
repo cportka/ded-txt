@@ -18,6 +18,15 @@
       --bg: #111111;
       --fg: #f4f4f4;
       --muted: #666666;
+      /* Glitch palette — pulled straight from build/icon.svg so the popup
+         and the chromatic-aberration accents read as the same family as the
+         skull icon. Used only by .info-popup and the subtle "glitch
+         moments" sprinkled through the welcome dialog. */
+      --gx-bone: #f0ede4;
+      --gx-magenta: #ff3d8a;
+      --gx-cyan: #cfe9ff;
+      --gx-ink: #0a0a0a;
+      --gx-ink-2: #1a1a1a;
     }
     html, body {
       width: 100%;
@@ -121,6 +130,80 @@
       min-height: 1.45em;
     }
 
+    /* Find + Replace bar. Floats top-right of #editor-wrap, inset by 56px
+       so the corner menu button (32px wide + 8px margin + 16px gap) stays
+       clickable. The bar deliberately does NOT push the textarea down —
+       resizing the editor would break the line-gutter scroll sync. */
+    #find-bar {
+      position: absolute;
+      top: 0;
+      right: 56px;
+      z-index: 50;
+      background: var(--bg);
+      border: 1px solid var(--muted);
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+    #find-bar[hidden] { display: none; }
+    .find-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #find-bar input {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--muted);
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      width: 180px;
+      box-sizing: border-box;
+    }
+    #find-bar input:focus { outline: 1px solid var(--fg); }
+    .find-counter {
+      color: var(--muted);
+      min-width: 52px;
+      text-align: center;
+    }
+    .find-counter-empty {
+      /* Chromatic split when the search comes up dry — the same magenta/cyan
+         RGB ghosts as the rest of the glitch surface, so "no matches" reads
+         as a small visual hiccup instead of a hard red error. */
+      color: var(--gx-bone);
+      text-shadow:
+        1px 0 0 var(--gx-magenta),
+        -1px 0 0 var(--gx-cyan);
+    }
+    .find-btn, .find-toggle {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid transparent;
+      padding: 2px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 2px;
+      min-width: 22px;
+    }
+    .find-btn:hover, .find-toggle:hover {
+      background: rgba(127, 127, 127, 0.18);
+    }
+    .find-toggle[aria-pressed="true"] {
+      border-color: var(--muted);
+      background: rgba(127, 127, 127, 0.12);
+    }
+    .find-replace-btn {
+      padding: 2px 10px;
+    }
+
     #menu-toggle {
       position: fixed;
       top: max(8px, env(safe-area-inset-top));
@@ -153,6 +236,16 @@
       height: 100%;
       border-radius: 6px;
       pointer-events: none;
+      transition: filter 80ms steps(2);
+    }
+    /* Subtle chromatic-aberration glitch on hover — same RGB split as the
+       icon's wordmark, applied to the corner menu button so the cursor
+       picks it up on its way past. `steps(2)` keeps the transition
+       broken/glitchy rather than smooth. */
+    #menu-toggle:hover img {
+      filter:
+        drop-shadow(1px 0 0 var(--gx-magenta))
+        drop-shadow(-1px 0 0 var(--gx-cyan));
     }
     /* Click feedback: a quick accelerate-spin-decelerate, 1s total. The class
        is added by renderer.js on click and removed via animationend so a
@@ -215,8 +308,14 @@
       overflow: hidden;
     }
     .welcome-icon-btn:focus-visible {
-      outline: 2px solid var(--muted);
+      /* Chromatic focus ring — 2px box-shadows nudged ±2px in magenta+cyan
+         echo the icon's own RGB split. The thin bone outline anchors the
+         shape so the focus is still legible without the ghosts. */
+      outline: 1px solid var(--gx-bone);
       outline-offset: 2px;
+      box-shadow:
+        2px 0 0 var(--gx-magenta),
+        -2px 0 0 var(--gx-cyan);
     }
     .welcome-icon {
       display: block;
@@ -243,7 +342,14 @@
       margin: 0 0 12px;
       text-align: center;
       font-size: 12px;
-      color: #7A8590;
+      color: var(--gx-bone);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0.5px;
+      /* RGB-split echo of the icon's chromatic aberration — small enough
+         to read as decorative, not as broken type. */
+      text-shadow:
+        1px 0 0 var(--gx-magenta),
+        -1px 0 0 var(--gx-cyan);
     }
     /* Clickable shortcut rows. Each runs its associated editor action when
        clicked (Save saves, New starts a new file, etc.).
@@ -293,8 +399,19 @@
       animation: welcome-flash 180ms ease-out;
     }
     @keyframes welcome-flash {
-      0%, 40% { background: rgba(127, 127, 127, 0.45); border-color: var(--fg); }
-      100%    { background: rgba(127, 127, 127, 0.05); border-color: rgba(127, 127, 127, 0.18); }
+      /* Mid-flash picks up the icon's chromatic split for ~half a frame so
+         the press registers as a quick "glitched" pop, then settles back
+         to the at-rest treatment. */
+      0%, 40% {
+        background: rgba(255, 61, 138, 0.18);
+        border-color: var(--gx-magenta);
+        text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+      }
+      100% {
+        background: rgba(127, 127, 127, 0.05);
+        border-color: rgba(127, 127, 127, 0.18);
+        text-shadow: none;
+      }
     }
     .welcome-shortcut-key {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -347,32 +464,52 @@
        render above the backdrop). Pale-cyan bubble with black outline,
        dark-navy byline, cyan link, and a left-pointing chevron that
        anchors visually to the icon. */
+    /* Info popup — terminal-window aesthetic pulled from the icon's
+       chromatic-aberration palette. Monospaced, lowercased, magenta border
+       with a soft magenta+cyan glow, each glyph carries the icon's RGB
+       split as a 1px text-shadow. Stays on system fonts (no CSP-impacting
+       webfont). */
     .info-popup {
       position: fixed;
       transform: translateY(-50%);
-      background: #B8E4E8;
-      color: #0A1820;
-      border: 1px solid #000000;
-      border-radius: 8px;
+      background: var(--gx-ink);
+      color: var(--gx-bone);
+      border: 1px solid var(--gx-magenta);
+      border-radius: 2px;
       padding: 10px 14px;
-      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.4px;
+      text-transform: lowercase;
       min-width: 160px;
       max-width: 220px;
       z-index: 9999;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      box-shadow:
+        0 0 0 1px var(--gx-ink),
+        0 0 12px rgba(255, 61, 138, 0.45),
+        0 0 24px rgba(207, 233, 255, 0.15);
     }
     .info-popup[hidden] { display: none; }
-    .info-popup p { margin: 0; line-height: 1.4; color: #0A1820; }
+    .info-popup p {
+      margin: 0;
+      line-height: 1.5;
+      color: var(--gx-bone);
+      text-shadow:
+        1px 0 0 var(--gx-magenta),
+        -1px 0 0 var(--gx-cyan);
+    }
     .info-popup p + p { margin-top: 4px; }
     .info-popup a {
-      /* Cyan link — reads as a link against the pale-cyan bubble while
-         staying on-palette. */
-      color: #00B8C4;
-      text-decoration: underline;
-      text-underline-offset: 2px;
+      color: var(--gx-cyan);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--gx-cyan);
+    }
+    .info-popup a:hover {
+      color: var(--gx-magenta);
+      border-bottom-color: var(--gx-magenta);
     }
     /* Chevron: two stacked triangles (outline + fill) on the popup's left
-       edge, pointing at the icon. */
+       edge, pointing at the icon. Recolored to match the new palette. */
     .info-popup::before,
     .info-popup::after {
       content: "";
@@ -386,14 +523,14 @@
       right: 100%;
       border-top: 8px solid transparent;
       border-bottom: 8px solid transparent;
-      border-right: 8px solid #000000;
+      border-right: 8px solid var(--gx-magenta);
     }
     .info-popup::after {
       right: 100%;
       margin-right: -1px;
       border-top: 7px solid transparent;
       border-bottom: 7px solid transparent;
-      border-right: 7px solid #B8E4E8;
+      border-right: 7px solid var(--gx-ink);
     }
 
     /* Heads-up notices in the welcome dialog. Data-driven by
@@ -494,6 +631,24 @@
     <div id="line-gutter" aria-hidden="true"><div id="line-gutter-inner"></div></div>
     <textarea id="text-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft"></textarea>
     <div id="editor-mirror" aria-hidden="true"></div>
+    <form id="find-bar" hidden onsubmit="return false">
+      <div class="find-row">
+        <input type="text" id="find-input" placeholder="find" autocomplete="off" spellcheck="false" />
+        <span id="find-counter" class="find-counter">0 / 0</span>
+        <button type="button" id="find-prev" class="find-btn" title="Previous (Shift+Enter)" aria-label="Previous match">↑</button>
+        <button type="button" id="find-next" class="find-btn" title="Next (Enter)" aria-label="Next match">↓</button>
+        <button type="button" id="find-case" class="find-toggle" title="Case sensitive" aria-pressed="false" aria-label="Case sensitive">Aa</button>
+        <button type="button" id="find-word" class="find-toggle" title="Whole word" aria-pressed="false" aria-label="Whole word">\b</button>
+        <button type="button" id="find-regex" class="find-toggle" title="Regular expression" aria-pressed="false" aria-label="Regular expression">.*</button>
+        <button type="button" id="find-replace-toggle" class="find-toggle" title="Toggle replace" aria-pressed="false" aria-label="Toggle replace">⇄</button>
+        <button type="button" id="find-close" class="find-btn" title="Close (Esc)" aria-label="Close find bar">✕</button>
+      </div>
+      <div class="find-row" id="find-replace-row" hidden>
+        <input type="text" id="find-replace-input" placeholder="replace" autocomplete="off" spellcheck="false" />
+        <button type="button" id="find-replace" class="find-btn find-replace-btn" title="Replace current match">Replace</button>
+        <button type="button" id="find-replace-all" class="find-btn find-replace-btn" title="Replace all matches">All</button>
+      </div>
+    </form>
   </div>
   <button id="menu-toggle" type="button" aria-label="Show menu" title="Menu">
     <img src="./icons/icon-192.png" alt="" aria-hidden="true" />
@@ -522,6 +677,10 @@
         <button type="button" class="welcome-shortcut" data-action="save">
           <span>Save</span>
           <span class="welcome-shortcut-key" data-key="save">Ctrl + S</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="find">
+          <span>Find</span>
+          <span class="welcome-shortcut-key" data-key="find">Ctrl + F</span>
         </button>
       </div>
       <div class="welcome-heads-up" hidden></div>
