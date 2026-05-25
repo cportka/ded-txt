@@ -37,6 +37,11 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          # On macOS we need both x86_64 and aarch64 targets so the build
+          # below can produce a single universal binary that runs natively
+          # on Intel and Apple Silicon. No-op on Linux/Windows.
+          targets: ${{ runner.os == 'macOS' && 'x86_64-apple-darwin,aarch64-apple-darwin' || '' }}
 
       - name: Install Linux build deps (WebKitGTK, AppImage tooling)
         if: runner.os == 'Linux'
@@ -70,7 +75,12 @@ jobs:
       - name: Unit tests (Rust)
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
+      - name: Build Tauri bundle (macOS universal)
+        if: runner.os == 'macOS'
+        run: npx tauri build --target universal-apple-darwin
+
       - name: Build Tauri bundle
+        if: runner.os != 'macOS'
         run: npx tauri build
 
       - name: Upload artifacts
@@ -78,13 +88,15 @@ jobs:
         with:
           name: dedtxt-${{ runner.os }}
           if-no-files-found: error
+          # `**` matches both target/release/bundle (Linux/Windows) and
+          # target/universal-apple-darwin/release/bundle (macOS universal).
           path: |
-            src-tauri/target/release/bundle/dmg/*.dmg
-            src-tauri/target/release/bundle/macos/*.app.tar.gz
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/**/release/bundle/dmg/*.dmg
+            src-tauri/target/**/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/**/release/bundle/msi/*.msi
+            src-tauri/target/**/release/bundle/nsis/*.exe
+            src-tauri/target/**/release/bundle/deb/*.deb
+            src-tauri/target/**/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
 
   # Web bundle is < 1 MB and feeds the live GitHub Pages site. Cheap to run
