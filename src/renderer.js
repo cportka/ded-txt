@@ -1,6 +1,7 @@
 import platform from './platform/index.js';
 import { maybeShowWelcome, showWelcome } from './welcome.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
+import { installFind } from './find.js';
 
 const menuToggle = document.getElementById('menu-toggle');
 if (menuToggle) {
@@ -78,6 +79,11 @@ function doNew() {
 // Map welcome-dialog shortcut buttons to their handlers. Clicking a button
 // briefly plays a flash animation on the row (so taps register visually,
 // especially on touch), then closes the dialog and runs the action.
+// installFind wires its own Cmd/Ctrl+F handler; we keep a reference so the
+// welcome-dialog Find row can open the bar without going through keydown.
+const find = installFind({ editor });
+function doFind() { find.open(); }
+
 const SHORTCUT_ACTIONS = {
   // The row's job is just to surface the Escape-key binding. Closing the
   // dialog is the action, and the click handler below already does that
@@ -85,7 +91,8 @@ const SHORTCUT_ACTIONS = {
   'this-dialog': () => {},
   'new': doNew,
   'open': doOpen,
-  'save': doSave
+  'save': doSave,
+  'find': doFind
 };
 const ACTIVATE_DURATION_MS = 180;
 

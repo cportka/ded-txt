@@ -27,7 +27,8 @@ export function shortcutMap() {
     'this-dialog': 'ESC',
     'new':         `${mod}${plus}N`,
     'open':        `${mod}${plus}O`,
-    'save':        `${mod}${plus}S`
+    'save':        `${mod}${plus}S`,
+    'find':        `${mod}${plus}F`
   };
 }
 

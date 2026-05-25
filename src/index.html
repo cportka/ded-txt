@@ -121,6 +121,74 @@
       min-height: 1.45em;
     }
 
+    /* Find + Replace bar. Floats top-right of #editor-wrap, inset by 56px
+       so the corner menu button (32px wide + 8px margin + 16px gap) stays
+       clickable. The bar deliberately does NOT push the textarea down —
+       resizing the editor would break the line-gutter scroll sync. */
+    #find-bar {
+      position: absolute;
+      top: 0;
+      right: 56px;
+      z-index: 50;
+      background: var(--bg);
+      border: 1px solid var(--muted);
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+    #find-bar[hidden] { display: none; }
+    .find-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #find-bar input {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--muted);
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      width: 180px;
+      box-sizing: border-box;
+    }
+    #find-bar input:focus { outline: 1px solid var(--fg); }
+    .find-counter {
+      color: var(--muted);
+      min-width: 52px;
+      text-align: center;
+    }
+    .find-counter-empty {
+      color: #c44;
+    }
+    .find-btn, .find-toggle {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid transparent;
+      padding: 2px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 2px;
+      min-width: 22px;
+    }
+    .find-btn:hover, .find-toggle:hover {
+      background: rgba(127, 127, 127, 0.18);
+    }
+    .find-toggle[aria-pressed="true"] {
+      border-color: var(--muted);
+      background: rgba(127, 127, 127, 0.12);
+    }
+    .find-replace-btn {
+      padding: 2px 10px;
+    }
+
     #menu-toggle {
       position: fixed;
       top: max(8px, env(safe-area-inset-top));
@@ -494,6 +562,24 @@
     <div id="line-gutter" aria-hidden="true"><div id="line-gutter-inner"></div></div>
     <textarea id="text-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft"></textarea>
     <div id="editor-mirror" aria-hidden="true"></div>
+    <form id="find-bar" hidden onsubmit="return false">
+      <div class="find-row">
+        <input type="text" id="find-input" placeholder="find" autocomplete="off" spellcheck="false" />
+        <span id="find-counter" class="find-counter">0 / 0</span>
+        <button type="button" id="find-prev" class="find-btn" title="Previous (Shift+Enter)" aria-label="Previous match">↑</button>
+        <button type="button" id="find-next" class="find-btn" title="Next (Enter)" aria-label="Next match">↓</button>
+        <button type="button" id="find-case" class="find-toggle" title="Case sensitive" aria-pressed="false" aria-label="Case sensitive">Aa</button>
+        <button type="button" id="find-word" class="find-toggle" title="Whole word" aria-pressed="false" aria-label="Whole word">\b</button>
+        <button type="button" id="find-regex" class="find-toggle" title="Regular expression" aria-pressed="false" aria-label="Regular expression">.*</button>
+        <button type="button" id="find-replace-toggle" class="find-toggle" title="Toggle replace" aria-pressed="false" aria-label="Toggle replace">⇄</button>
+        <button type="button" id="find-close" class="find-btn" title="Close (Esc)" aria-label="Close find bar">✕</button>
+      </div>
+      <div class="find-row" id="find-replace-row" hidden>
+        <input type="text" id="find-replace-input" placeholder="replace" autocomplete="off" spellcheck="false" />
+        <button type="button" id="find-replace" class="find-btn find-replace-btn" title="Replace current match">Replace</button>
+        <button type="button" id="find-replace-all" class="find-btn find-replace-btn" title="Replace all matches">All</button>
+      </div>
+    </form>
   </div>
   <button id="menu-toggle" type="button" aria-label="Show menu" title="Menu">
     <img src="./icons/icon-192.png" alt="" aria-hidden="true" />
@@ -522,6 +608,10 @@
         <button type="button" class="welcome-shortcut" data-action="save">
           <span>Save</span>
           <span class="welcome-shortcut-key" data-key="save">Ctrl + S</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="find">
+          <span>Find</span>
+          <span class="welcome-shortcut-key" data-key="find">Ctrl + F</span>
         </button>
       </div>
       <div class="welcome-heads-up" hidden></div>
