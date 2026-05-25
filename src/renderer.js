@@ -23,52 +23,12 @@ if (menuToggle) {
 }
 
 const editor = document.getElementById('text-editor');
-const editorWrap = document.getElementById('editor-wrap');
-const binaryViewer = document.getElementById('binary-viewer');
 let savedSnapshot = '';
 let dirty = false;
+// True when the loaded file's bytes weren't valid UTF-8, so the textarea
+// holds Latin-1 (one char per source byte). Save must re-encode each
+// char's low byte back to raw bytes instead of writing as UTF-8.
 let binaryMode = false;
-
-function showTextEditor() {
-  binaryMode = false;
-  if (binaryViewer) { binaryViewer.hidden = true; binaryViewer.innerHTML = ''; }
-  if (editorWrap) editorWrap.hidden = false;
-}
-
-function showBinaryViewer(mimeType, blobUrl) {
-  binaryMode = true;
-  if (editorWrap) editorWrap.hidden = true;
-  if (!binaryViewer) return;
-  binaryViewer.innerHTML = '';
-  let el;
-  if (!blobUrl) {
-    el = document.createElement('p');
-    el.className = 'binary-msg';
-    el.textContent = 'Binary file — too large to preview.';
-  } else if (mimeType && mimeType.startsWith('image/')) {
-    el = document.createElement('img');
-    el.src = blobUrl;
-    el.alt = '';
-  } else if (mimeType === 'application/pdf') {
-    el = document.createElement('embed');
-    el.src = blobUrl;
-    el.type = 'application/pdf';
-  } else if (mimeType && mimeType.startsWith('audio/')) {
-    el = document.createElement('audio');
-    el.src = blobUrl;
-    el.controls = true;
-  } else if (mimeType && mimeType.startsWith('video/')) {
-    el = document.createElement('video');
-    el.src = blobUrl;
-    el.controls = true;
-  } else {
-    el = document.createElement('p');
-    el.className = 'binary-msg';
-    el.textContent = 'Binary file — cannot preview.';
-  }
-  binaryViewer.appendChild(el);
-  binaryViewer.hidden = false;
-}
 
 function setDirty(next) {
   if (next === dirty) return;
@@ -77,15 +37,15 @@ function setDirty(next) {
 }
 
 function recomputeDirty() {
-  if (binaryMode) return;
   setDirty(editor.value !== savedSnapshot);
 }
 
 async function doSave() {
-  if (binaryMode) return { ok: false };
   // First save on an unnamed buffer prompts for a filename inside the
   // platform; every save after that writes silently to the same file.
-  const result = await platform.saveFile(editor.value);
+  // binaryMode tells the platform to Latin-1-encode each char back to a
+  // byte (preserving the source file's raw bytes round-trip).
+  const result = await platform.saveFile(editor.value, binaryMode);
   if (result && result.ok) {
     savedSnapshot = editor.value;
     setDirty(false);
@@ -106,7 +66,7 @@ function doNew() {
     const ok = window.confirm('Discard unsaved changes?');
     if (!ok) return;
   }
-  showTextEditor();
+  binaryMode = false;
   editor.value = '';
   savedSnapshot = '';
   setDirty(false);
@@ -269,20 +229,14 @@ editor.addEventListener('keydown', (e) => {
   }
 });
 
-platform.onLoad(({ content, mimeType, blobUrl, isBinary }) => {
-  if (isBinary) {
-    showBinaryViewer(mimeType, blobUrl);
-    savedSnapshot = '';
-    setDirty(false);
-  } else {
-    showTextEditor();
-    editor.value = content ?? '';
-    savedSnapshot = editor.value;
-    setDirty(false);
-    editor.focus();
-    // Setting .value doesn't fire 'input' — nudge the gutter manually.
-    refreshLineNumbers();
-  }
+platform.onLoad(({ content, isBinary }) => {
+  binaryMode = !!isBinary;
+  editor.value = content ?? '';
+  savedSnapshot = editor.value;
+  setDirty(false);
+  editor.focus();
+  // Setting .value doesn't fire 'input' — nudge the gutter manually.
+  refreshLineNumbers();
 });
 
 platform.onMenuNew?.(doNew);

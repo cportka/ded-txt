@@ -43,12 +43,11 @@ struct OpenResult {
     error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     canceled: Option<bool>,
+    // `isBinary` flags Latin-1 byte-preserving mode: each char in `content`
+    // is one source byte (codepoint U+00NN). The renderer keeps this flag
+    // so save_file can re-encode each char's low byte back to raw bytes.
     #[serde(rename = "isBinary", skip_serializing_if = "Option::is_none")]
     is_binary: Option<bool>,
-    #[serde(rename = "mimeType", skip_serializing_if = "Option::is_none")]
-    mime_type: Option<&'static str>,
-    #[serde(rename = "contentBase64", skip_serializing_if = "Option::is_none")]
-    content_base64: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -88,112 +87,35 @@ fn refresh_title(app: &AppHandle) {
     }
 }
 
-fn guess_mime(path: &PathBuf) -> &'static str {
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|s| s.to_ascii_lowercase())
-        .unwrap_or_default();
-    match ext.as_str() {
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "webp" => "image/webp",
-        "svg" => "image/svg+xml",
-        "bmp" => "image/bmp",
-        "ico" => "image/x-icon",
-        "avif" => "image/avif",
-        "pdf" => "application/pdf",
-        "mp3" => "audio/mpeg",
-        "ogg" => "audio/ogg",
-        "wav" => "audio/wav",
-        "flac" => "audio/flac",
-        "m4a" => "audio/mp4",
-        "mp4" | "m4v" => "video/mp4",
-        "webm" => "video/webm",
-        "mov" => "video/quicktime",
-        "mkv" => "video/x-matroska",
-        _ => "", // empty = unknown, try as text
-    }
-}
+const MAX_BYTES: u64 = 25 * 1024 * 1024; // 25 MB
 
-const MAX_BINARY_PREVIEW: u64 = 25 * 1024 * 1024; // 25 MB
-
+// Decode raw file bytes into a textarea-friendly string. Mirrors the web
+// platform's `decode()` so both runtimes carry the same isBinary semantics:
+//   - valid UTF-8 with no NULL bytes  → text mode, return the decoded string
+//   - anything else                   → binary mode, Latin-1 (byte 0xNN →
+//                                       codepoint U+00NN, one char per byte)
 fn read_file(path: &PathBuf) -> Result<OpenResult, String> {
-    use base64::{engine::general_purpose::STANDARD, Engine};
-
     let fp = Some(path.to_string_lossy().to_string());
-    let mime = guess_mime(path);
-
-    if !mime.is_empty() {
-        // Known binary type — skip the text attempt entirely.
-        let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
-        if meta.len() > MAX_BINARY_PREVIEW {
-            return Ok(OpenResult {
-                ok: true,
-                file_path: fp,
-                content: None,
-                error: None,
-                canceled: None,
-                is_binary: Some(true),
-                mime_type: Some(mime),
-                content_base64: None,
-            });
-        }
-        let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-        return Ok(OpenResult {
-            ok: true,
-            file_path: fp,
-            content: None,
-            error: None,
-            canceled: None,
-            is_binary: Some(true),
-            mime_type: Some(mime),
-            content_base64: Some(STANDARD.encode(&bytes)),
-        });
+    let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    if meta.len() > MAX_BYTES {
+        return Err("File too large (25 MB max)".into());
     }
-
-    // Unknown extension — try UTF-8 text first.
-    match std::fs::read_to_string(path) {
-        Ok(content) => Ok(OpenResult {
-            ok: true,
-            file_path: fp,
-            content: Some(content),
-            error: None,
-            canceled: None,
-            is_binary: None,
-            mime_type: None,
-            content_base64: None,
-        }),
-        Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
-            // Binary content with unrecognised extension.
-            let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
-            if meta.len() > MAX_BINARY_PREVIEW {
-                return Ok(OpenResult {
-                    ok: true,
-                    file_path: fp,
-                    content: None,
-                    error: None,
-                    canceled: None,
-                    is_binary: Some(true),
-                    mime_type: Some("application/octet-stream"),
-                    content_base64: None,
-                });
-            }
-            let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-            Ok(OpenResult {
-                ok: true,
-                file_path: fp,
-                content: None,
-                error: None,
-                canceled: None,
-                is_binary: Some(true),
-                mime_type: Some("application/octet-stream"),
-                content_base64: Some(STANDARD.encode(&bytes)),
-            })
-        }
-        Err(e) => Err(e.to_string()),
-    }
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let (content, is_binary) = match std::str::from_utf8(&bytes) {
+        Ok(s) if !s.contains('\0') => (s.to_string(), None),
+        _ => (
+            bytes.iter().map(|&b| b as char).collect::<String>(),
+            Some(true),
+        ),
+    };
+    Ok(OpenResult {
+        ok: true,
+        file_path: fp,
+        content: Some(content),
+        error: None,
+        canceled: None,
+        is_binary,
+    })
 }
 
 fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
@@ -212,8 +134,6 @@ fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
             error: Some(e),
             canceled: None,
             is_binary: None,
-            mime_type: None,
-            content_base64: None,
         },
     }
 }
@@ -222,7 +142,15 @@ fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
 
 #[tauri::command]
 fn open_file(app: AppHandle) -> Result<OpenResult, String> {
-    let picked = app.dialog().file().blocking_pick_file();
+    // Explicit wildcard so macOS/Windows don't fall back to the bundle's
+    // declared document types and grey out anything that isn't a registered
+    // file association. DedTxt now opens (and previews) any file the OS lets
+    // us read.
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("All Files", &["*"])
+        .blocking_pick_file();
 
     match picked {
         Some(fp) => {
@@ -236,8 +164,6 @@ fn open_file(app: AppHandle) -> Result<OpenResult, String> {
             error: None,
             canceled: Some(true),
             is_binary: None,
-            mime_type: None,
-            content_base64: None,
         }),
     }
 }
@@ -247,8 +173,17 @@ fn open_path(app: AppHandle, path: String) -> Result<OpenResult, String> {
     Ok(finalize_open(&app, PathBuf::from(path)))
 }
 
-fn save_to(app: &AppHandle, target: PathBuf, content: String) -> SaveResult {
-    match std::fs::write(&target, content) {
+fn save_to(app: &AppHandle, target: PathBuf, content: String, is_binary: bool) -> SaveResult {
+    // Binary mode mirrors the Latin-1 round-trip the renderer relies on:
+    // each char's low byte is the original file byte. Chars > U+00FF (only
+    // possible if the user pasted multibyte text into a binary buffer)
+    // truncate to their low byte — documented behavior.
+    let bytes: Vec<u8> = if is_binary {
+        content.chars().map(|c| c as u32 as u8).collect()
+    } else {
+        content.into_bytes()
+    };
+    match std::fs::write(&target, bytes) {
         Ok(()) => {
             let state = app.state::<AppState>();
             *state.current_path.lock().unwrap() = Some(target.clone());
@@ -280,7 +215,7 @@ fn prompt_save_path(app: &AppHandle, default_name: &str) -> Option<PathBuf> {
 }
 
 #[tauri::command]
-fn save_file(app: AppHandle, content: String) -> Result<SaveResult, String> {
+fn save_file(app: AppHandle, content: String, is_binary: bool) -> Result<SaveResult, String> {
     let existing = app.state::<AppState>().current_path.lock().unwrap().clone();
     let target = match existing {
         Some(p) => p,
@@ -296,7 +231,7 @@ fn save_file(app: AppHandle, content: String) -> Result<SaveResult, String> {
             }
         },
     };
-    Ok(save_to(&app, target, content))
+    Ok(save_to(&app, target, content, is_binary))
 }
 
 #[tauri::command]

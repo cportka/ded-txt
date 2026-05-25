@@ -2,39 +2,34 @@
 // a download/upload fallback for Safari & Firefox. The renderer treats
 // this just like Electron's window.dt.
 
-const TEXT_SUBTYPES = new Set([
-  'application/json', 'application/xml', 'application/javascript',
-  'application/typescript', 'application/x-yaml', 'application/x-sh',
-  'application/x-httpd-php',
-]);
+const MAX_BYTES = 25 * 1024 * 1024;
 
-function guessMime(name, browserMime) {
-  if (browserMime) return browserMime;
-  const ext = (name.split('.').pop() || '').toLowerCase();
-  const MAP = {
-    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
-    webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
-    ico: 'image/x-icon', avif: 'image/avif',
-    pdf: 'application/pdf',
-    mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav',
-    flac: 'audio/flac', m4a: 'audio/mp4',
-    mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
-    mkv: 'video/x-matroska',
-  };
-  return MAP[ext] || 'text/plain';
+// Decode raw bytes into a textarea-friendly string.
+//   - Valid UTF-8 with no NULL bytes  → text mode, decoded UTF-8.
+//   - Anything else (invalid UTF-8, or text-shaped bytes containing NULL)
+//     → binary mode, Latin-1 (byte 0xNN → codepoint U+00NN). Round-trips
+//     exactly when re-encoded on save via charCodeAt & 0xFF.
+function decode(bytes) {
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    if (!text.includes('\0')) return { content: text, isBinary: false };
+  } catch (_) { /* fall through to Latin-1 */ }
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return { content: s, isBinary: true };
 }
 
-function classifyMime(mime) {
-  if (!mime || mime.startsWith('text/') || TEXT_SUBTYPES.has(mime)) return 'text';
-  if (mime.startsWith('image/')) return 'image';
-  if (mime === 'application/pdf') return 'pdf';
-  if (mime.startsWith('audio/')) return 'audio';
-  if (mime.startsWith('video/')) return 'video';
-  return 'binary';
+// Re-encode the textarea string to bytes for a binary save. Each char's
+// low byte is the original file byte; chars > U+00FF (only possible if
+// the user pasted multibyte text into a binary buffer) truncate to their
+// low byte — documented behavior.
+function encodeBinary(content) {
+  const out = new Uint8Array(content.length);
+  for (let i = 0; i < content.length; i++) out[i] = content.charCodeAt(i) & 0xff;
+  return out;
 }
 
 let currentHandle = null;
-let currentBlobUrl = null;
 let currentName = null;
 let dirty = false;
 
@@ -63,17 +58,27 @@ function updateTitle() {
     : `${currentName} — DedTxt`;
 }
 
-function fireLoad(name, payload) {
-  // Revoke the previous blob URL before overwriting it to avoid memory leaks.
-  if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
-  if (payload.blobUrl) currentBlobUrl = payload.blobUrl;
-  // Clear local dirty before firing the load callback so the title we paint
-  // afterwards reflects the fresh file, not a leftover bullet from the
-  // previously-loaded file.
+function fireLoad(name, content, isBinary) {
+  // Clear local dirty before firing so the title we paint afterwards
+  // reflects the fresh file, not a leftover bullet from the previous one.
   currentName = name;
   dirty = false;
-  if (loadCb) loadCb({ filePath: name, ...payload });
+  if (loadCb) {
+    const payload = { filePath: name, content };
+    if (isBinary) payload.isBinary = true;
+    loadCb(payload);
+  }
   updateTitle();
+}
+
+async function readAndFire(file) {
+  if (file.size > MAX_BYTES) {
+    return { ok: false, error: 'File too large (25 MB max)' };
+  }
+  const buf = await file.arrayBuffer();
+  const { content, isBinary } = decode(new Uint8Array(buf));
+  fireLoad(file.name, content, isBinary);
+  return { ok: true };
 }
 
 async function pickAndRead() {
@@ -84,18 +89,9 @@ async function pickAndRead() {
       // Chrome treats the handle as read-only and re-prompts on first write.
       const [handle] = await window.showOpenFilePicker({ multiple: false, mode: 'readwrite' });
       const file = await handle.getFile();
-      const mime = guessMime(file.name, file.type);
-      const category = classifyMime(mime);
-      if (category === 'text') {
-        const content = await file.text();
-        currentHandle = handle;
-        fireLoad(file.name, { content });
-      } else {
-        const blobUrl = URL.createObjectURL(file);
-        currentHandle = null;
-        fireLoad(file.name, { mimeType: mime, blobUrl, isBinary: true });
-      }
-      return { ok: true };
+      const res = await readAndFire(file);
+      if (res.ok) currentHandle = handle;
+      return res;
     } catch (err) {
       if (err && err.name === 'AbortError') return { ok: false, canceled: true };
       return { ok: false, error: err.message };
@@ -113,18 +109,10 @@ async function pickAndRead() {
       cleanup();
       if (!file) { settled = true; return resolve({ ok: false, canceled: true }); }
       try {
-        const mime = guessMime(file.name, file.type);
-        const category = classifyMime(mime);
         currentHandle = null;
-        if (category === 'text') {
-          const content = await file.text();
-          fireLoad(file.name, { content });
-        } else {
-          const blobUrl = URL.createObjectURL(file);
-          fireLoad(file.name, { mimeType: mime, blobUrl, isBinary: true });
-        }
+        const res = await readAndFire(file);
         settled = true;
-        resolve({ ok: true });
+        resolve(res);
       } catch (err) {
         settled = true;
         resolve({ ok: false, error: err.message });
@@ -137,7 +125,7 @@ async function pickAndRead() {
   });
 }
 
-async function writeHandle(handle, content) {
+async function writeHandle(handle, payload) {
   // Chrome may downgrade an FSA permission after the tab has been idle.
   // Query first and re-request only if needed so the common (already-granted)
   // path stays prompt-free.
@@ -149,12 +137,13 @@ async function writeHandle(handle, content) {
     }
   }
   const writable = await handle.createWritable();
-  await writable.write(content);
+  await writable.write(payload);
   await writable.close();
 }
 
-function downloadFallback(content, suggestedName) {
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+function downloadFallback(payload, suggestedName, mime) {
+  // Blob accepts Uint8Array or string as a BlobPart, no branch needed.
+  const blob = new Blob([payload], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -170,12 +159,14 @@ const web = {
 
   async openFile() { return pickAndRead(); },
 
-  async saveFile(content) {
+  async saveFile(content, isBinary) {
+    const payload = isBinary ? encodeBinary(content) : content;
+    const mime = isBinary ? 'application/octet-stream' : 'text/plain;charset=utf-8';
     // Re-save to the same file once we have a handle; otherwise prompt the
     // user for a path/name on the first save and remember it from then on.
     if (currentHandle) {
       try {
-        await writeHandle(currentHandle, content);
+        await writeHandle(currentHandle, payload);
         return { ok: true, filePath: currentHandle.name };
       } catch (err) {
         return { ok: false, error: err.message };
@@ -186,7 +177,7 @@ const web = {
         const handle = await window.showSaveFilePicker({
           suggestedName: currentName || 'Untitled.txt',
         });
-        await writeHandle(handle, content);
+        await writeHandle(handle, payload);
         currentHandle = handle;
         currentName = handle.name;
         // Clear dirty before painting so the first frame after the picker
@@ -211,23 +202,14 @@ const web = {
       updateTitle();
     }
     const suggestedName = currentName || 'Untitled.txt';
-    downloadFallback(content, suggestedName);
+    downloadFallback(payload, suggestedName, mime);
     return { ok: true, filePath: suggestedName };
   },
 
   async openDroppedFile(file) {
     try {
-      const mime = guessMime(file.name, file.type);
-      const category = classifyMime(mime);
       currentHandle = null;
-      if (category === 'text') {
-        const content = await file.text();
-        fireLoad(file.name, { content });
-      } else {
-        const blobUrl = URL.createObjectURL(file);
-        fireLoad(file.name, { mimeType: mime, blobUrl, isBinary: true });
-      }
-      return { ok: true };
+      return await readAndFire(file);
     } catch (err) {
       return { ok: false, error: err.message };
     }
@@ -251,7 +233,6 @@ const web = {
     // path. Clear the onbeforeunload guard too — otherwise a fresh, clean
     // buffer still prompts "unsaved changes?" on tab close because the
     // guard was installed by the previous file's dirty state.
-    if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
     currentHandle = null;
     currentName = null;
     dirty = false;

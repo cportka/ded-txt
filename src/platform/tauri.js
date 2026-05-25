@@ -23,13 +23,9 @@ function emitLoad(payload) {
 }
 
 function buildLoadPayload(result) {
-  if (result.isBinary) {
-    const blobUrl = result.contentBase64
-      ? `data:${result.mimeType};base64,${result.contentBase64}`
-      : null;
-    return { filePath: result.filePath, mimeType: result.mimeType, blobUrl, isBinary: true };
-  }
-  return { filePath: result.filePath, content: result.content };
+  const payload = { filePath: result.filePath, content: result.content };
+  if (result.isBinary) payload.isBinary = true;
+  return payload;
 }
 
 async function openByPath(path) {
@@ -69,8 +65,8 @@ const tauri = {
     return result ? { ok: result.ok, filePath: result.filePath, canceled: result.canceled, error: result.error } : { ok: false };
   },
 
-  async saveFile(content) {
-    return invoke('save_file', { content });
+  async saveFile(content, isBinary) {
+    return invoke('save_file', { content, isBinary: !!isBinary });
   },
 
   async openDroppedFile(_file) {
