@@ -2,9 +2,17 @@
 //
 // The bar is a thin overlay anchored top-right of #editor-wrap. It does not
 // resize the editor — keeping the textarea geometry stable means line numbers
-// stay in sync. Matches are surfaced by setting the textarea's native
-// selection (no overlay highlighting — that would require a parallel mirror
-// element and conflict with the textarea's own renderer).
+// stay in sync.
+//
+// Match highlighting uses a parallel #editor-highlights div behind the
+// transparent textarea (z-index dance in styles.css). Each match is wrapped
+// in a <mark> there; the textarea draws the user's text on top so the marks
+// appear as coloured bands behind the glyphs. We can't rely on the textarea's
+// native selection rendering because the find input steals focus back as the
+// user types — and browsers wash out the inactive textarea selection to a
+// near-invisible system gray. The textarea selection IS still set (so
+// Replace's setRangeText sees the active match), it's just no longer what
+// the user sees.
 //
 // Pure-logic helpers (`compilePattern`, `buildMatches`, `applyReplaceAll`)
 // are exported for unit testing; the DOM wiring lives in `installFind`.
@@ -79,8 +87,46 @@ export function installFind({ editor }) {
   const replaceAllBtn = document.getElementById('find-replace-all');
   const counter = document.getElementById('find-counter');
   const closeBtn = document.getElementById('find-close');
+  const highlights = document.getElementById('editor-highlights');
 
   if (!bar || !findInput) return { open() {}, close() {} };
+
+  // innerHTML escape for the overlay text — only & < > matter because we
+  // never write user content into an attribute. Everything else (control
+  // chars from Latin-1 binary mode, multibyte UTF-8, quotes) is safe in
+  // text-content position.
+  function escapeHtml(s) {
+    return s.replace(/[&<>]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;'));
+  }
+
+  // Repaint the match-highlight overlay. Called whenever matches, the
+  // active index, the bar's visibility, or the editor's geometry change.
+  // No-ops when the bar is closed (overlay cleared). Width is re-synced
+  // every paint because the textarea's scrollbar appearing/disappearing
+  // changes editor.clientWidth — and the marks must wrap at the same
+  // column as the textarea's text.
+  function paintHighlights() {
+    if (!highlights) return;
+    if (bar.hidden || state.matches.length === 0) {
+      highlights.replaceChildren();
+      return;
+    }
+    highlights.style.width = editor.clientWidth + 'px';
+    highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
+    const text = editor.value;
+    const matches = state.matches;
+    let html = '';
+    let pos = 0;
+    for (let i = 0; i < matches.length; i++) {
+      const [start, end] = matches[i];
+      if (start > pos) html += escapeHtml(text.slice(pos, start));
+      const cls = i === state.idx ? 'find-match find-match-active' : 'find-match';
+      html += `<mark class="${cls}">${escapeHtml(text.slice(start, end))}</mark>`;
+      pos = end;
+    }
+    if (pos < text.length) html += escapeHtml(text.slice(pos));
+    highlights.innerHTML = html;
+  }
 
   const state = {
     matches: [],
@@ -108,6 +154,7 @@ export function installFind({ editor }) {
       state.idx = -1;
       counter.textContent = '0 / 0';
       counter.classList.add('find-counter-empty');
+      paintHighlights();
       return;
     }
     counter.classList.remove('find-counter-empty');
@@ -115,6 +162,7 @@ export function installFind({ editor }) {
     if (state.idx < 0 || state.idx >= state.matches.length) state.idx = 0;
     counter.textContent = `${state.idx + 1} / ${state.matches.length}`;
     select(state.matches[state.idx]);
+    paintHighlights();
   }
 
   function select([start, end]) {
@@ -129,6 +177,7 @@ export function installFind({ editor }) {
     state.idx = (state.idx + delta + state.matches.length) % state.matches.length;
     counter.textContent = `${state.idx + 1} / ${state.matches.length}`;
     select(state.matches[state.idx]);
+    paintHighlights();
   }
 
   function open(prefill) {
@@ -147,6 +196,8 @@ export function installFind({ editor }) {
     // Hide replace row too so the next open() shows a calm single-row bar.
     if (replaceRow) replaceRow.hidden = true;
     if (replaceToggle) replaceToggle.setAttribute('aria-pressed', 'false');
+    // Clear the overlay — bar.hidden is now true so paintHighlights wipes it.
+    paintHighlights();
     editor.focus();
   }
 
@@ -187,6 +238,23 @@ export function installFind({ editor }) {
   }
 
   // --- Event wiring ---
+
+  // Keep the overlay scroll-locked to the textarea. Same translateY-on-
+  // scrollTop pattern that line-numbers.js uses for the gutter. Passive
+  // so we never block textarea scrolling.
+  editor.addEventListener('scroll', () => {
+    if (highlights && !bar.hidden) {
+      highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
+    }
+  }, { passive: true });
+
+  // Window resize changes editor.clientWidth (and may add/remove the
+  // textarea's scrollbar), which shifts where lines wrap. Re-paint so
+  // marks stay aligned with the textarea's text.
+  window.addEventListener('resize', () => {
+    if (!bar.hidden) paintHighlights();
+  });
+
   findInput.addEventListener('input', refresh);
 
   findInput.addEventListener('keydown', (e) => {

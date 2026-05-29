@@ -89,16 +89,18 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
 }
+/* Stack the textarea above #editor-highlights so the user's text and
+   caret paint over the find-match marks. The textarea's transparent
+   background lets the overlay's coloured bands show through behind
+   each glyph. position:relative gives it a stacking context without
+   removing it from the flex row. */
+#text-editor { position: relative; z-index: 1; }
 #text-editor:focus { outline: none; }
 #text-editor::placeholder { color: var(--muted); }
-/* Match-highlight color for find. find.js sets the textarea's native
-   selection range to surface the active match, then refocuses the
-   find input so typing keeps working — which leaves the textarea
-   unfocused. Without an explicit ::selection rule, browsers dim the
-   inactive-textarea selection to a near-invisible gray on this dark
-   theme; the magenta ties the highlight into the same glitch palette
-   used by the find-toggle on-state and counter-empty split. Same rule
-   double-emitted with the legacy -moz- prefix for older Firefox. */
+/* Manual drag-selection in the textarea — magenta to match the rest
+   of the glitch palette. This is NOT what surfaces find matches: that
+   path uses the #editor-highlights overlay (browsers wash out the
+   inactive textarea selection so the find flow can't rely on it). */
 #text-editor::selection {
   background: var(--gx-magenta);
   color: var(--gx-ink);
@@ -129,6 +131,53 @@ body {
 }
 #editor-mirror > div {
   min-height: 1.45em;
+}
+
+/* Visible match-highlight overlay for find. Sits behind the textarea
+   (z-index 0; textarea is z-index 1) — the textarea's transparent
+   background lets the magenta bands show through. Every layout
+   property MUST match #text-editor exactly so character positions
+   line up; the only divergences are pointer-events:none (inert),
+   overflow:hidden (no scrollbar — we shift the content via
+   transform), and color:transparent (the textarea draws the text,
+   we just paint the marks). Width is JS-synced to editor.clientWidth
+   on every refresh because the textarea's scrollbar (when present)
+   reduces its inner width — same reason line-numbers.js syncs its
+   own mirror's width. */
+#editor-highlights {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 40px;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  color: transparent;
+  will-change: transform;
+}
+#editor-highlights mark {
+  /* Inactive matches — faint magenta tint so every hit is visible
+     without overwhelming the live text. */
+  background: rgba(255, 61, 138, 0.35);
+  color: transparent;
+  padding: 0;
+  border-radius: 1px;
+}
+#editor-highlights mark.find-match-active {
+  /* The current match (the one ↑/↓/Enter navigates to) — full
+     magenta from the icon palette. */
+  background: var(--gx-magenta);
 }
 
 /* Find + Replace bar. Floats top-right of #editor-wrap, inset by 56px
