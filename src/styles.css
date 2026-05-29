@@ -91,6 +91,22 @@ body {
 }
 #text-editor:focus { outline: none; }
 #text-editor::placeholder { color: var(--muted); }
+/* Match-highlight color for find. find.js sets the textarea's native
+   selection range to surface the active match, then refocuses the
+   find input so typing keeps working — which leaves the textarea
+   unfocused. Without an explicit ::selection rule, browsers dim the
+   inactive-textarea selection to a near-invisible gray on this dark
+   theme; the magenta ties the highlight into the same glitch palette
+   used by the find-toggle on-state and counter-empty split. Same rule
+   double-emitted with the legacy -moz- prefix for older Firefox. */
+#text-editor::selection {
+  background: var(--gx-magenta);
+  color: var(--gx-ink);
+}
+#text-editor::-moz-selection {
+  background: var(--gx-magenta);
+  color: var(--gx-ink);
+}
 
 /* Off-screen layout mirror — same font/padding/width/wrap as the textarea
    so per-line offsetHeight reports the correct wrapped row count. */
