@@ -163,6 +163,7 @@ export function installFind({ editor }) {
     counter.textContent = `${state.idx + 1} / ${state.matches.length}`;
     select(state.matches[state.idx]);
     paintHighlights();
+    scrollToActiveMatch();
   }
 
   function select([start, end]) {
@@ -172,12 +173,41 @@ export function installFind({ editor }) {
     findInput.focus();
   }
 
+  // Pull the active match into a comfortably-visible part of the textarea.
+  // Uses the overlay's <mark class="find-match-active"> as the position
+  // oracle — the overlay's geometry mirrors the textarea exactly, so the
+  // mark's bounding rect is also where the textarea would paint the match.
+  // setSelectionRange's auto-scroll is unreliable cross-browser and
+  // outright doesn't fire on mobile after the find input steals focus
+  // back; this makes match visibility explicit.
+  function scrollToActiveMatch() {
+    if (state.idx < 0 || bar.hidden || !highlights) return;
+    const active = highlights.querySelector('mark.find-match-active');
+    if (!active) return;
+    const editorRect = editor.getBoundingClientRect();
+    const markRect = active.getBoundingClientRect();
+    const relTop = markRect.top - editorRect.top;
+    const relBottom = relTop + markRect.height;
+    const margin = 24;
+    // Already comfortably in view? Don't move — avoids fighting the user's
+    // manual scroll on every Enter.
+    if (relTop >= margin && relBottom <= editorRect.height - margin) return;
+    // Aim ~1/3 from the top so the match sits in a natural reading zone
+    // and there's room below to see following context.
+    editor.scrollTop += relTop - editorRect.height / 3;
+    // Inline overlay re-sync — the textarea's scroll event would re-sync
+    // too, but doing it here means the paint frame after this fn returns
+    // already shows the marks in the right place.
+    highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
+  }
+
   function step(delta) {
     if (state.matches.length === 0) return;
     state.idx = (state.idx + delta + state.matches.length) % state.matches.length;
     counter.textContent = `${state.idx + 1} / ${state.matches.length}`;
     select(state.matches[state.idx]);
     paintHighlights();
+    scrollToActiveMatch();
   }
 
   function open(prefill) {
