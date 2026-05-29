@@ -214,7 +214,12 @@ body {
   padding: 4px 6px;
   font-family: inherit;
   font-size: 12px;
-  width: 180px;
+  /* Default sizing on wide screens: stays at 180px. Allow shrink so
+     that on narrow viewports the bar doesn't push itself off-screen
+     to the left — the narrow-viewport @media block below promotes the
+     input to its own full-width row instead. */
+  flex: 0 1 180px;
+  min-width: 0;
   box-sizing: border-box;
 }
 #find-bar input:focus { outline: 1px solid var(--gx-cyan); }
@@ -264,6 +269,27 @@ body {
 }
 .find-replace-btn {
   padding: 2px 10px;
+}
+
+/* Narrow-viewport layout for the find bar. On phones the desktop bar
+   (180px input + counter + 7 buttons ≈ 410px wide) grows leftward from
+   its right:56px anchor and runs off the left edge of the viewport.
+   Here we anchor it across the available width, let the .find-row
+   flex-wrap, and promote the input to its own full-width row so the
+   counter + nav/toggle buttons wrap to a second row below it. The
+   existing replace row already lives below — this just gives the
+   primary row the same kind of vertical breathing room. */
+@media (max-width: 600px) {
+  #find-bar {
+    left: max(8px, env(safe-area-inset-left));
+  }
+  .find-row {
+    flex-wrap: wrap;
+  }
+  #find-bar input {
+    flex: 1 1 100%;
+    width: auto;
+  }
 }
 
 #menu-toggle {
@@ -737,4 +763,23 @@ dialog#save-as-dialog::backdrop {
   background: transparent;
   color: var(--fg);
   border-color: var(--muted);
+}
+
+/* Touch-device font-size bump. iOS Safari auto-zooms any input or
+   textarea with font-size < 16px when it receives focus — tapping
+   into the editor or the find input shifts the entire layout. Lifting
+   to 16px on touch-only viewports defeats that without disabling
+   pinch-zoom globally (which would be an a11y trade-off the user
+   didn't ask for). The two find-overlay mirrors must track the
+   textarea's font-size or character positions drift, so they bump
+   together. #line-gutter-inner is decorative (aria-hidden) and stays
+   at 14px — line-numbers.js reads getComputedStyle(editor).lineHeight
+   at measure time, so the gutter's row-count math auto-adapts. */
+@media (any-hover: none) and (pointer: coarse) {
+  #text-editor,
+  #editor-highlights,
+  #editor-mirror,
+  #find-bar input {
+    font-size: 16px;
+  }
 }
