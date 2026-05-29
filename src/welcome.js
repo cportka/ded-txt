@@ -179,6 +179,31 @@ function openDialog() {
   // shortcut for keyboard users.
   dialog.setAttribute('tabindex', '-1');
   dialog.showModal();
+
+  // Stamp a one-shot glitch "boot" on the icon every time we open. CSS
+  // does the animation (.welcome-icon-btn.booting → keyframes
+  // welcome-icon-boot); we just (re)apply the class and clean up via a
+  // name-filtered animationend so a subsequent open re-fires cleanly.
+  // The reflow read forces the class removal to commit before re-add,
+  // otherwise rapid re-opens would coalesce into no animation at all.
+  const iconBtn = document.getElementById('welcome-icon-btn');
+  const noMotion = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (iconBtn && !noMotion) {
+    iconBtn.classList.remove('booting');
+    void iconBtn.offsetWidth;
+    iconBtn.classList.add('booting');
+    const onBootEnd = (e) => {
+      // Same element also runs `menu-spin` on click — don't strip .booting
+      // in response to an unrelated animation finishing.
+      if (e.animationName !== 'welcome-icon-boot') return;
+      iconBtn.classList.remove('booting');
+      iconBtn.removeEventListener('animationend', onBootEnd);
+    };
+    iconBtn.addEventListener('animationend', onBootEnd);
+  }
+
   try { dialog.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
 }
 

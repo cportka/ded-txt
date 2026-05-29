@@ -141,7 +141,7 @@ fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
 // --- Invoke commands ------------------------------------------------------
 
 #[tauri::command]
-fn open_file(app: AppHandle) -> Result<OpenResult, String> {
+async fn open_file(app: AppHandle) -> Result<OpenResult, String> {
     // Explicit wildcard so macOS/Windows don't fall back to the bundle's
     // declared document types and grey out anything that isn't a registered
     // file association. DedTxt now opens (and previews) any file the OS lets
@@ -224,7 +224,7 @@ fn prompt_save_path(app: &AppHandle, default_name: &str) -> Option<PathBuf> {
 }
 
 #[tauri::command]
-fn save_file(app: AppHandle, content: String, is_binary: bool) -> Result<SaveResult, String> {
+async fn save_file(app: AppHandle, content: String, is_binary: bool) -> Result<SaveResult, String> {
     let existing = app.state::<AppState>().current_path.lock().unwrap().clone();
     let target = match existing {
         Some(p) => p,
