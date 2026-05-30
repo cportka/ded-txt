@@ -225,7 +225,9 @@ body {
   border: 1px solid var(--muted);
   border-top: none;
   border-radius: 0 0 4px 4px;
-  padding: 6px 8px;
+  /* Right padding reserves a gutter so no row child (notably the replace
+     row's "All" button) can slide under the absolutely-pinned close X. */
+  padding: 6px 26px 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -234,6 +236,52 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 #find-bar[hidden] { display: none; }
+/* Glitch in/out for the find bar. Same RGB-split + translate-jitter
+   vocabulary as welcome-icon-boot, applied to the whole bar via
+   drop-shadow (the bar is opaque, so text-shadow alone wouldn't ghost the
+   border/background). steps() keeps it blocky. The bar stays display:flex
+   throughout; find.js only sets [hidden] after the out-animation ends. */
+#find-bar.find-glitch-in  { animation: find-bar-glitch-in 200ms steps(1, end); }
+#find-bar.find-glitch-out { animation: find-bar-glitch-out 180ms steps(1, end); }
+@keyframes find-bar-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(2px, 1px, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  65% {
+    transform: translate3d(-1px, 0, 0);
+    filter: drop-shadow(1px 0 0 var(--gx-magenta)) drop-shadow(-1px 0 0 var(--gx-cyan));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes find-bar-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  40% {
+    opacity: 1;
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(3px, -1px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0);
+    filter: drop-shadow(5px 0 0 var(--gx-magenta)) drop-shadow(-5px 0 0 var(--gx-cyan));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #find-bar.find-glitch-in,
+  #find-bar.find-glitch-out { animation: none; }
+}
 .find-row {
   display: flex;
   align-items: center;
@@ -301,6 +349,32 @@ body {
 }
 .find-replace-btn {
   padding: 2px 10px;
+}
+/* Close X — lifted out of the row flow and pinned to the bar's bottom-
+   right corner so it sits at the dialog's edge at every width (incl. the
+   mobile wrap, where the row would otherwise drop it onto its own line).
+   #find-bar reserves right padding so no row child slides under it.
+   Subtle chromatic-aberration X from the icon palette; the RGB split
+   intensifies on hover/focus. */
+#find-close {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  min-width: 0;
+  padding: 0 2px;
+  line-height: 1;
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+#find-close:hover,
+#find-close:focus-visible {
+  background: transparent;
+  outline: none;
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
 }
 
 /* Narrow-viewport layout for the find bar. On phones the desktop bar
@@ -494,6 +568,34 @@ dialog#welcome-dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .welcome-icon-btn.booting .welcome-icon { animation: none; }
 }
+/* Glitch-out on dialog dismiss. welcome.js stamps .glitching-out on the
+   card, plays this, then calls dialog.close() on animationend. Same
+   RGB-split + jitter family as welcome-icon-boot; collapses to opacity 0
+   so the native close (which drops the top layer) is seamless. */
+.welcome-card.glitching-out {
+  animation: welcome-card-glitch-out 240ms steps(1, end);
+}
+@keyframes welcome-card-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  35% {
+    opacity: 1;
+    transform: translate3d(-3px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(4px, -1px, 0);
+    filter: drop-shadow(5px 0 0 var(--gx-magenta)) drop-shadow(-5px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+    filter: drop-shadow(6px 0 0 var(--gx-magenta)) drop-shadow(-6px 0 0 var(--gx-cyan));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-card.glitching-out { animation: none; }
+}
 /* Spin animation on icon click — reuses the menu-spin keyframe from
    the top-right hamburger so the easing/timing matches: snap to speed
    then decelerate over 1 s. Placed AFTER .booting in source order so a
@@ -527,17 +629,14 @@ dialog#welcome-dialog::backdrop {
    :hover and :focus-visible are styled differently so programmatic
    focus (which iOS Safari treats as :focus-visible) doesn't make "New"
    look pre-selected on dialog open.
-   Layout: 2-column grid (This/New, Open/Save) with Find spanning the
-   full width on its own row. Compactifies the vertical footprint so the
-   heads-up notice gets horizontal room instead of stacking down. */
+   Layout: 2x2 grid — New/Open down the left column, Save/Find down the
+   right. Compactifies the vertical footprint so the heads-up notice gets
+   horizontal room instead of stacking down. */
 .welcome-shortcuts {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
   margin: 0 0 12px;
-}
-.welcome-shortcut[data-action="find"] {
-  grid-column: 1 / -1;
 }
 .welcome-shortcut {
   display: flex;
@@ -821,5 +920,14 @@ dialog#save-as-dialog::backdrop {
   .find-btn, .find-toggle {
     min-width: 36px;
     padding: 6px 10px;
+  }
+  /* The pinned close X needs a wider reserved gutter + a larger hit area. */
+  #find-bar { padding-right: 46px; }
+  #find-close {
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }

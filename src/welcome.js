@@ -13,6 +13,19 @@ const WELCOMED_KEY = 'dedtxt-welcomed';
 
 let listenersAttached = false;
 
+// True while the welcome card's glitch-out is mid-flight, so the dismiss
+// paths (backdrop, ESC/cancel, shortcut buttons) don't stack a second
+// animation or fire their action twice.
+let closingWithGlitch = false;
+
+// Honour the OS "reduce motion" setting. Shared by the open "boot" glitch
+// and the close glitch-out so both degrade to an instant show/hide.
+function prefersReducedMotion() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export function isMac() {
   const plat = (navigator.platform || '').toLowerCase();
   if (plat.includes('mac') || plat.includes('iphone') || plat.includes('ipad') || plat.includes('ipod')) return true;
@@ -24,7 +37,6 @@ export function shortcutMap() {
   const mod = mac ? '⌘' : 'Ctrl';
   const plus = mac ? ' ' : ' + ';
   return {
-    'this-dialog': 'ESC',
     'new':         `${mod}${plus}N`,
     'open':        `${mod}${plus}O`,
     'save':        `${mod}${plus}S`,
@@ -46,6 +58,14 @@ export function shortcutMap() {
 // runtime composition.
 export function headsUpNotices(env) {
   const all = [
+    {
+      id: 'esc-hint',
+      // Re-homes the binding the dropped "This" shortcut row used to show.
+      // Touch devices have no ESC (and shortcut hints are CSS-hidden there),
+      // so suppress it on touch-only.
+      active: (e) => !e.isTouchOnly,
+      text: 'Press ESC to return here'
+    },
     {
       id: 'no-fsa',
       // Firefox / Safari / iOS — no File System Access API, so every save
@@ -121,6 +141,53 @@ function renderHeadsUp(dialog, items) {
   container.appendChild(ul);
 }
 
+// Dismiss the welcome dialog with a one-shot glitch-out on the card, then
+// run an optional callback once it's truly closed. All dismiss paths
+// (backdrop, ESC/cancel, shortcut buttons) route through here so the
+// animation is consistent. The real dialog.close() runs after the card
+// animation (which fires the 'close' listener + its localStorage stamp
+// once); reduced motion and an already-closed dialog close immediately,
+// and re-entrant calls while a close is animating are ignored so the
+// action fires exactly once.
+export function closeWelcome(afterClose) {
+  const dialog = document.getElementById('welcome-dialog');
+  if (!dialog || !dialog.open) {
+    if (typeof afterClose === 'function') afterClose();
+    return;
+  }
+  if (closingWithGlitch) return;
+
+  const card = dialog.querySelector('.welcome-card');
+  const run = () => { if (typeof afterClose === 'function') afterClose(); };
+  if (!card || prefersReducedMotion()) {
+    dialog.close();
+    run();
+    return;
+  }
+
+  closingWithGlitch = true;
+  let done = false;
+  const finalize = () => {
+    if (done) return;
+    done = true;
+    closingWithGlitch = false;
+    card.removeEventListener('animationend', onEnd);
+    card.classList.remove('glitching-out');
+    dialog.close();
+    run();
+  };
+  const onEnd = (e) => {
+    if (e.animationName === 'welcome-card-glitch-out') finalize();
+  };
+  card.classList.remove('glitching-out');
+  void card.offsetWidth;
+  card.classList.add('glitching-out');
+  card.addEventListener('animationend', onEnd);
+  // Safety net if animationend never lands (interrupted / unsupported):
+  // force the close just past the animation's nominal 240ms duration.
+  setTimeout(finalize, 360);
+}
+
 function openDialog() {
   const dialog = document.getElementById('welcome-dialog');
   if (!dialog || typeof dialog.showModal !== 'function') return;
@@ -162,12 +229,24 @@ function openDialog() {
     // the card bubble up with event.target as the inner element, so we
     // only act when the click target is the dialog itself.
     dialog.addEventListener('click', (e) => {
-      if (e.target === dialog) dialog.close();
+      if (e.target === dialog) closeWelcome();
+    });
+
+    // Native Escape fires 'cancel' before 'close'. Intercept it so ESC plays
+    // the glitch-out too: preventDefault stops the immediate native close,
+    // then closeWelcome animates and closes for real. Our own dialog.close()
+    // emits only 'close' (never 'cancel'), so there's no loop. Under reduced
+    // motion we let the native close proceed untouched.
+    dialog.addEventListener('cancel', (e) => {
+      if (prefersReducedMotion()) return;
+      e.preventDefault();
+      closeWelcome();
     });
 
     // Any close — auto, manual, Escape, backdrop, button — marks the user
     // as having been welcomed. Future visits skip the auto-open.
     dialog.addEventListener('close', () => {
+      closingWithGlitch = false;
       try { localStorage.setItem(WELCOMED_KEY, 'true'); } catch (e) { /* ignore */ }
     });
     listenersAttached = true;
@@ -187,10 +266,7 @@ function openDialog() {
   // The reflow read forces the class removal to commit before re-add,
   // otherwise rapid re-opens would coalesce into no animation at all.
   const iconBtn = document.getElementById('welcome-icon-btn');
-  const noMotion = typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (iconBtn && !noMotion) {
+  if (iconBtn && !prefersReducedMotion()) {
     iconBtn.classList.remove('booting');
     void iconBtn.offsetWidth;
     iconBtn.classList.add('booting');

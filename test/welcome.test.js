@@ -56,7 +56,6 @@ describe('src/welcome.js', () => {
       assert.equal(m.new, '⌘ N');
       assert.equal(m.open, '⌘ O');
       assert.equal(m.save, '⌘ S');
-      assert.equal(m['this-dialog'], 'ESC');
     });
 
     test('on Windows uses Ctrl + ...', () => {
@@ -65,7 +64,6 @@ describe('src/welcome.js', () => {
       assert.equal(m.new, 'Ctrl + N');
       assert.equal(m.open, 'Ctrl + O');
       assert.equal(m.save, 'Ctrl + S');
-      assert.equal(m['this-dialog'], 'ESC');
     });
 
     test('on Linux uses Ctrl + ... like Windows', () => {
@@ -90,30 +88,27 @@ describe('src/welcome.js', () => {
     // each environment so adding a new notice can't silently break the
     // existing two.
 
-    test('Tauri desktop + FSA available → no notices', () => {
+    test('Tauri desktop + FSA available → only the ESC notice', () => {
       const active = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: false });
-      assert.deepEqual(active, []);
+      assert.deepEqual(active.map(n => n.id), ['esc-hint']);
     });
 
-    test('Chromium web (FSA, not Tauri) → only the Cmd+N notice', () => {
+    test('Chromium web (FSA, not Tauri) → ESC + Cmd+N notices', () => {
       const active = mod.headsUpNotices({ hasFsa: true, onTauri: false, isTouchOnly: false });
-      assert.equal(active.length, 1);
-      assert.equal(active[0].id, 'no-cmd-n');
-      assert.match(active[0].text, /Cmd\/Ctrl\+N/);
+      assert.deepEqual(active.map(n => n.id), ['esc-hint', 'no-cmd-n']);
+      assert.match(active[1].text, /Cmd\/Ctrl\+N/);
     });
 
-    test('Firefox/Safari desktop (no FSA, not Tauri) → both notices, FSA first', () => {
+    test('Firefox/Safari desktop (no FSA, not Tauri) → ESC, FSA, Cmd+N in order', () => {
       const active = mod.headsUpNotices({ hasFsa: false, onTauri: false, isTouchOnly: false });
-      assert.equal(active.length, 2);
-      assert.deepEqual(active.map(n => n.id), ['no-fsa', 'no-cmd-n']);
+      assert.deepEqual(active.map(n => n.id), ['esc-hint', 'no-fsa', 'no-cmd-n']);
     });
 
-    test('Tauri without FSA (theoretical) → only the FSA notice', () => {
+    test('Tauri without FSA (theoretical) → ESC + FSA notices', () => {
       // Tauri's webview ships with FSA in practice, but the predicates
       // are independent — verify the registry treats them that way.
       const active = mod.headsUpNotices({ hasFsa: false, onTauri: true, isTouchOnly: false });
-      assert.equal(active.length, 1);
-      assert.equal(active[0].id, 'no-fsa');
+      assert.deepEqual(active.map(n => n.id), ['esc-hint', 'no-fsa']);
     });
 
     test('touch-only mobile (no FSA, not Tauri) → only the FSA notice, no Cmd+N', () => {
@@ -128,6 +123,15 @@ describe('src/welcome.js', () => {
     test('touch-only with FSA (Android Chrome) → no notices', () => {
       const active = mod.headsUpNotices({ hasFsa: true, onTauri: false, isTouchOnly: true });
       assert.deepEqual(active, []);
+    });
+
+    test('ESC notice is first on non-touch and absent on touch-only', () => {
+      // The ESC hint replaces the removed "This" shortcut row; it only makes
+      // sense where a keyboard (and thus an Escape key) exists.
+      const desktop = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: false });
+      assert.equal(desktop[0].id, 'esc-hint');
+      const touch = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: true });
+      assert.ok(!touch.some(n => n.id === 'esc-hint'));
     });
 
     test('returned items expose only { id, text } — no leaking the predicate fn', () => {
