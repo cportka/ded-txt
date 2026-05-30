@@ -34,6 +34,12 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  /* border-box so the .find-open padding-right (desktop) and
+     padding-top (mobile) are subtracted from the 100% width/height
+     instead of added to it. Without this, the wrap overflows its
+     parent by ~find-bar width on desktop and the absolutely-anchored
+     find bar (right: 56px) gets pushed off the visible viewport. */
+  box-sizing: border-box;
   display: flex;
   align-items: stretch;
   /* Reserved space for the find bar when it's open. JS writes the bar's
@@ -135,11 +141,9 @@ body {
   position: absolute;
   visibility: hidden;
   pointer-events: none;
-  /* Track the textarea's actual content rectangle. Both vars are 0px
-     when find is closed; mobile bumps top, desktop bumps a phantom
-     right which line-numbers.js's mirror.style.width sync already
-     follows via editor.clientWidth. */
-  top: var(--find-bar-h, 0);
+  /* top: 0 is fine — mirror is hidden and only its child offsetHeights
+     are read by line-numbers.js, not its absolute position. */
+  top: 0;
   left: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 14px;
@@ -169,14 +173,15 @@ body {
    own mirror's width. */
 #editor-highlights {
   position: absolute;
-  /* Same axis-tracking as #editor-mirror. find.js's paintHighlights
-     also sets `width: editor.clientWidth + 'px'` on every paint, so
-     the visible content box ends up exactly where the textarea's
-     does — glyphs and marks stay aligned in both layouts. */
-  top: var(--find-bar-h, 0);
+  /* find.js's paintHighlights writes top/left/width inline every
+     paint, sourcing them from editor.offsetTop/offsetLeft/clientWidth
+     so the overlay tracks the textarea's *actual* box regardless of
+     which media query applied padding to #editor-wrap. The CSS values
+     here are just the closed-state defaults. */
+  top: 0;
   bottom: 0;
   left: 40px;
-  right: var(--find-bar-w, 0);
+  right: 0;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;

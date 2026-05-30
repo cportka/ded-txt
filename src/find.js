@@ -106,9 +106,18 @@ export function installFind({ editor }) {
       wrap.style.setProperty('--find-bar-w', '0px');
       return;
     }
-    const rect = bar.getBoundingClientRect();
-    wrap.style.setProperty('--find-bar-h', rect.height + 'px');
-    wrap.style.setProperty('--find-bar-w', rect.width + 'px');
+    // Measure the bar's footprint *relative to #editor-wrap* so the
+    // reservation includes the bar's own right-inset (the 56px gap
+    // that keeps the corner menu clickable). Using bar.getBoundingClientRect()
+    // height/width alone leaves a ~56px paintable strip under the
+    // bar's left edge on desktop, which the user sees as text bleeding
+    // into the bar's territory.
+    const wrapRect = wrap.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+    const h = Math.max(0, barRect.bottom - wrapRect.top);
+    const w = Math.max(0, wrapRect.right - barRect.left);
+    wrap.style.setProperty('--find-bar-h', h + 'px');
+    wrap.style.setProperty('--find-bar-w', w + 'px');
     wrap.classList.add('find-open');
   }
 
@@ -132,6 +141,14 @@ export function installFind({ editor }) {
       highlights.replaceChildren();
       return;
     }
+    // Lock the overlay's box to the textarea's *actual* offset within
+    // their shared offsetParent (#editor-wrap). On desktop the editor
+    // sits at offsetTop:0 / offsetLeft:40 (gutter only); on mobile the
+    // editor moves down by the find banner's padding-top. Reading the
+    // values directly from `editor` means the overlay tracks whichever
+    // axis the active media query padded — no per-axis CSS-var coupling.
+    highlights.style.top = editor.offsetTop + 'px';
+    highlights.style.left = editor.offsetLeft + 'px';
     highlights.style.width = editor.clientWidth + 'px';
     highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
     const text = editor.value;
@@ -361,8 +378,11 @@ export function installFind({ editor }) {
       if (replaceRow) replaceRow.hidden = !next;
       if (next && replaceInput) replaceInput.focus();
       // Bar height (and on mobile, often width too) changed — re-reserve
-      // editor space so the new replace row isn't painted over the text.
+      // editor space so the new replace row isn't painted over the text,
+      // and re-paint the overlay so its top/left follows the textarea's
+      // new offset position.
       syncBarMetrics();
+      paintHighlights();
     });
   }
 
