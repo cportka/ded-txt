@@ -36,6 +36,25 @@ body {
   height: 100%;
   display: flex;
   align-items: stretch;
+  /* Reserved space for the find bar when it's open. JS writes the bar's
+     measured height + width onto these vars; the layout-specific media
+     queries below pick the right axis. Both default to 0px so closed-
+     state geometry is identical to the bar-not-present baseline. */
+  --find-bar-h: 0px;
+  --find-bar-w: 0px;
+}
+/* Find dialog reserves its own space — text never paints under it.
+   Mobile: bar becomes a top banner; padding-top pushes the editor (and
+   line-gutter + overlays) down by the bar's measured height.
+   Desktop: bar stays floating top-right; padding-right narrows the
+   textarea's wrap column so every line wraps before reaching the bar.
+   The .find-open class is toggled by JS on open()/close(); the two
+   custom properties are written from bar.getBoundingClientRect(). */
+@media (max-width: 600px) {
+  #editor-wrap.find-open { padding-top: var(--find-bar-h); }
+}
+@media (min-width: 601px) {
+  #editor-wrap.find-open { padding-right: var(--find-bar-w); }
 }
 
 /* Subtle line-number gutter. overflow:hidden + inner translateY for
@@ -116,7 +135,11 @@ body {
   position: absolute;
   visibility: hidden;
   pointer-events: none;
-  top: 0;
+  /* Track the textarea's actual content rectangle. Both vars are 0px
+     when find is closed; mobile bumps top, desktop bumps a phantom
+     right which line-numbers.js's mirror.style.width sync already
+     follows via editor.clientWidth. */
+  top: var(--find-bar-h, 0);
   left: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 14px;
@@ -146,10 +169,14 @@ body {
    own mirror's width. */
 #editor-highlights {
   position: absolute;
-  top: 0;
+  /* Same axis-tracking as #editor-mirror. find.js's paintHighlights
+     also sets `width: editor.clientWidth + 'px'` on every paint, so
+     the visible content box ends up exactly where the textarea's
+     does — glyphs and marks stay aligned in both layouts. */
+  top: var(--find-bar-h, 0);
   bottom: 0;
   left: 40px;
-  right: 0;
+  right: var(--find-bar-w, 0);
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
@@ -781,5 +808,13 @@ dialog#save-as-dialog::backdrop {
   #editor-mirror,
   #find-bar input {
     font-size: 16px;
+  }
+  /* Bigger tap targets on phones — the desktop 22x20-ish buttons are
+     impossible to hit accurately with a thumb, especially the X close
+     button. ~38-40px height puts every find control inside the Apple
+     HIG comfort zone without inflating the desktop layout. */
+  .find-btn, .find-toggle {
+    min-width: 36px;
+    padding: 6px 10px;
   }
 }

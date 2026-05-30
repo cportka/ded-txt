@@ -88,8 +88,29 @@ export function installFind({ editor }) {
   const counter = document.getElementById('find-counter');
   const closeBtn = document.getElementById('find-close');
   const highlights = document.getElementById('editor-highlights');
+  const wrap = document.getElementById('editor-wrap');
 
   if (!bar || !findInput) return { open() {}, close() {} };
+
+  // Reserve space for the find bar so text never paints under it. Called
+  // whenever the bar opens, closes, grows (replace row toggled), or the
+  // viewport size changes the way its controls wrap. CSS picks the right
+  // axis per media query: --find-bar-h drives padding-top on mobile,
+  // --find-bar-w drives padding-right on desktop. Both vars always get
+  // written so swapping breakpoints (resize across 600px) Just Works.
+  function syncBarMetrics() {
+    if (!wrap) return;
+    if (bar.hidden) {
+      wrap.classList.remove('find-open');
+      wrap.style.setProperty('--find-bar-h', '0px');
+      wrap.style.setProperty('--find-bar-w', '0px');
+      return;
+    }
+    const rect = bar.getBoundingClientRect();
+    wrap.style.setProperty('--find-bar-h', rect.height + 'px');
+    wrap.style.setProperty('--find-bar-w', rect.width + 'px');
+    wrap.classList.add('find-open');
+  }
 
   // innerHTML escape for the overlay text — only & < > matter because we
   // never write user content into an attribute. Everything else (control
@@ -216,6 +237,12 @@ export function installFind({ editor }) {
       findInput.value = prefill;
     }
     syncOpts();
+    // Reserve space BEFORE refresh() — scrollToActiveMatch (called from
+    // refresh) measures editor geometry, which the .find-open padding
+    // changes. Doing it first means the first scroll lands in the right
+    // place; otherwise the match starts in the bar's reserved band and
+    // a second paint frame is needed to correct it.
+    syncBarMetrics();
     refresh();
     findInput.focus();
     findInput.select();
@@ -228,6 +255,9 @@ export function installFind({ editor }) {
     if (replaceToggle) replaceToggle.setAttribute('aria-pressed', 'false');
     // Clear the overlay — bar.hidden is now true so paintHighlights wipes it.
     paintHighlights();
+    // Release the reserved padding on editor-wrap so the textarea reclaims
+    // the full content area.
+    syncBarMetrics();
     editor.focus();
   }
 
@@ -280,9 +310,15 @@ export function installFind({ editor }) {
 
   // Window resize changes editor.clientWidth (and may add/remove the
   // textarea's scrollbar), which shifts where lines wrap. Re-paint so
-  // marks stay aligned with the textarea's text.
+  // marks stay aligned with the textarea's text. Also re-measures the
+  // bar: at mobile widths the controls can flex-wrap to additional
+  // rows, growing the reserved padding; crossing the 600px breakpoint
+  // swaps the active axis from --find-bar-h to --find-bar-w.
   window.addEventListener('resize', () => {
-    if (!bar.hidden) paintHighlights();
+    if (!bar.hidden) {
+      syncBarMetrics();
+      paintHighlights();
+    }
   });
 
   findInput.addEventListener('input', refresh);
@@ -324,6 +360,9 @@ export function installFind({ editor }) {
       replaceToggle.setAttribute('aria-pressed', String(next));
       if (replaceRow) replaceRow.hidden = !next;
       if (next && replaceInput) replaceInput.focus();
+      // Bar height (and on mobile, often width too) changed — re-reserve
+      // editor space so the new replace row isn't painted over the text.
+      syncBarMetrics();
     });
   }
 
