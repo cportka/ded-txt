@@ -92,6 +92,19 @@ export function installFind({ editor }) {
 
   if (!bar || !findInput) return { open() {}, close() {} };
 
+  // Honour the OS "reduce motion" setting — when set, the find bar's glitch
+  // in/out is skipped and it shows/hides instantly (mirrors the
+  // welcome-icon-boot reduced-motion guard).
+  function prefersReducedMotion() {
+    return typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // Tracks the in-flight close animation's animationend handler so a rapid
+  // re-open() can cancel the pending hide before it fires.
+  let onGlitchOutEnd = null;
+
   // Reserve space for the find bar so text never paints under it. Called
   // whenever the bar opens, closes, grows (replace row toggled), or the
   // viewport size changes the way its controls wrap. CSS picks the right
@@ -249,6 +262,13 @@ export function installFind({ editor }) {
   }
 
   function open(prefill) {
+    // Cancel any in-flight close so a rapid re-open isn't hidden out from
+    // under us when the out-animation's animationend lands.
+    if (onGlitchOutEnd) {
+      bar.removeEventListener('animationend', onGlitchOutEnd);
+      onGlitchOutEnd = null;
+    }
+    bar.classList.remove('find-glitch-out');
     bar.hidden = false;
     if (typeof prefill === 'string' && prefill.length > 0) {
       findInput.value = prefill;
@@ -263,19 +283,58 @@ export function installFind({ editor }) {
     refresh();
     findInput.focus();
     findInput.select();
+    // One-shot glitch-in. Remove + reflow + re-add so a re-open mid-
+    // animation restarts cleanly (same trick as the welcome icon boot).
+    if (!prefersReducedMotion()) {
+      bar.classList.remove('find-glitch-in');
+      void bar.offsetWidth;
+      bar.classList.add('find-glitch-in');
+    }
   }
 
   function close() {
-    bar.hidden = true;
-    // Hide replace row too so the next open() shows a calm single-row bar.
-    if (replaceRow) replaceRow.hidden = true;
-    if (replaceToggle) replaceToggle.setAttribute('aria-pressed', 'false');
-    // Clear the overlay — bar.hidden is now true so paintHighlights wipes it.
-    paintHighlights();
-    // Release the reserved padding on editor-wrap so the textarea reclaims
-    // the full content area.
-    syncBarMetrics();
+    // Already closed, or a close animation is already mid-flight (e.g. Esc
+    // pressed twice) — nothing to do.
+    if (bar.hidden || onGlitchOutEnd) return;
+
+    // Finalise the hide: reset the bar to a calm single-row state, drop the
+    // overlay, release the reserved padding. Shared by the animated and
+    // reduced-motion paths. Deferred so the replace row glitches out with
+    // the rest of the bar rather than vanishing first.
+    const finish = () => {
+      bar.hidden = true;
+      bar.classList.remove('find-glitch-out');
+      if (replaceRow) replaceRow.hidden = true;
+      if (replaceToggle) replaceToggle.setAttribute('aria-pressed', 'false');
+      // Clear the overlay — bar.hidden is now true so paintHighlights wipes it.
+      paintHighlights();
+      // Release the reserved padding on editor-wrap so the textarea reclaims
+      // the full content area.
+      syncBarMetrics();
+    };
+
+    // Hand focus back to the editor immediately so typing resumes even while
+    // the bar is still glitching out.
     editor.focus();
+
+    if (prefersReducedMotion()) {
+      finish();
+      return;
+    }
+
+    // Play the glitch-out while the bar is still visible, then hide on
+    // animationend. The name filter guards against the in-animation's end
+    // finalising the close early.
+    bar.classList.remove('find-glitch-in');
+    void bar.offsetWidth;
+    bar.classList.add('find-glitch-out');
+    onGlitchOutEnd = (e) => {
+      if (e.animationName !== 'find-bar-glitch-out') return;
+      bar.removeEventListener('animationend', onGlitchOutEnd);
+      onGlitchOutEnd = null;
+      finish();
+    };
+    bar.addEventListener('animationend', onGlitchOutEnd);
   }
 
   function replaceOne() {

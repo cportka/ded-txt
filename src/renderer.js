@@ -1,26 +1,33 @@
 import platform from './platform/index.js';
-import { maybeShowWelcome, showWelcome } from './welcome.js';
+import { maybeShowWelcome, showWelcome, closeWelcome } from './welcome.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
+
+// Restart the one-shot spin animation cleanly: drop the class, force a
+// reflow so the browser doesn't coalesce the toggle into a no-op, then
+// re-add it. Shared by the corner menu button and the welcome icon.
+function restartSpin(el) {
+  el.classList.remove('spinning');
+  void el.offsetWidth;
+  el.classList.add('spinning');
+}
+
+// Drop .spinning once the spin finishes so the next click can re-trigger
+// it. animationend bubbles from the inner <img>; the name filter ignores
+// the welcome icon's unrelated boot animation.
+function clearSpinOnEnd(el) {
+  el.addEventListener('animationend', (e) => {
+    if (e.animationName === 'menu-spin') el.classList.remove('spinning');
+  });
+}
 
 const menuToggle = document.getElementById('menu-toggle');
 if (menuToggle) {
   menuToggle.addEventListener('click', () => {
-    // Restart the spin animation cleanly on every click. Remove the class,
-    // force a reflow so the browser doesn't optimize the no-op toggle away,
-    // then re-add the class.
-    menuToggle.classList.remove('spinning');
-    void menuToggle.offsetWidth;
-    menuToggle.classList.add('spinning');
+    restartSpin(menuToggle);
     showWelcome();
   });
-  // Drop the class once the spin finishes so the next click can re-add it.
-  // animationend bubbles up from the inner <img>.
-  menuToggle.addEventListener('animationend', (e) => {
-    if (e.animationName === 'menu-spin') {
-      menuToggle.classList.remove('spinning');
-    }
-  });
+  clearSpinOnEnd(menuToggle);
 }
 
 const editor = document.getElementById('text-editor');
@@ -85,29 +92,26 @@ const find = installFind({ editor });
 function doFind() { find.open(); }
 
 const SHORTCUT_ACTIONS = {
-  // The row's job is just to surface the Escape-key binding. Closing the
-  // dialog is the action, and the click handler below already does that
-  // for every row — this entry just keeps `handler()` from throwing.
-  'this-dialog': () => {},
   'new': doNew,
   'open': doOpen,
   'save': doSave,
   'find': doFind
 };
-const ACTIVATE_DURATION_MS = 180;
 
 document.querySelectorAll('.welcome-shortcut').forEach((btn) => {
   const action = btn.getAttribute('data-action');
   const handler = SHORTCUT_ACTIONS[action];
   if (!handler) return;
   btn.addEventListener('click', () => {
+    // Flash the row, glitch the dialog out, then run the action once the
+    // modal is truly closed — so focus-grabbing handlers (doFind/doNew)
+    // aren't fighting the still-open dialog. The .activating flash plays
+    // during the card's glitch-out.
     btn.classList.add('activating');
-    setTimeout(() => {
+    closeWelcome(() => {
       btn.classList.remove('activating');
-      const dialog = document.getElementById('welcome-dialog');
-      if (dialog && dialog.open) dialog.close();
       handler();
-    }, ACTIVATE_DURATION_MS);
+    });
   });
 });
 
@@ -136,20 +140,14 @@ function hideInfoPopup() {
 
 if (welcomeIconBtn) {
   welcomeIconBtn.addEventListener('click', (e) => {
-    welcomeIconBtn.classList.remove('spinning');
-    void welcomeIconBtn.offsetWidth;
-    welcomeIconBtn.classList.add('spinning');
+    restartSpin(welcomeIconBtn);
     if (infoPopup && infoPopup.hidden) showInfoPopup();
     else hideInfoPopup();
     // Don't let the document-level "click anywhere dismisses popup" handler
     // immediately close what this click just opened.
     e.stopPropagation();
   });
-  welcomeIconBtn.addEventListener('animationend', (e) => {
-    if (e.animationName === 'menu-spin') {
-      welcomeIconBtn.classList.remove('spinning');
-    }
-  });
+  clearSpinOnEnd(welcomeIconBtn);
 }
 
 // Any click anywhere closes the popup (including clicks on the link, which
@@ -192,6 +190,9 @@ if (welcomeDialog) {
     if (ch === null) return;
 
     e.preventDefault();
+    // Close immediately (no glitch-out): the character is inserted into the
+    // editor synchronously just below, so we don't want a ~240ms modal
+    // lingering over the text being edited.
     welcomeDialog.close();
 
     editor.focus();
