@@ -2,6 +2,7 @@ import platform from './platform/index.js';
 import { maybeShowWelcome, showWelcome, closeWelcome, prefersReducedMotion } from './welcome.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
+import { initScrollArrows } from './scroll-arrows.js';
 
 // Restart the one-shot spin animation cleanly: drop the class, force a
 // reflow so the browser doesn't coalesce the toggle into a no-op, then
@@ -78,8 +79,12 @@ function doNew() {
   editor.value = '';
   savedSnapshot = '';
   setDirty(false);
+  // Clear find state from the previous document so stale match highlights and
+  // the find bar don't linger on the now-empty editor.
+  find.reset();
   if (typeof platform.newFile === 'function') platform.newFile();
   refreshLineNumbers();
+  arrows.update();
   editor.focus();
 }
 
@@ -90,6 +95,10 @@ function doNew() {
 // welcome-dialog Find row can open the bar without going through keydown.
 const find = installFind({ editor });
 function doFind() { find.open(); }
+
+// Floating scroll-to-start / scroll-to-end arrows. update() is called after
+// programmatic content swaps (New / Open) since those fire no input/scroll.
+const arrows = initScrollArrows({ editor });
 
 const SHORTCUT_ACTIONS = {
   'new': doNew,
@@ -250,9 +259,16 @@ platform.onLoad(({ content, isBinary }) => {
   editor.value = content ?? '';
   savedSnapshot = editor.value;
   setDirty(false);
-  editor.focus();
-  // Setting .value doesn't fire 'input' — nudge the gutter manually.
+  // Fresh document: clear any leftover find state from the previous file.
+  find.reset();
+  // Setting .value doesn't fire 'input' — nudge the gutter + arrows manually.
   refreshLineNumbers();
+  // Start at the top of the freshly-opened file. focus() first so its
+  // caret-scroll doesn't fight us, then pin the caret + scroll to the start.
+  editor.focus();
+  editor.setSelectionRange(0, 0);
+  editor.scrollTop = 0;
+  arrows.update();
 });
 
 platform.onMenuNew?.(doNew);

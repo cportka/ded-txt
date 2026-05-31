@@ -90,7 +90,7 @@ export function installFind({ editor }) {
   const highlights = document.getElementById('editor-highlights');
   const wrap = document.getElementById('editor-wrap');
 
-  if (!bar || !findInput) return { open() {}, close() {} };
+  if (!bar || !findInput) return { open() {}, close() {}, reset() {} };
 
   // Honour the OS "reduce motion" setting — when set, the find bar's glitch
   // in/out is skipped and it shows/hides instantly (mirrors the
@@ -460,5 +460,30 @@ export function installFind({ editor }) {
     }
   });
 
-  return { open, close };
+  // Instant teardown for when the document is replaced (New / Open): hide the
+  // bar with NO glitch-out, drop the overlay, and wipe the query + match state
+  // so stale highlights/counter from the previous file never linger. close()
+  // animates and keeps the query; reset() is the hard reset.
+  function reset() {
+    if (onGlitchOutEnd) {
+      bar.removeEventListener('animationend', onGlitchOutEnd);
+      onGlitchOutEnd = null;
+    }
+    bar.classList.remove('find-glitch-in', 'find-glitch-out');
+    bar.hidden = true;
+    if (replaceRow) replaceRow.hidden = true;
+    if (replaceToggle) replaceToggle.setAttribute('aria-pressed', 'false');
+    findInput.value = '';
+    if (replaceInput) replaceInput.value = '';
+    state.matches = [];
+    state.idx = -1;
+    if (counter) {
+      counter.textContent = '0 / 0';
+      counter.classList.add('find-counter-empty');
+    }
+    paintHighlights();   // bar.hidden → clears the overlay
+    syncBarMetrics();    // bar.hidden → releases the reserved padding
+  }
+
+  return { open, close, reset };
 }
