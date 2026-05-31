@@ -840,7 +840,8 @@ dialog#welcome-dialog::backdrop {
 }
 
 /* In-app "Save as" prompt for non-FSA browsers. Reuses the welcome
-   dialog's card styling for visual consistency. */
+   dialog's card styling, dressed in the same glitch vocabulary (monospace
+   + chromatic-aberration accents) with a glitch in/out animation. */
 dialog#save-as-dialog {
   border: none;
   padding: 0;
@@ -858,9 +859,16 @@ dialog#save-as-dialog::backdrop {
 }
 .save-as-title {
   margin: 0 0 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.5px;
   text-align: center;
+  color: var(--gx-bone);
+  /* Chromatic-aberration echo, matching the find counter and version stamp. */
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
 }
 #save-as-name {
   display: block;
@@ -872,12 +880,15 @@ dialog#save-as-dialog::backdrop {
   border-radius: 6px;
   background: var(--bg);
   color: var(--fg);
-  font: inherit;
+  /* Monospace to match the find inputs and the editor — the filename reads
+     as terminal-style text, in keeping with the glitch surface. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 14px;
 }
 #save-as-name:focus {
-  outline: 2px solid var(--muted);
-  outline-offset: -2px;
+  outline: 1px solid var(--gx-cyan);
+  outline-offset: -1px;
+  border-color: var(--gx-cyan);
 }
 .save-as-actions {
   display: flex;
@@ -895,6 +906,42 @@ dialog#save-as-dialog::backdrop {
   color: var(--fg);
   border-color: var(--muted);
 }
+/* Hover picks up the icon's chromatic split, same as #find-close — keeps the
+   Save/Cancel buttons in the glitch family without changing their fill. */
+.save-as-actions .welcome-btn:hover {
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+
+/* Glitch the card in on open and out on dismiss. The card already carries
+   .welcome-card, so dismissal reuses welcome-card-glitch-out (toggled by
+   promptForFilename); only the entrance needs its own keyframe. Mirrors
+   find-bar-glitch-in: opacity + a small translate jitter + RGB-split ghosts
+   collapsing to none, steps() for a blocky digital feel. */
+.save-as-card.save-glitch-in {
+  animation: save-as-glitch-in 220ms steps(1, end);
+}
+@keyframes save-as-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(-3px, -1px, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  65% {
+    transform: translate3d(2px, 0, 0);
+    filter: drop-shadow(1px 0 0 var(--gx-magenta)) drop-shadow(-1px 0 0 var(--gx-cyan));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-as-card.save-glitch-in { animation: none; }
+}
 
 /* Touch-device font-size bump. iOS Safari auto-zooms any input or
    textarea with font-size < 16px when it receives focus — tapping
@@ -910,7 +957,8 @@ dialog#save-as-dialog::backdrop {
   #text-editor,
   #editor-highlights,
   #editor-mirror,
-  #find-bar input {
+  #find-bar input,
+  #save-as-name {
     font-size: 16px;
   }
   /* Bigger tap targets on phones — the desktop 22x20-ish buttons are

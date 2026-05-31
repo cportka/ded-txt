@@ -18,9 +18,15 @@ let listenersAttached = false;
 // animation or fire their action twice.
 let closingWithGlitch = false;
 
+// Set to a canceller while a glitch-out is animating. An immediate close
+// (Open/Save shortcuts) calls it to abort the pending glitch WITHOUT running
+// its afterClose, so tapping a second shortcut mid-animation can't double-fire.
+let glitchCleanup = null;
+
 // Honour the OS "reduce motion" setting. Shared by the open "boot" glitch
-// and the close glitch-out so both degrade to an instant show/hide.
-function prefersReducedMotion() {
+// and the close glitch-out so both degrade to an instant show/hide; also
+// reused by the renderer's "Save as" prompt animation.
+export function prefersReducedMotion() {
   return typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -149,35 +155,56 @@ function renderHeadsUp(dialog, items) {
 // once); reduced motion and an already-closed dialog close immediately,
 // and re-entrant calls while a close is animating are ignored so the
 // action fires exactly once.
-export function closeWelcome(afterClose) {
+export function closeWelcome(afterClose, opts) {
   const dialog = document.getElementById('welcome-dialog');
-  if (!dialog || !dialog.open) {
-    if (typeof afterClose === 'function') afterClose();
-    return;
-  }
-  if (closingWithGlitch) return;
-
-  const card = dialog.querySelector('.welcome-card');
   const run = () => { if (typeof afterClose === 'function') afterClose(); };
-  if (!card || prefersReducedMotion()) {
-    dialog.close();
+  if (!dialog || !dialog.open) {
     run();
     return;
   }
 
+  const card = dialog.querySelector('.welcome-card');
+  // `immediate` skips the glitch-out and closes synchronously. The Open/Save
+  // shortcuts need this: their native file picker / download only fires inside
+  // the originating tap, and the ~300ms glitch defer drops the user-activation
+  // gesture on iOS Safari (which silently broke Open on mobile). Reduced motion
+  // and a card-less dialog also take this synchronous path.
+  if ((opts && opts.immediate) || !card || prefersReducedMotion()) {
+    if (glitchCleanup) glitchCleanup();
+    closingWithGlitch = false;
+    dialog.close();
+    run();
+    return;
+  }
+  if (closingWithGlitch) return;
+
   closingWithGlitch = true;
   let done = false;
+  let timer = 0;
+  const teardown = () => {
+    card.removeEventListener('animationend', onEnd);
+    card.classList.remove('glitching-out');
+    clearTimeout(timer);
+    glitchCleanup = null;
+  };
   const finalize = () => {
     if (done) return;
     done = true;
     closingWithGlitch = false;
-    card.removeEventListener('animationend', onEnd);
-    card.classList.remove('glitching-out');
+    teardown();
     dialog.close();
     run();
   };
   const onEnd = (e) => {
     if (e.animationName === 'welcome-card-glitch-out') finalize();
+  };
+  // Abort hook for an immediate close that interrupts this glitch: tears down
+  // the animation but does NOT close/run, so the interrupting action owns it.
+  glitchCleanup = () => {
+    if (done) return;
+    done = true;
+    closingWithGlitch = false;
+    teardown();
   };
   card.classList.remove('glitching-out');
   void card.offsetWidth;
@@ -185,7 +212,7 @@ export function closeWelcome(afterClose) {
   card.addEventListener('animationend', onEnd);
   // Safety net if animationend never lands (interrupted / unsupported):
   // force the close just past the animation's nominal 240ms duration.
-  setTimeout(finalize, 360);
+  timer = setTimeout(finalize, 360);
 }
 
 function openDialog() {
