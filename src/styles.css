@@ -456,6 +456,92 @@ body {
   100% { transform: rotate(360deg); }
 }
 
+/* Floating scroll-to-start / scroll-to-end arrows (scroll-arrows.js toggles
+   them by scroll position). Subtle chromatic glyphs in the icon palette —
+   same treatment as #find-close — pinned top-right just under the menu button
+   and bottom-right. */
+.scroll-arrow {
+  position: fixed;
+  right: max(8px, env(safe-area-inset-right));
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 9;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.55;
+  color: var(--gx-bone);
+  text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+/* Author display:flex above would otherwise beat the UA [hidden] rule. */
+.scroll-arrow[hidden] { display: none; }
+#scroll-top { top: calc(max(8px, env(safe-area-inset-top)) + 40px); }
+#scroll-bottom { bottom: max(8px, env(safe-area-inset-bottom)); }
+.scroll-arrow:hover,
+.scroll-arrow:focus-visible {
+  opacity: 1;
+  outline: none;
+  border-color: var(--muted);
+  text-shadow: 2px 0 0 var(--gx-magenta), -2px 0 0 var(--gx-cyan);
+}
+/* Appear / disappear / click — mirror find-bar-glitch-in/out, steps() for a
+   blocky digital feel. glitch-in ends at opacity 1, then the opacity
+   transition above settles it back to the subtle 0.55 at rest. */
+.scroll-arrow.arrow-glitch-in  { animation: arrow-glitch-in 150ms steps(1, end); }
+.scroll-arrow.arrow-glitch-out { animation: arrow-glitch-out 135ms steps(1, end); }
+.scroll-arrow.arrow-activating { animation: arrow-pulse 135ms steps(1, end); }
+@keyframes arrow-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -3px, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  45% {
+    opacity: 1;
+    transform: translate3d(2px, 1px, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes arrow-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  45% {
+    opacity: 1;
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -3px, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+}
+@keyframes arrow-pulse {
+  0%   { transform: none; filter: none; }
+  35%  { transform: translate3d(-2px, 0, 0); filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan)); }
+  70%  { transform: translate3d(2px, 0, 0);  filter: drop-shadow(3px 0 0 var(--gx-cyan)) drop-shadow(-3px 0 0 var(--gx-magenta)); }
+  100% { transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-arrow.arrow-glitch-in,
+  .scroll-arrow.arrow-glitch-out,
+  .scroll-arrow.arrow-activating { animation: none; }
+}
+/* Bigger tap targets on touch, matching the find controls. */
+@media (any-hover: none) and (pointer: coarse) {
+  .scroll-arrow { width: 40px; height: 40px; font-size: 20px; }
+  #scroll-top { top: calc(max(8px, env(safe-area-inset-top)) + 44px); }
+}
+
 /* First-visit / version-bump welcome dialog. Themed via the same CSS
    variables as the editor so it follows light/dark automatically.
    Caps at viewport height so phones never lose the bottom row below
