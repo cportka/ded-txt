@@ -211,8 +211,8 @@ export function closeWelcome(afterClose, opts) {
   card.classList.add('glitching-out');
   card.addEventListener('animationend', onEnd);
   // Safety net if animationend never lands (interrupted / unsupported):
-  // force the close just past the animation's nominal 240ms duration.
-  timer = setTimeout(finalize, 360);
+  // force the close just past the animation's nominal 180ms duration.
+  timer = setTimeout(finalize, 270);
 }
 
 function openDialog() {

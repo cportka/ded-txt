@@ -241,8 +241,8 @@ body {
    drop-shadow (the bar is opaque, so text-shadow alone wouldn't ghost the
    border/background). steps() keeps it blocky. The bar stays display:flex
    throughout; find.js only sets [hidden] after the out-animation ends. */
-#find-bar.find-glitch-in  { animation: find-bar-glitch-in 200ms steps(1, end); }
-#find-bar.find-glitch-out { animation: find-bar-glitch-out 180ms steps(1, end); }
+#find-bar.find-glitch-in  { animation: find-bar-glitch-in 150ms steps(1, end); }
+#find-bar.find-glitch-out { animation: find-bar-glitch-out 135ms steps(1, end); }
 @keyframes find-bar-glitch-in {
   0% {
     opacity: 0;
@@ -526,7 +526,7 @@ dialog#welcome-dialog::backdrop {
    a smooth fade. Same RGB-split vocabulary as the icon's static
    chromatic aberration — just briefly amplified, then collapsed back. */
 .welcome-icon-btn.booting .welcome-icon {
-  animation: welcome-icon-boot 520ms steps(1, end);
+  animation: welcome-icon-boot 390ms steps(1, end);
 }
 @keyframes welcome-icon-boot {
   0% {
@@ -573,7 +573,7 @@ dialog#welcome-dialog::backdrop {
    RGB-split + jitter family as welcome-icon-boot; collapses to opacity 0
    so the native close (which drops the top layer) is seamless. */
 .welcome-card.glitching-out {
-  animation: welcome-card-glitch-out 240ms steps(1, end);
+  animation: welcome-card-glitch-out 180ms steps(1, end);
 }
 @keyframes welcome-card-glitch-out {
   0%   { opacity: 1; transform: none; filter: none; }
@@ -670,7 +670,7 @@ dialog#welcome-dialog::backdrop {
    removed once the action runs. Visible on both touch and mouse so
    users always get confirmation their selection registered. */
 .welcome-shortcut.activating {
-  animation: welcome-flash 180ms ease-out;
+  animation: welcome-flash 135ms ease-out;
 }
 @keyframes welcome-flash {
   /* Mid-flash picks up the icon's chromatic split for ~half a frame so
@@ -920,7 +920,7 @@ dialog#save-as-dialog::backdrop {
    find-bar-glitch-in: opacity + a small translate jitter + RGB-split ghosts
    collapsing to none, steps() for a blocky digital feel. */
 .save-as-card.save-glitch-in {
-  animation: save-as-glitch-in 220ms steps(1, end);
+  animation: save-as-glitch-in 165ms steps(1, end);
 }
 @keyframes save-as-glitch-in {
   0% {

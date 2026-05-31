@@ -319,7 +319,7 @@ function promptForFilename(suggested) {
       card.classList.add('glitching-out');
       card.addEventListener('animationend', onGlitchEnd);
       // Safety net if animationend never lands (interrupted / unsupported).
-      setTimeout(closeNow, 360);
+      setTimeout(closeNow, 270);
     };
 
     // Save resolves in-tap (no glitch-out) so the download stays in-gesture.

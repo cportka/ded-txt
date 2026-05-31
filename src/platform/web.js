@@ -109,7 +109,12 @@ async function pickAndRead() {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.style.display = 'none';
+    // Visually hidden but RENDERED: iOS Safari won't open the picker for a
+    // display:none file input. Off-screen + 1px + opacity 0 keeps it invisible
+    // and non-interactive while staying "shown" enough for .click() to work.
+    input.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+    input.setAttribute('aria-hidden', 'true');
+    input.tabIndex = -1;
     document.body.appendChild(input);
     let settled = false;
     const cleanup = () => { input.remove(); };
@@ -130,7 +135,15 @@ async function pickAndRead() {
     // No reliable cancel event in older browsers; resolve as canceled
     // if the picker closes without a selection (handled by oncancel where supported).
     input.oncancel = () => { if (!settled) { cleanup(); resolve({ ok: false, canceled: true }); } };
-    input.click();
+    // Defer the click out of the current task. The welcome menu's Open button
+    // closes the modal synchronously, then calls this in the same dispatch; on
+    // iOS Safari a file picker opened synchronously mid-dispatch — while the
+    // just-closed modal's inert subtree is still settling — is silently
+    // dropped, so Open "does nothing". A 0ms timeout fires it from a clean task
+    // after the dispatch and the close have committed, still well within the
+    // transient-activation window (the earlier setTimeout-based open proved
+    // activation survives the timer), so the native file sheet appears.
+    setTimeout(() => input.click(), 0);
   });
 }
 
