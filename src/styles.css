@@ -1037,8 +1037,10 @@ dialog#save-as-dialog::backdrop {
    didn't ask for). The two find-overlay mirrors must track the
    textarea's font-size or character positions drift, so they bump
    together. #line-gutter-inner is decorative (aria-hidden) and stays
-   at 14px — line-numbers.js reads getComputedStyle(editor).lineHeight
-   at measure time, so the gutter's row-count math auto-adapts. */
+   at 14px so multi-digit numbers keep fitting the 40px rail; to stay
+   aligned despite the smaller font, line-numbers.js pins its line-height
+   (in px) to the editor's measured row height every paint, so the
+   numbers sit on their rows instead of creeping upward one per line. */
 @media (any-hover: none) and (pointer: coarse) {
   #text-editor,
   #editor-highlights,
