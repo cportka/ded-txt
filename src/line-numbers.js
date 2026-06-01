@@ -45,10 +45,10 @@ function render() {
   }
   mirror.replaceChildren(frag);
 
-  // Re-read line-height in case the user zoomed.
-  if (!lineHeightPx) {
-    lineHeightPx = parseFloat(getComputedStyle(editor).lineHeight) || 20;
-  }
+  // The editor's *rendered* line-height in px. Read fresh every paint (not
+  // cached) so a zoom — or the touch-viewport media query that lifts the
+  // textarea to 16px while the gutter font stays 14px — is always picked up.
+  lineHeightPx = parseFloat(getComputedStyle(editor).lineHeight) || lineHeightPx || 20;
 
   const tokens = [];
   for (let i = 0; i < lines.length; i++) {
@@ -57,6 +57,14 @@ function render() {
     tokens.push(String(i + 1));
     for (let j = 1; j < rows; j++) tokens.push('');
   }
+
+  // Pin the gutter's row pitch to the editor's so the numbers can't drift
+  // away from their lines. The gutter glyphs stay 14px (multi-digit numbers
+  // keep fitting the 40px rail), but each number's row must be exactly as
+  // tall as an editor row — otherwise on touch viewports (editor 16px,
+  // gutter 14px) the two columns slide apart one line at a time. Written
+  // alongside the text so the style change rides the same layout pass.
+  gutterInner.style.lineHeight = lineHeightPx + 'px';
   gutterInner.textContent = tokens.join('\n');
 }
 
