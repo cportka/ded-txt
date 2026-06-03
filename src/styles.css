@@ -171,15 +171,17 @@ body {
 
 /* Visible match-highlight overlay for find. Sits behind the textarea
    (z-index 0; textarea is z-index 1) — the textarea's transparent
-   background lets the magenta bands show through. Every layout
-   property MUST match #text-editor exactly so character positions
-   line up; the only divergences are pointer-events:none (inert),
-   overflow:hidden (no scrollbar — we shift the content via
-   transform), and color:transparent (the textarea draws the text,
-   we just paint the marks). Width is JS-synced to editor.clientWidth
-   on every refresh because the textarea's scrollbar (when present)
-   reduces its inner width — same reason line-numbers.js syncs its
-   own mirror's width. */
+   background lets the magenta bands show through.
+
+   Two elements, exactly like #line-gutter / #line-gutter-inner: the OUTER
+   #editor-highlights is a fixed, viewport-sized window that clips
+   (overflow:hidden); the INNER #editor-highlights-inner holds the full
+   document height of marks and is the thing that scroll-syncs via
+   translateY. This split is load-bearing: a single element that both clips
+   AND carries the text would only ever reveal the first screenful of
+   matches — CSS clips overflow in the element's own coordinate space
+   *before* its transform is applied, so transforming it just slides that
+   first-screenful band around and never exposes a match below the fold. */
 #editor-highlights {
   position: absolute;
   /* find.js's paintHighlights writes top/left/width inline every
@@ -194,6 +196,15 @@ body {
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  box-sizing: border-box;
+}
+/* Inner content layer. Every text-layout property MUST match #text-editor
+   exactly so the marks wrap at the same column and sit on the same rows;
+   the only divergences are color:transparent (the textarea draws the text,
+   we only paint the mark backgrounds) and will-change:transform (it is the
+   scroll-synced layer). Its height is the natural full-document height so
+   translateY can bring any match into the clip window. */
+#editor-highlights-inner {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 14px;
   line-height: 1.45;
@@ -1052,7 +1063,7 @@ dialog#save-as-dialog::backdrop {
    numbers sit on their rows instead of creeping upward one per line. */
 @media (any-hover: none) and (pointer: coarse) {
   #text-editor,
-  #editor-highlights,
+  #editor-highlights-inner,
   #editor-mirror,
   #find-bar input,
   #save-as-name {
