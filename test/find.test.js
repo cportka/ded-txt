@@ -1,6 +1,8 @@
 'use strict';
-const { test, describe } = require('node:test');
+const { test, describe, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Pure-logic tests for src/find.js. The DOM-side `installFind` is exercised
 // by the smoke checks in the renderer; here we pin down the search-and-
@@ -229,5 +231,99 @@ describe('buildHighlightHtml()', () => {
   test('no matches → plain escaped text', async () => {
     const { buildHighlightHtml } = await freshFind();
     assert.equal(buildHighlightHtml('a<b', [], -1), 'a&lt;b');
+  });
+});
+
+// --- Overlay structure: marks below the first screenful must still render ---
+//
+// The reported bug was that only matches in the initial viewport highlighted.
+// Root cause: the overlay was a single element that both clipped
+// (overflow:hidden) and carried the transformed text, so CSS clipped every
+// off-screen match before the transform could reveal it. The fix splits it
+// into a fixed clip window (#editor-highlights) + a transformed full-height
+// inner (#editor-highlights-inner), mirroring #line-gutter / -inner.
+
+describe('find overlay structure', () => {
+  test('index.html nests #editor-highlights-inner inside #editor-highlights', () => {
+    const html = fs.readFileSync(path.join(__dirname, '../src/index.html'), 'utf8');
+    assert.match(html, /<div id="editor-highlights"[^>]*>\s*<div id="editor-highlights-inner">/);
+  });
+
+  test('outer #editor-highlights clips; inner carries the scroll-sync transform', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../src/styles.css'), 'utf8');
+    const outer = css.match(/#editor-highlights\s*\{[^}]*\}/);
+    assert.ok(outer, '#editor-highlights rule exists');
+    assert.match(outer[0], /overflow:\s*hidden/, 'outer is the clip window');
+    const inner = css.match(/#editor-highlights-inner\s*\{[^}]*\}/);
+    assert.ok(inner, '#editor-highlights-inner rule exists');
+    assert.match(inner[0], /will-change:\s*transform/, 'inner is the scroll-synced layer');
+  });
+});
+
+// --- DOM-mock wiring test: marks + transform target the inner, not the outer ---
+
+function makeEl(over = {}) {
+  const e = {
+    hidden: false,
+    value: '',
+    style: { setProperty() {} },
+    _attrs: {},
+    classList: { add() {}, remove() {}, contains() { return false; } },
+    addEventListener() {},
+    removeEventListener() {},
+    setAttribute(k, v) { this._attrs[k] = v; },
+    getAttribute(k) { return Object.prototype.hasOwnProperty.call(this._attrs, k) ? this._attrs[k] : null; },
+    focus() {},
+    select() {},
+    setSelectionRange() {},
+    replaceChildren() { this.innerHTML = ''; },
+    querySelector() { return null; },
+    getBoundingClientRect() { return { top: 0, left: 0, right: 600, bottom: 500, width: 600, height: 500 }; },
+    offsetTop: 0, offsetLeft: 40, offsetWidth: 1, clientWidth: 600, scrollTop: 0,
+  };
+  return Object.assign(e, over);
+}
+
+describe('installFind() overlay wiring', () => {
+  afterEach(() => {
+    delete globalThis.document;
+    delete globalThis.window;
+  });
+
+  test('marks + scroll transform land on the inner layer; geometry on the outer', async () => {
+    const bar = makeEl();
+    const findInput = makeEl({ value: '' });
+    const counter = makeEl();
+    const wrap = makeEl();
+    const highlightsInner = makeEl();
+    const highlights = makeEl({
+      querySelector(sel) {
+        return sel.indexOf('find-match-active') !== -1
+          ? { getBoundingClientRect: () => ({ top: 100, left: 0, right: 50, bottom: 114, width: 50, height: 14 }) }
+          : null;
+      },
+    });
+    const editor = makeEl({ value: 'x chris y chris z' });
+
+    const byId = {
+      'find-bar': bar,
+      'find-input': findInput,
+      'find-counter': counter,
+      'editor-wrap': wrap,
+      'editor-highlights': highlights,
+      'editor-highlights-inner': highlightsInner,
+    };
+    globalThis.document = { getElementById: (id) => byId[id] || null, addEventListener() {} };
+    globalThis.window = { addEventListener() {}, matchMedia: () => ({ matches: true }) };
+
+    const { installFind } = await freshFind();
+    installFind({ editor }).open('chris');
+
+    // Inner gets the marks and the scroll-sync transform...
+    assert.match(highlightsInner.innerHTML, /<mark/, 'marks render into the inner layer');
+    assert.match(highlightsInner.style.transform, /translateY/, 'inner carries the scroll transform');
+    // ...the outer stays a bare clip window: geometry only, never the content.
+    assert.equal(highlights.innerHTML, undefined, 'outer clip window never holds the marks');
+    assert.ok(highlights.style.width, 'outer clip window receives the box geometry');
   });
 });

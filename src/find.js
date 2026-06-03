@@ -116,6 +116,7 @@ export function installFind({ editor }) {
   const counter = document.getElementById('find-counter');
   const closeBtn = document.getElementById('find-close');
   const highlights = document.getElementById('editor-highlights');
+  const highlightsInner = document.getElementById('editor-highlights-inner');
   const wrap = document.getElementById('editor-wrap');
 
   if (!bar || !findInput) return { open() {}, close() {}, reset() {} };
@@ -169,9 +170,9 @@ export function installFind({ editor }) {
   // changes editor.clientWidth — and the marks must wrap at the same
   // column as the textarea's text.
   function paintHighlights() {
-    if (!highlights) return;
+    if (!highlights || !highlightsInner) return;
     if (bar.hidden || state.matches.length === 0) {
-      highlights.replaceChildren();
+      highlightsInner.replaceChildren();
       return;
     }
     // Lock the overlay's box to the textarea's *actual* offset within
@@ -180,11 +181,14 @@ export function installFind({ editor }) {
     // editor moves down by the find banner's padding-top. Reading the
     // values directly from `editor` means the overlay tracks whichever
     // axis the active media query padded — no per-axis CSS-var coupling.
+    // Geometry goes on the OUTER clip window; the marks + the scroll-sync
+    // transform go on the INNER full-height layer (see #editor-highlights
+    // CSS for why a single element would clip every off-screen match).
     highlights.style.top = editor.offsetTop + 'px';
     highlights.style.left = editor.offsetLeft + 'px';
     highlights.style.width = editor.clientWidth + 'px';
-    highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
-    highlights.innerHTML = buildHighlightHtml(editor.value, state.matches, state.idx);
+    highlightsInner.style.transform = `translateY(${-editor.scrollTop}px)`;
+    highlightsInner.innerHTML = buildHighlightHtml(editor.value, state.matches, state.idx);
   }
 
   const state = {
@@ -257,7 +261,7 @@ export function installFind({ editor }) {
     // Inline overlay re-sync — the textarea's scroll event would re-sync
     // too, but doing it here means the paint frame after this fn returns
     // already shows the marks in the right place.
-    highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
+    highlightsInner.style.transform = `translateY(${-editor.scrollTop}px)`;
   }
 
   function step(delta) {
@@ -387,8 +391,8 @@ export function installFind({ editor }) {
   // scrollTop pattern that line-numbers.js uses for the gutter. Passive
   // so we never block textarea scrolling.
   editor.addEventListener('scroll', () => {
-    if (highlights && !bar.hidden) {
-      highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
+    if (highlightsInner && !bar.hidden) {
+      highlightsInner.style.transform = `translateY(${-editor.scrollTop}px)`;
     }
   }, { passive: true });
 
