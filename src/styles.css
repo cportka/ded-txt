@@ -136,7 +136,14 @@ body {
 }
 
 /* Off-screen layout mirror — same font/padding/width/wrap as the textarea
-   so per-line offsetHeight reports the correct wrapped row count. */
+   so per-line offsetHeight reports the correct wrapped row count.
+   height:0 + overflow:hidden are load-bearing: the mirror holds one div per
+   logical line, so at its natural height it's as tall as the whole document.
+   As a position:absolute child of #editor-wrap (overflow:visible) that height
+   leaks into the body's scroll extent, letting the page scroll far past the
+   last line into empty space. Clipping it to a zero-height box drops it from
+   the scrollable area while each child's offsetHeight stays fully measurable
+   (child metrics don't depend on the parent's own height or clipping). */
 #editor-mirror {
   position: absolute;
   visibility: hidden;
@@ -145,6 +152,8 @@ body {
      are read by line-numbers.js, not its absolute position. */
   top: 0;
   left: 0;
+  height: 0;
+  overflow: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 14px;
   line-height: 1.45;

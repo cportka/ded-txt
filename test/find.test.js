@@ -168,3 +168,66 @@ describe('applyReplaceAll()', () => {
     assert.equal(res.count, 0);
   });
 });
+
+describe('escapeHtml()', () => {
+  test('escapes only & < > (text-content position is otherwise safe)', async () => {
+    const { escapeHtml } = await freshFind();
+    assert.equal(escapeHtml('a & b < c > d'), 'a &amp; b &lt; c &gt; d');
+    assert.equal(escapeHtml('"quotes" stay \'as-is\''), '"quotes" stay \'as-is\'');
+  });
+});
+
+describe('buildHighlightHtml()', () => {
+  test('reproduces the full text with a mark around each match', async () => {
+    const { buildHighlightHtml } = await freshFind();
+    const html = buildHighlightHtml('foo bar foo', [[0, 3], [8, 11]], 0);
+    assert.equal(
+      html,
+      '<mark class="find-match find-match-active">foo</mark> bar <mark class="find-match">foo</mark>'
+    );
+  });
+
+  test('keeps the unmatched tail so overlay wrapping matches the textarea', async () => {
+    const { buildHighlightHtml } = await freshFind();
+    // Emitting only the matched spans (dropping " world") would let the overlay
+    // wrap differently from the textarea — the exact cause of drifting marks.
+    const html = buildHighlightHtml('hello world', [[0, 5]], 0);
+    assert.ok(html.endsWith(' world'), 'trailing context preserved');
+  });
+
+  test('only the active index carries find-match-active', async () => {
+    const { buildHighlightHtml } = await freshFind();
+    const html = buildHighlightHtml('a a a', [[0, 1], [2, 3], [4, 5]], 1);
+    assert.equal((html.match(/find-match-active/g) || []).length, 1);
+    const marks = html.match(/<mark class="[^"]*">/g);
+    assert.ok(!marks[0].includes('find-match-active'));
+    assert.ok(marks[1].includes('find-match-active'));
+    assert.ok(!marks[2].includes('find-match-active'));
+  });
+
+  test('no active class when nothing is active (idx -1)', async () => {
+    const { buildHighlightHtml } = await freshFind();
+    assert.ok(!buildHighlightHtml('xx', [[0, 1]], -1).includes('find-match-active'));
+  });
+
+  test('escapes &<> in both matched and surrounding text', async () => {
+    const { buildHighlightHtml } = await freshFind();
+    // match [1,4] covers "<b>"; the surrounds are "a" and "&c"
+    const html = buildHighlightHtml('a<b>&c', [[1, 4]], -1);
+    assert.equal(html, 'a<mark class="find-match">&lt;b&gt;</mark>&amp;c');
+  });
+
+  test('adjacent matches leave no gap between marks', async () => {
+    const { buildHighlightHtml } = await freshFind();
+    const html = buildHighlightHtml('abcd', [[0, 2], [2, 4]], 0);
+    assert.equal(
+      html,
+      '<mark class="find-match find-match-active">ab</mark><mark class="find-match">cd</mark>'
+    );
+  });
+
+  test('no matches → plain escaped text', async () => {
+    const { buildHighlightHtml } = await freshFind();
+    assert.equal(buildHighlightHtml('a<b', [], -1), 'a&lt;b');
+  });
+});

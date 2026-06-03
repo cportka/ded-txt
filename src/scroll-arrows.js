@@ -9,6 +9,18 @@
 
 import { prefersReducedMotion } from './welcome.js';
 
+// Decide which arrows should be visible for a given scroll position. Both hide
+// when the whole document fits (nothing to scroll); otherwise the up-arrow
+// shows unless we're at the top and the down-arrow unless we're at the bottom.
+// The 1px tolerance absorbs sub-pixel rounding in the scroll metrics. Pure +
+// exported for unit testing.
+export function arrowVisibility({ scrollTop, clientHeight, scrollHeight }) {
+  const canScroll = scrollHeight > clientHeight + 1;
+  const atTop = scrollTop <= 1;
+  const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
+  return { top: canScroll && !atTop, bottom: canScroll && !atBottom };
+}
+
 export function initScrollArrows({ editor }) {
   const topBtn = document.getElementById('scroll-top');
   const bottomBtn = document.getElementById('scroll-bottom');
@@ -56,12 +68,9 @@ export function initScrollArrows({ editor }) {
   }
 
   function update() {
-    // 1px tolerance absorbs sub-pixel rounding in the scroll metrics.
-    const canScroll = editor.scrollHeight > editor.clientHeight + 1;
-    const atTop = editor.scrollTop <= 1;
-    const atBottom = editor.scrollTop + editor.clientHeight >= editor.scrollHeight - 1;
-    if (canScroll && !atTop) showArrow(topBtn); else hideArrow(topBtn);
-    if (canScroll && !atBottom) showArrow(bottomBtn); else hideArrow(bottomBtn);
+    const { top, bottom } = arrowVisibility(editor);
+    if (top) showArrow(topBtn); else hideArrow(topBtn);
+    if (bottom) showArrow(bottomBtn); else hideArrow(bottomBtn);
   }
 
   function go(top, btn) {

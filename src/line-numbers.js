@@ -28,6 +28,22 @@ function syncMirrorStyle() {
   mirror.style.width = editor.clientWidth + 'px';
 }
 
+// Build the gutter's per-visual-row tokens from each logical line's measured
+// pixel height. A line that wraps to N visual rows contributes its 1-based
+// number followed by N-1 empty tokens, so the gutter's total row count always
+// equals the textarea's wrapped row count and every number stays locked to the
+// row its line starts on. Exported for unit testing.
+export function buildGutterTokens(lineHeights, lineHeightPx) {
+  const lh = lineHeightPx > 0 ? lineHeightPx : 20;
+  const tokens = [];
+  for (let i = 0; i < lineHeights.length; i++) {
+    const rows = Math.max(1, Math.round(lineHeights[i] / lh));
+    tokens.push(String(i + 1));
+    for (let j = 1; j < rows; j++) tokens.push('');
+  }
+  return tokens;
+}
+
 function render() {
   if (!editor || !gutter || !mirror || !gutterInner) return;
 
@@ -50,13 +66,8 @@ function render() {
   // textarea to 16px while the gutter font stays 14px — is always picked up.
   lineHeightPx = parseFloat(getComputedStyle(editor).lineHeight) || lineHeightPx || 20;
 
-  const tokens = [];
-  for (let i = 0; i < lines.length; i++) {
-    const h = mirror.children[i].offsetHeight;
-    const rows = Math.max(1, Math.round(h / lineHeightPx));
-    tokens.push(String(i + 1));
-    for (let j = 1; j < rows; j++) tokens.push('');
-  }
+  const heights = [];
+  for (let i = 0; i < lines.length; i++) heights.push(mirror.children[i].offsetHeight);
 
   // Pin the gutter's row pitch to the editor's so the numbers can't drift
   // away from their lines. The gutter glyphs stay 14px (multi-digit numbers
@@ -65,7 +76,7 @@ function render() {
   // gutter 14px) the two columns slide apart one line at a time. Written
   // alongside the text so the style change rides the same layout pass.
   gutterInner.style.lineHeight = lineHeightPx + 'px';
-  gutterInner.textContent = tokens.join('\n');
+  gutterInner.textContent = buildGutterTokens(heights, lineHeightPx).join('\n');
 }
 
 function scheduleRender() {
@@ -93,7 +104,17 @@ export function initLineNumbers() {
 
   editor.addEventListener('input', scheduleRender);
   editor.addEventListener('scroll', syncScroll, { passive: true });
-  window.addEventListener('resize', scheduleRender);
+  // Re-measure on any change to the editor's box, not just window resizes.
+  // The find bar's padding narrows/widens the editor (desktop), and the soft
+  // keyboard or a newly-appearing scrollbar changes its width too — none of
+  // which fire a window 'resize'. Without observing the element directly the
+  // gutter keeps stale wrap counts and the numbers drift off their lines.
+  // Mirrors scroll-arrows.js.
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(scheduleRender).observe(editor);
+  } else {
+    window.addEventListener('resize', scheduleRender);
+  }
 
   // Initial paint.
   scheduleRender();
