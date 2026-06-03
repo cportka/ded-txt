@@ -68,6 +68,34 @@ export function applyReplaceAll(text, query, replaceWith, opts) {
   return { text: text.replace(pattern, rep), count: matches.length };
 }
 
+// innerHTML escape for the overlay text — only & < > matter because we never
+// write user content into an attribute. Everything else (control chars from
+// Latin-1 binary mode, multibyte UTF-8, quotes) is safe in text-content
+// position. Exported for unit testing.
+export function escapeHtml(s) {
+  return s.replace(/[&<>]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;'));
+}
+
+// Build the match-highlight overlay's innerHTML: the *entire* editor text,
+// reproduced verbatim with a <mark> around each match (the active one tagged
+// so CSS can colour it differently). Reproducing the full text — not only the
+// matched spans — is what makes the overlay wrap line-for-line with the
+// textarea, so every mark lands exactly behind its word instead of drifting.
+// Exported for unit testing.
+export function buildHighlightHtml(text, matches, activeIdx, escapeFn = escapeHtml) {
+  let html = '';
+  let pos = 0;
+  for (let i = 0; i < matches.length; i++) {
+    const [start, end] = matches[i];
+    if (start > pos) html += escapeFn(text.slice(pos, start));
+    const cls = i === activeIdx ? 'find-match find-match-active' : 'find-match';
+    html += `<mark class="${cls}">${escapeFn(text.slice(start, end))}</mark>`;
+    pos = end;
+  }
+  if (pos < text.length) html += escapeFn(text.slice(pos));
+  return html;
+}
+
 // Wire the find bar to the editor. Returns { open, close } so the welcome
 // dialog's shortcut button can call open() without going through the keydown
 // path. Pre-fills the input with whatever the editor has selected so the
@@ -134,14 +162,6 @@ export function installFind({ editor }) {
     wrap.classList.add('find-open');
   }
 
-  // innerHTML escape for the overlay text — only & < > matter because we
-  // never write user content into an attribute. Everything else (control
-  // chars from Latin-1 binary mode, multibyte UTF-8, quotes) is safe in
-  // text-content position.
-  function escapeHtml(s) {
-    return s.replace(/[&<>]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;'));
-  }
-
   // Repaint the match-highlight overlay. Called whenever matches, the
   // active index, the bar's visibility, or the editor's geometry change.
   // No-ops when the bar is closed (overlay cleared). Width is re-synced
@@ -164,19 +184,7 @@ export function installFind({ editor }) {
     highlights.style.left = editor.offsetLeft + 'px';
     highlights.style.width = editor.clientWidth + 'px';
     highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
-    const text = editor.value;
-    const matches = state.matches;
-    let html = '';
-    let pos = 0;
-    for (let i = 0; i < matches.length; i++) {
-      const [start, end] = matches[i];
-      if (start > pos) html += escapeHtml(text.slice(pos, start));
-      const cls = i === state.idx ? 'find-match find-match-active' : 'find-match';
-      html += `<mark class="${cls}">${escapeHtml(text.slice(start, end))}</mark>`;
-      pos = end;
-    }
-    if (pos < text.length) html += escapeHtml(text.slice(pos));
-    highlights.innerHTML = html;
+    highlights.innerHTML = buildHighlightHtml(editor.value, state.matches, state.idx);
   }
 
   const state = {
@@ -383,6 +391,14 @@ export function installFind({ editor }) {
       highlights.style.transform = `translateY(${-editor.scrollTop}px)`;
     }
   }, { passive: true });
+
+  // Repaint the overlay whenever the editor's box changes size — the find
+  // bar's own padding, the soft keyboard, or a scrollbar appearing all shift
+  // where the text wraps without firing a window 'resize'. Without this the
+  // marks drift off their words until the next scroll or keystroke.
+  if (highlights && typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => { if (!bar.hidden) paintHighlights(); }).observe(editor);
+  }
 
   // Window resize changes editor.clientWidth (and may add/remove the
   // textarea's scrollbar), which shifts where lines wrap. Re-paint so
