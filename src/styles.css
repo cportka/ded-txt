@@ -927,6 +927,17 @@ dialog#welcome-dialog::backdrop {
   color: var(--fg);
   text-decoration: underline;
 }
+/* Actionable heads-up notice (e.g. "Click here to update") rendered as a
+   <button> — styled to read like the inline link above. */
+.welcome-heads-up-action {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--fg);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .welcome-heads-up p {
   margin: 0;
 }
