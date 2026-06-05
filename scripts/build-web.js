@@ -60,4 +60,42 @@ fs.copyFileSync(path.join(out, 'index.html'), path.join(out, '404.html'));
 // 6. Disable Jekyll so files starting with _ are served verbatim.
 fs.writeFileSync(path.join(out, '.nojekyll'), '');
 
+// 7. Emit version.json — the update/OTA manifest. The desktop app fetches this
+// to learn the latest web-layer version (the webview CSP blocks cross-origin
+// fetches, so the native side does it); both desktop and web compare against it
+// to decide whether to surface an "update available" notice. `files` is the
+// superset of runtime assets (sw.js's SHELL is only the offline precache), each
+// carrying a sha256 so an OTA download can be integrity-checked.
+const pkg = require('../package.json');
+// nativeMin: the lowest desktop *native shell* version that can run this web
+// layer. Bump ONLY when the web layer starts depending on a new native (Rust)
+// command — most releases leave it untouched so web updates hot-swap in place.
+const NATIVE_MIN = '1.0.0-rc.49';
+// Web-deploy-only artifacts the running app never loads — kept out of the manifest.
+const MANIFEST_EXCLUDE = new Set(['404.html', 'CNAME', '.nojekyll', 'version.json', 'app/index.html']);
+
+function listFiles(dir, base = '') {
+  const found = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const rel = base ? `${base}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      found.push(...listFiles(path.join(dir, entry.name), rel));
+    } else if (entry.isFile() && !MANIFEST_EXCLUDE.has(rel)) {
+      found.push(rel);
+    }
+  }
+  return found;
+}
+
+const manifest = {
+  version: pkg.version,
+  nativeMin: NATIVE_MIN,
+  buildId,
+  files: listFiles(out).sort().map((rel) => ({
+    path: rel,
+    sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(out, rel))).digest('hex')
+  }))
+};
+fs.writeFileSync(path.join(out, 'version.json'), JSON.stringify(manifest, null, 2) + '\n');
+
 console.log(`Built dist-web/  (editor at root, build ${buildId})`);

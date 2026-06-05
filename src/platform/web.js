@@ -280,6 +280,13 @@ const web = {
   onSaveAndClose(_cb) { /* not applicable in browser */ },
   confirmClose() { /* not applicable in browser */ },
 
+  // Update support. Web detects updates via the service-worker lifecycle
+  // (see renderer.js) rather than polling — the SW is cache-first so a version
+  // fetch would be stale — so checkUpdate is a no-op and applyUpdate just
+  // reloads to pick up the freshly-cached assets.
+  async checkUpdate() { return { updateKind: 'none' }; },
+  async applyUpdate() { if (typeof location !== 'undefined') location.reload(); },
+
   setNameAsker(fn) { askName = fn; }
 };
 

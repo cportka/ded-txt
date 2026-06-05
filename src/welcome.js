@@ -23,6 +23,38 @@ let closingWithGlitch = false;
 // its afterClose, so tapping a second shortcut mid-animation can't double-fire.
 let glitchCleanup = null;
 
+// --- Update-availability state -------------------------------------------
+// The most recent "an update is available" result — from the service-worker
+// lifecycle on web or the native update check on desktop. Fed into the welcome
+// env so the notice shows the next time the dialog opens, and applied live (if
+// the dialog is already open) via refreshHeadsUp when an async check resolves.
+let currentUpdate = null;
+// Maps an actionable notice's onClick token (e.g. 'applyUpdate') to a handler;
+// set by the renderer via setHeadsUpHandlers.
+let headsUpHandlers = {};
+// The env used for the current open, retained so a late update result can
+// re-render the heads-up box in place.
+let lastEnv = null;
+
+export function setHeadsUpHandlers(handlers) {
+  headsUpHandlers = handlers || {};
+}
+
+export function setUpdateResult(update) {
+  currentUpdate = update || null;
+}
+
+// Apply an update result. Stores it and, if the welcome dialog is open right
+// now, re-renders the heads-up box so a check that resolves while the dialog
+// is showing surfaces immediately (otherwise it appears on the next open).
+export function refreshHeadsUp(update) {
+  if (update !== undefined) currentUpdate = update || null;
+  const dialog = document.getElementById('welcome-dialog');
+  if (!dialog || !dialog.open || !lastEnv) return;
+  lastEnv = { ...lastEnv, update: currentUpdate };
+  renderHeadsUp(dialog, headsUpNotices(lastEnv), headsUpHandlers);
+}
+
 // Honour the OS "reduce motion" setting. Shared by the open "boot" glitch
 // and the close glitch-out so both degrade to an instant show/hide; also
 // reused by the renderer's "Save as" prompt animation.
@@ -88,13 +120,36 @@ export function headsUpNotices(env) {
       // CSS there too, so calling it out would just confuse).
       active: (e) => !e.onTauri && !e.isTouchOnly,
       text: "Cmd/Ctrl+N won't work on web — click New above."
+    },
+    {
+      // A newer web layer is available and the runtime can hot-swap it (web:
+      // reload to the freshly-cached SW assets; desktop: fetch + reload).
+      id: 'update-web',
+      active: (e) => !!(e.update && e.update.kind === 'web'),
+      text: 'a new version is ready.',
+      action: { label: 'Click here to update', onClick: 'applyUpdate' }
+    },
+    {
+      // A newer release needs a newer native shell than is installed, so the
+      // web layer can't be swapped in place — send the user to a full build.
+      id: 'update-native',
+      active: (e) => !!(e.update && e.update.kind === 'native'),
+      text: 'a new desktop build is available.',
+      action: (e) => ({
+        label: 'Get the new desktop build →',
+        href: (e.update && e.update.url) || 'https://github.com/cportka/dedtxt/releases/latest'
+      })
     }
   ];
   return all
     .filter((n) => {
       try { return !!n.active(env); } catch (_e) { return false; }
     })
-    .map(({ id, text }) => ({ id, text }));
+    .map((n) => {
+      const out = { id: n.id, text: n.text };
+      if (n.action) out.action = typeof n.action === 'function' ? n.action(env) : n.action;
+      return out;
+    });
 }
 
 function computeEnv() {
@@ -109,7 +164,41 @@ function computeEnv() {
   };
 }
 
-function renderHeadsUp(dialog, items) {
+// Pure description of a notice's action control, so tests can assert the
+// rendered shape without a DOM. Returns null when the notice has no action.
+export function actionNodeSpec(item) {
+  const a = item && item.action;
+  if (!a) return null;
+  if (a.href) return { tag: 'a', label: a.label, href: a.href };
+  if (a.onClick) return { tag: 'button', label: a.label, onClick: a.onClick };
+  return null;
+}
+
+// Build the DOM node for a notice's action (external link or in-app button),
+// or null. `handlers` maps an action's onClick token to a callback.
+function actionNode(item, handlers) {
+  const spec = actionNodeSpec(item);
+  if (!spec) return null;
+  if (spec.tag === 'a') {
+    const a = document.createElement('a');
+    a.href = spec.href;
+    a.textContent = spec.label;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    return a;
+  }
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'welcome-heads-up-action';
+  btn.textContent = spec.label;
+  btn.addEventListener('click', () => {
+    const fn = handlers && handlers[spec.onClick];
+    if (typeof fn === 'function') fn();
+  });
+  return btn;
+}
+
+function renderHeadsUp(dialog, items, handlers) {
   const container = dialog.querySelector('.welcome-heads-up');
   if (!container) return;
   // Rebuild contents on every open — predicates may flip between opens
@@ -127,6 +216,8 @@ function renderHeadsUp(dialog, items) {
     const strong = document.createElement('strong');
     strong.textContent = 'Heads up —';
     p.append(strong, ' ', items[0].text);
+    const node = actionNode(items[0], handlers);
+    if (node) p.append(' ', node);
     container.appendChild(p);
     return;
   }
@@ -142,6 +233,8 @@ function renderHeadsUp(dialog, items) {
   for (const it of items) {
     const li = document.createElement('li');
     li.textContent = it.text;
+    const node = actionNode(it, handlers);
+    if (node) li.append(' ', node);
     ul.appendChild(li);
   }
   container.appendChild(ul);
@@ -219,7 +312,8 @@ function openDialog() {
   const dialog = document.getElementById('welcome-dialog');
   if (!dialog || typeof dialog.showModal !== 'function') return;
 
-  const env = computeEnv();
+  const env = { ...computeEnv(), update: currentUpdate };
+  lastEnv = env;
 
   // Fill in shortcut keys for this platform.
   const keys = shortcutMap();
@@ -244,7 +338,7 @@ function openDialog() {
   if (versionEl) versionEl.textContent = `v${VERSION}`;
 
   // Heads-up box: data-driven from the headsUpNotices() registry above.
-  renderHeadsUp(dialog, headsUpNotices(env));
+  renderHeadsUp(dialog, headsUpNotices(env), headsUpHandlers);
 
   // Wire up close + backdrop-click listeners once; subsequent opens
   // reuse them. The dialog has no explicit dismiss button — Escape (the

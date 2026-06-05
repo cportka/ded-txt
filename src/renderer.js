@@ -1,5 +1,5 @@
 import platform from './platform/index.js';
-import { maybeShowWelcome, showWelcome, closeWelcome, prefersReducedMotion } from './welcome.js';
+import { maybeShowWelcome, showWelcome, closeWelcome, prefersReducedMotion, setUpdateResult, refreshHeadsUp, setHeadsUpHandlers } from './welcome.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
 import { initScrollArrows } from './scroll-arrows.js';
@@ -397,10 +397,51 @@ editor.focus();
 initLineNumbers();
 maybeShowWelcome();
 
+// "Update available" notice. The actionable heads-up entry (welcome.js) calls
+// back here to apply it; guard unsaved work first since applying reloads.
+setHeadsUpHandlers({
+  applyUpdate: () => {
+    if (dirty && !window.confirm('Discard unsaved changes to update?')) return;
+    if (typeof platform.applyUpdate === 'function') platform.applyUpdate();
+    else if (typeof location !== 'undefined') location.reload();
+  }
+});
+
+// Desktop: ask the native side whether a newer web layer is available (the
+// webview CSP blocks the cross-origin fetch, so Rust does it). Fire-and-forget
+// — offline / server-down just leaves the current assets in place. Web skips
+// this and uses the service-worker lifecycle below instead.
+if (platform.name !== 'web' && typeof platform.checkUpdate === 'function') {
+  platform.checkUpdate().then((r) => {
+    if (!r || !r.updateKind || r.updateKind === 'none') return;
+    const update = { kind: r.updateKind, url: r.releasesUrl || null };
+    setUpdateResult(update);
+    refreshHeadsUp(update);
+  }).catch(() => { /* offline / unreachable — keep current */ });
+}
+
 // Service worker for offline use; only meaningful in the web build (Tauri
-// serves over its own protocol where SW is unavailable / unnecessary).
+// serves over its own protocol where SW is unavailable / unnecessary). The SW
+// is cache-first, so a stale version.js makes version polling useless — detect
+// updates via the SW lifecycle instead: when a new worker reaches 'installed'
+// while an old one still controls the page, fresh assets are cached and ready,
+// so surface the "click to reload" notice.
 if (platform.name === 'web' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  window.addEventListener('load', async () => {
+    const notify = () => {
+      setUpdateResult({ kind: 'web' });
+      refreshHeadsUp({ kind: 'web' });
+    };
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      if (reg.waiting && navigator.serviceWorker.controller) notify();
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) notify();
+        });
+      });
+    } catch (_e) { /* offline / unsupported — ignore */ }
   });
 }

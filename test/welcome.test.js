@@ -147,11 +147,60 @@ describe('src/welcome.js', () => {
       }
     });
 
+    test('web update available → adds update-web notice with an apply action', () => {
+      const active = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: false, update: { kind: 'web' } });
+      const note = active.find(n => n.id === 'update-web');
+      assert.ok(note, 'update-web notice present');
+      assert.deepEqual(note.action, { label: 'Click here to update', onClick: 'applyUpdate' });
+    });
+
+    test('native update available → adds update-native notice with a Releases link', () => {
+      const active = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: false, update: { kind: 'native', url: 'https://example.test/r' } });
+      const note = active.find(n => n.id === 'update-native');
+      assert.ok(note, 'update-native notice present');
+      assert.equal(note.action.href, 'https://example.test/r');
+    });
+
+    test('native update without an explicit url falls back to GitHub Releases', () => {
+      const active = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: false, update: { kind: 'native' } });
+      const note = active.find(n => n.id === 'update-native');
+      assert.match(note.action.href, /github\.com\/cportka\/dedtxt\/releases/);
+    });
+
+    test('no update in env → no update notices, plain items stay { id, text }', () => {
+      const active = mod.headsUpNotices({ hasFsa: false, onTauri: false, isTouchOnly: false });
+      assert.ok(!active.some(n => n.id === 'update-web' || n.id === 'update-native'));
+      for (const item of active) {
+        assert.deepEqual(Object.keys(item).sort(), ['id', 'text']);
+      }
+    });
+
     test('predicates handle missing env keys without throwing', () => {
       // Defensive contract: callers shouldn't have to construct a complete
       // env object just to ask "what notices fire here?"
       assert.doesNotThrow(() => mod.headsUpNotices({}));
       assert.doesNotThrow(() => mod.headsUpNotices({ hasFsa: undefined, onTauri: undefined, isTouchOnly: undefined }));
+    });
+  });
+
+  describe('actionNodeSpec()', () => {
+    test('null for a notice with no action', () => {
+      assert.equal(mod.actionNodeSpec({ id: 'x', text: 'y' }), null);
+      assert.equal(mod.actionNodeSpec(null), null);
+    });
+
+    test('button spec for an onClick action', () => {
+      assert.deepEqual(
+        mod.actionNodeSpec({ action: { label: 'Click here to update', onClick: 'applyUpdate' } }),
+        { tag: 'button', label: 'Click here to update', onClick: 'applyUpdate' }
+      );
+    });
+
+    test('anchor spec for an href action', () => {
+      assert.deepEqual(
+        mod.actionNodeSpec({ action: { label: 'Get the new desktop build →', href: 'https://example.test/r' } }),
+        { tag: 'a', label: 'Get the new desktop build →', href: 'https://example.test/r' }
+      );
     });
   });
 });
