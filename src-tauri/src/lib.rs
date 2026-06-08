@@ -142,15 +142,13 @@ fn finalize_open(app: &AppHandle, path: PathBuf) -> OpenResult {
 
 #[tauri::command]
 async fn open_file(app: AppHandle) -> Result<OpenResult, String> {
-    // Explicit wildcard so macOS/Windows don't fall back to the bundle's
-    // declared document types and grey out anything that isn't a registered
-    // file association. DedTxt now opens (and previews) any file the OS lets
-    // us read.
-    let picked = app
-        .dialog()
-        .file()
-        .add_filter("All Files", &["*"])
-        .blocking_pick_file();
+    // No type filter: DedTxt opens (and previews) any file the OS lets us read,
+    // so every file must stay selectable. We used to force this with an explicit
+    // add_filter("All Files", &["*"]), but modern rfd maps each filter extension
+    // to a macOS UTType and `*` isn't a valid one — that greyed out every file in
+    // the picker. Omitting the filter leaves the panel unrestricted (all files
+    // enabled), which is exactly what we want.
+    let picked = app.dialog().file().blocking_pick_file();
 
     match picked {
         Some(fp) => {
