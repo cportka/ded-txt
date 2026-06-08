@@ -7,6 +7,9 @@
 // current path + the dirty flag pushed via set_dirty, so setName() here is
 // a no-op.
 
+import { VERSION } from '../version.js';
+import { updateKind } from '../update.js';
+
 const t = (typeof window !== 'undefined') ? (window.__TAURI__ || null) : null;
 const invoke = t ? t.core.invoke : null;
 const listen = t ? t.event.listen : null;
@@ -95,6 +98,26 @@ const tauri = {
   onMenuSave(cb) { saveCb = cb; },
   onSaveAndClose(cb) { saveAndCloseCb = cb; },
   confirmClose() { if (invoke) invoke('confirm_close'); },
+
+  // Ask Rust what the server is offering, then classify here via update.js.
+  // The running web layer's own VERSION is the "current web" baseline, so an
+  // OTA-swapped layer reports its real version on the next check.
+  async checkUpdate() {
+    if (!invoke) return { updateKind: 'none' };
+    let r;
+    try {
+      r = await invoke('check_update');
+    } catch (_e) {
+      return { updateKind: 'none' };
+    }
+    if (!r || !r.latest) {
+      return { updateKind: 'none', releasesUrl: r && r.releasesUrl };
+    }
+    return {
+      updateKind: updateKind(VERSION, r.latest, r.nativeMin, r.currentNative),
+      releasesUrl: r.releasesUrl
+    };
+  },
 
   // Tauri uses native OS save dialogs — no in-app filename prompt needed.
   setNameAsker(_fn) {}

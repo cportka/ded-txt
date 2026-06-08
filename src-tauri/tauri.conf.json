@@ -10,6 +10,7 @@
     "windows": [
       {
         "label": "main",
+        "url": "app://localhost",
         "title": "DedTxt",
         "width": 900,
         "height": 700,

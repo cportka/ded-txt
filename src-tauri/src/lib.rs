@@ -301,6 +301,115 @@ fn pick_file_from_argv(argv: &[String]) -> Option<PathBuf> {
     None
 }
 
+// --- Web assets + OTA updates --------------------------------------------
+
+// Where the published web layer and its integrity manifest live.
+const VERSION_URL: &str = "https://dedtxt.app/version.json";
+const RELEASES_URL: &str = "https://github.com/cportka/dedtxt/releases/latest";
+
+// version.json (built by scripts/build-web.js). We only need the published web
+// version and the minimum native shell it requires; serde ignores the rest.
+#[derive(serde::Deserialize)]
+struct Manifest {
+    version: String,
+    #[serde(rename = "nativeMin")]
+    native_min: String,
+}
+
+fn fetch_manifest() -> Result<Manifest, String> {
+    let body = ureq::get(VERSION_URL)
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_string()
+        .map_err(|e| e.to_string())?;
+    serde_json::from_str(&body).map_err(|e| e.to_string())
+}
+
+// Extension → MIME for the custom `app://` asset scheme.
+fn mime_for(path: &str) -> &'static str {
+    match path.rsplit('.').next().unwrap_or("") {
+        "html" => "text/html",
+        "js" | "mjs" => "text/javascript",
+        "css" => "text/css",
+        "json" => "application/json",
+        "webmanifest" => "application/manifest+json",
+        "png" => "image/png",
+        "svg" => "image/svg+xml",
+        "ico" => "image/x-icon",
+        _ => "application/octet-stream",
+    }
+}
+
+// Root of the on-disk OTA cache: <app-data>/ota.
+fn ota_root(app: &AppHandle) -> Option<PathBuf> {
+    app.path().app_data_dir().ok().map(|d| d.join("ota"))
+}
+
+// The activated OTA web layer, if present. <app-data>/ota/ACTIVE holds the
+// active version string; its assets live in <app-data>/ota/<version>/.
+fn active_ota_dir(app: &AppHandle) -> Option<PathBuf> {
+    let root = ota_root(app)?;
+    let version = std::fs::read_to_string(root.join("ACTIVE")).ok()?;
+    let version = version.trim();
+    if version.is_empty() {
+        return None;
+    }
+    let dir = root.join(version);
+    if dir.is_dir() {
+        Some(dir)
+    } else {
+        None
+    }
+}
+
+// Directory the `app://` handler serves from: an activated OTA layer if one
+// exists, else the version shipped in the bundle. In dev there is no bundle, so
+// fall back to the on-disk src/ tree.
+fn web_root(app: &AppHandle) -> PathBuf {
+    if let Some(dir) = active_ota_dir(app) {
+        return dir;
+    }
+    #[cfg(debug_assertions)]
+    {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src")
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        app.path()
+            .resolve("web", tauri::path::BaseDirectory::Resource)
+            .expect("bundled web resources")
+    }
+}
+
+#[derive(Serialize)]
+struct UpdateCheck {
+    // None when the manifest couldn't be fetched (offline / unreachable).
+    latest: Option<String>,
+    #[serde(rename = "nativeMin")]
+    native_min: Option<String>,
+    #[serde(rename = "currentNative")]
+    current_native: String,
+    #[serde(rename = "releasesUrl")]
+    releases_url: String,
+}
+
+// Report what the server offers plus the installed native shell version. The
+// web side compares this against its own running VERSION (via update.js) so the
+// web/native/none decision lives in exactly one place.
+#[tauri::command]
+async fn check_update() -> UpdateCheck {
+    let (latest, native_min) = match fetch_manifest() {
+        Ok(m) => (Some(m.version), Some(m.native_min)),
+        Err(_) => (None, None),
+    };
+    UpdateCheck {
+        latest,
+        native_min,
+        current_native: env!("CARGO_PKG_VERSION").to_string(),
+        releases_url: RELEASES_URL.to_string(),
+    }
+}
+
 fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<Wry>> {
     let new_item = MenuItemBuilder::new("New")
         .id("new")
@@ -406,8 +515,36 @@ pub fn run() {
             confirm_close,
             drain_pending,
             reset_state,
-            request_close
+            request_close,
+            check_update
         ])
+        // Serve the frontend from a custom `app://localhost` origin so bundled
+        // and OTA-downloaded assets share one origin (preserving localStorage).
+        // web_root() picks the active OTA layer, the bundle, or (in dev) src/.
+        .register_uri_scheme_protocol("app", |ctx, request| {
+            let app = ctx.app_handle();
+            let mut rel = request.uri().path().trim_start_matches('/').to_string();
+            if rel.is_empty() || rel.ends_with('/') {
+                rel.push_str("index.html");
+            }
+            // Defense in depth: never let a request escape the web root.
+            if rel.split('/').any(|seg| seg == "..") {
+                return tauri::http::Response::builder()
+                    .status(403)
+                    .body(Vec::new())
+                    .unwrap();
+            }
+            match std::fs::read(web_root(app).join(&rel)) {
+                Ok(bytes) => tauri::http::Response::builder()
+                    .header("Content-Type", mime_for(&rel))
+                    .body(bytes)
+                    .unwrap(),
+                Err(_) => tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap(),
+            }
+        })
         .setup(|app| {
             let menu = build_menu(app.handle())?;
             app.set_menu(menu)?;
