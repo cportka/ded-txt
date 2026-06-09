@@ -326,8 +326,9 @@ struct ManifestEntry {
     sha256: String,
 }
 
-fn fetch_manifest() -> Result<Manifest, String> {
-    let body = ureq::get(VERSION_URL)
+fn fetch_manifest(agent: &ureq::Agent) -> Result<Manifest, String> {
+    let body = agent
+        .get(VERSION_URL)
         .call()
         .map_err(|e| e.to_string())?
         .into_string()
@@ -372,22 +373,23 @@ fn active_ota_dir(app: &AppHandle) -> Option<PathBuf> {
     }
 }
 
-// Directory the `app://` handler serves from: an activated OTA layer if one
-// exists, else the version shipped in the bundle. In dev there is no bundle, so
-// fall back to the on-disk src/ tree.
-fn web_root(app: &AppHandle) -> PathBuf {
+// Bytes for one web asset, or None (→ 404). Resolution order:
+//   1. an activated OTA layer (the on-disk cache), if any;
+//   2. in dev, the live src/ tree (so edits show without a rebuild);
+//   3. in a release bundle, the frontend Tauri embedded from frontendDist.
+// `rel` is already normalized and traversal-checked by the caller.
+fn read_asset(app: &AppHandle, rel: &str) -> Option<Vec<u8>> {
     if let Some(dir) = active_ota_dir(app) {
-        return dir;
+        return std::fs::read(dir.join(rel)).ok();
     }
     #[cfg(debug_assertions)]
     {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src")
+        std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src").join(rel))
+            .ok()
     }
     #[cfg(not(debug_assertions))]
     {
-        app.path()
-            .resolve("web", tauri::path::BaseDirectory::Resource)
-            .expect("bundled web resources")
+        app.asset_resolver().get(rel.to_string()).map(|a| a.bytes)
     }
 }
 
@@ -414,7 +416,8 @@ struct UpdateCheck {
 // web/native/none decision lives in exactly one place.
 #[tauri::command]
 async fn check_update() -> UpdateCheck {
-    let (latest, native_min) = match fetch_manifest() {
+    let agent = ureq::AgentBuilder::new().build();
+    let (latest, native_min) = match fetch_manifest(&agent) {
         Ok(m) => (Some(m.version), Some(m.native_min)),
         Err(_) => (None, None),
     };
@@ -426,9 +429,10 @@ async fn check_update() -> UpdateCheck {
     }
 }
 
-fn http_get_bytes(url: &str) -> Result<Vec<u8>, String> {
+fn http_get_bytes(agent: &ureq::Agent, url: &str) -> Result<Vec<u8>, String> {
     let mut buf = Vec::new();
-    ureq::get(url)
+    agent
+        .get(url)
         .call()
         .map_err(|e| e.to_string())?
         .into_reader()
@@ -451,7 +455,8 @@ fn sha256_hex(bytes: &[u8]) -> String {
 // running app exactly as it was.
 #[tauri::command]
 async fn apply_update(app: AppHandle) -> Result<String, String> {
-    let manifest = fetch_manifest()?;
+    let agent = ureq::AgentBuilder::new().build();
+    let manifest = fetch_manifest(&agent)?;
     let root = ota_root(&app).ok_or("no app-data directory")?;
 
     // Stage into a scratch dir so a partial/failed download is never activated.
@@ -466,7 +471,7 @@ async fn apply_update(app: AppHandle) -> Result<String, String> {
         if entry.path.starts_with('/') || entry.path.split('/').any(|s| s == "..") {
             return Err(format!("unsafe manifest path: {}", entry.path));
         }
-        let bytes = http_get_bytes(&format!("{}{}", DOWNLOAD_BASE, entry.path))?;
+        let bytes = http_get_bytes(&agent, &format!("{}{}", DOWNLOAD_BASE, entry.path))?;
         if !sha256_hex(&bytes).eq_ignore_ascii_case(&entry.sha256) {
             return Err(format!("checksum mismatch: {}", entry.path));
         }
@@ -604,7 +609,7 @@ pub fn run() {
         ])
         // Serve the frontend from a custom `app://localhost` origin so bundled
         // and OTA-downloaded assets share one origin (preserving localStorage).
-        // web_root() picks the active OTA layer, the bundle, or (in dev) src/.
+        // read_asset() picks the active OTA layer, the bundle, or (in dev) src/.
         .register_uri_scheme_protocol("app", |ctx, request| {
             let app = ctx.app_handle();
             let mut rel = request.uri().path().trim_start_matches('/').to_string();
@@ -618,13 +623,13 @@ pub fn run() {
                     .body(Vec::new())
                     .unwrap();
             }
-            match std::fs::read(web_root(app).join(&rel)) {
-                Ok(bytes) => tauri::http::Response::builder()
+            match read_asset(app, &rel) {
+                Some(bytes) => tauri::http::Response::builder()
                     .header("Content-Type", mime_for(&rel))
                     .header("Cache-Control", "no-cache")
                     .body(bytes)
                     .unwrap(),
-                Err(_) => tauri::http::Response::builder()
+                None => tauri::http::Response::builder()
                     .status(404)
                     .body(Vec::new())
                     .unwrap(),
@@ -696,6 +701,15 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sha256_hex_matches_known_vector() {
+        // NIST FIPS-180-2 example: SHA-256("abc").
+        assert_eq!(
+            sha256_hex(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
 
     #[test]
     fn make_title_no_file_clean() {
