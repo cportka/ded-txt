@@ -1,5 +1,5 @@
 import platform from './platform/index.js';
-import { maybeShowWelcome, showWelcome, closeWelcome, prefersReducedMotion, setUpdateResult, refreshHeadsUp, setHeadsUpHandlers } from './welcome.js';
+import { maybeShowWelcome, showWelcome, closeWelcome, prefersReducedMotion, setUpdateResult, refreshHeadsUp, setHeadsUpHandlers, showUpdateProgress } from './welcome.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
 import { initScrollArrows } from './scroll-arrows.js';
@@ -402,8 +402,16 @@ maybeShowWelcome();
 setHeadsUpHandlers({
   applyUpdate: () => {
     if (dirty && !window.confirm('Discard unsaved changes to update?')) return;
-    if (typeof platform.applyUpdate === 'function') platform.applyUpdate();
-    else if (typeof location !== 'undefined') location.reload();
+    if (typeof platform.applyUpdate === 'function') {
+      showUpdateProgress(0, 0);
+      platform.applyUpdate(showUpdateProgress).then((ok) => {
+        // Success ends in a reload; only a failure returns here — restore the
+        // notice so the user can retry.
+        if (ok === false) refreshHeadsUp();
+      });
+    } else if (typeof location !== 'undefined') {
+      location.reload();
+    }
   }
 });
 

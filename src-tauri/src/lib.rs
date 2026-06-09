@@ -10,6 +10,7 @@
 // The renderer (src/) calls into these via the standard Tauri invoke()
 // bridge, exposed to JS through src/platform/tauri.js.
 
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -301,6 +302,202 @@ fn pick_file_from_argv(argv: &[String]) -> Option<PathBuf> {
     None
 }
 
+// --- Web assets + OTA updates --------------------------------------------
+
+// Where the published web layer and its integrity manifest live.
+const VERSION_URL: &str = "https://dedtxt.app/version.json";
+const DOWNLOAD_BASE: &str = "https://dedtxt.app/";
+const RELEASES_URL: &str = "https://github.com/cportka/dedtxt/releases/latest";
+
+// version.json (built by scripts/build-web.js): the published web version, the
+// minimum native shell it requires, and every runtime file with a sha256 so an
+// OTA download can be integrity-checked before it's trusted.
+#[derive(serde::Deserialize)]
+struct Manifest {
+    version: String,
+    #[serde(rename = "nativeMin")]
+    native_min: String,
+    files: Vec<ManifestEntry>,
+}
+
+#[derive(serde::Deserialize)]
+struct ManifestEntry {
+    path: String,
+    sha256: String,
+}
+
+fn fetch_manifest(agent: &ureq::Agent) -> Result<Manifest, String> {
+    let body = agent
+        .get(VERSION_URL)
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_string()
+        .map_err(|e| e.to_string())?;
+    serde_json::from_str(&body).map_err(|e| e.to_string())
+}
+
+// Extension → MIME for the custom `app://` asset scheme.
+fn mime_for(path: &str) -> &'static str {
+    match path.rsplit('.').next().unwrap_or("") {
+        "html" => "text/html",
+        "js" | "mjs" => "text/javascript",
+        "css" => "text/css",
+        "json" => "application/json",
+        "webmanifest" => "application/manifest+json",
+        "png" => "image/png",
+        "svg" => "image/svg+xml",
+        "ico" => "image/x-icon",
+        _ => "application/octet-stream",
+    }
+}
+
+// Root of the on-disk OTA cache: <app-data>/ota.
+fn ota_root(app: &AppHandle) -> Option<PathBuf> {
+    app.path().app_data_dir().ok().map(|d| d.join("ota"))
+}
+
+// The activated OTA web layer, if present. <app-data>/ota/ACTIVE holds the
+// active version string; its assets live in <app-data>/ota/<version>/.
+fn active_ota_dir(app: &AppHandle) -> Option<PathBuf> {
+    let root = ota_root(app)?;
+    let version = std::fs::read_to_string(root.join("ACTIVE")).ok()?;
+    let version = version.trim();
+    if version.is_empty() {
+        return None;
+    }
+    let dir = root.join(version);
+    if dir.is_dir() {
+        Some(dir)
+    } else {
+        None
+    }
+}
+
+// Bytes for one web asset, or None (→ 404). Resolution order:
+//   1. an activated OTA layer (the on-disk cache), if any;
+//   2. in dev, the live src/ tree (so edits show without a rebuild);
+//   3. in a release bundle, the frontend Tauri embedded from frontendDist.
+// `rel` is already normalized and traversal-checked by the caller.
+fn read_asset(app: &AppHandle, rel: &str) -> Option<Vec<u8>> {
+    if let Some(dir) = active_ota_dir(app) {
+        return std::fs::read(dir.join(rel)).ok();
+    }
+    #[cfg(debug_assertions)]
+    {
+        std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src").join(rel))
+            .ok()
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        app.asset_resolver().get(rel.to_string()).map(|a| a.bytes)
+    }
+}
+
+#[derive(Clone, Serialize)]
+struct UpdateProgress {
+    done: usize,
+    total: usize,
+}
+
+#[derive(Serialize)]
+struct UpdateCheck {
+    // None when the manifest couldn't be fetched (offline / unreachable).
+    latest: Option<String>,
+    #[serde(rename = "nativeMin")]
+    native_min: Option<String>,
+    #[serde(rename = "currentNative")]
+    current_native: String,
+    #[serde(rename = "releasesUrl")]
+    releases_url: String,
+}
+
+// Report what the server offers plus the installed native shell version. The
+// web side compares this against its own running VERSION (via update.js) so the
+// web/native/none decision lives in exactly one place.
+#[tauri::command]
+async fn check_update() -> UpdateCheck {
+    let agent = ureq::AgentBuilder::new().build();
+    let (latest, native_min) = match fetch_manifest(&agent) {
+        Ok(m) => (Some(m.version), Some(m.native_min)),
+        Err(_) => (None, None),
+    };
+    UpdateCheck {
+        latest,
+        native_min,
+        current_native: env!("CARGO_PKG_VERSION").to_string(),
+        releases_url: RELEASES_URL.to_string(),
+    }
+}
+
+fn http_get_bytes(agent: &ureq::Agent, url: &str) -> Result<Vec<u8>, String> {
+    let mut buf = Vec::new();
+    agent
+        .get(url)
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_reader()
+        .read_to_end(&mut buf)
+        .map_err(|e| e.to_string())?;
+    Ok(buf)
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect()
+}
+
+// Download the published web layer, verify every file's sha256, then atomically
+// activate it and reload. Nothing is activated unless ALL files download and
+// verify, and the bundled layer is never touched — so any failure leaves the
+// running app exactly as it was.
+#[tauri::command]
+async fn apply_update(app: AppHandle) -> Result<String, String> {
+    let agent = ureq::AgentBuilder::new().build();
+    let manifest = fetch_manifest(&agent)?;
+    let root = ota_root(&app).ok_or("no app-data directory")?;
+
+    // Stage into a scratch dir so a partial/failed download is never activated.
+    let staging = root.join(".staging");
+    let _ = std::fs::remove_dir_all(&staging);
+    std::fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
+
+    let total = manifest.files.len();
+    let _ = app.emit("dt://update-progress", UpdateProgress { done: 0, total });
+    for (i, entry) in manifest.files.iter().enumerate() {
+        // The manifest is ours, but treat its paths as untrusted input anyway.
+        if entry.path.starts_with('/') || entry.path.split('/').any(|s| s == "..") {
+            return Err(format!("unsafe manifest path: {}", entry.path));
+        }
+        let bytes = http_get_bytes(&agent, &format!("{}{}", DOWNLOAD_BASE, entry.path))?;
+        if !sha256_hex(&bytes).eq_ignore_ascii_case(&entry.sha256) {
+            return Err(format!("checksum mismatch: {}", entry.path));
+        }
+        let dest = staging.join(&entry.path);
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&dest, &bytes).map_err(|e| e.to_string())?;
+        let _ = app.emit("dt://update-progress", UpdateProgress { done: i + 1, total });
+    }
+
+    // Activate: move the verified tree into place, then point ACTIVE at it. The
+    // pointer is written last, so the new version only goes live once it's fully
+    // on disk; the previous layer (and the bundle) stay put as fallbacks.
+    let target = root.join(&manifest.version);
+    let _ = std::fs::remove_dir_all(&target);
+    std::fs::rename(&staging, &target).map_err(|e| e.to_string())?;
+    std::fs::write(root.join("ACTIVE"), &manifest.version).map_err(|e| e.to_string())?;
+
+    // Reload so the app:// handler serves the freshly-activated layer.
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.eval("location.reload()");
+    }
+    Ok(manifest.version)
+}
+
 fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<Wry>> {
     let new_item = MenuItemBuilder::new("New")
         .id("new")
@@ -406,8 +603,38 @@ pub fn run() {
             confirm_close,
             drain_pending,
             reset_state,
-            request_close
+            request_close,
+            check_update,
+            apply_update
         ])
+        // Serve the frontend from a custom `app://localhost` origin so bundled
+        // and OTA-downloaded assets share one origin (preserving localStorage).
+        // read_asset() picks the active OTA layer, the bundle, or (in dev) src/.
+        .register_uri_scheme_protocol("app", |ctx, request| {
+            let app = ctx.app_handle();
+            let mut rel = request.uri().path().trim_start_matches('/').to_string();
+            if rel.is_empty() || rel.ends_with('/') {
+                rel.push_str("index.html");
+            }
+            // Defense in depth: never let a request escape the web root.
+            if rel.split('/').any(|seg| seg == "..") {
+                return tauri::http::Response::builder()
+                    .status(403)
+                    .body(Vec::new())
+                    .unwrap();
+            }
+            match read_asset(app, &rel) {
+                Some(bytes) => tauri::http::Response::builder()
+                    .header("Content-Type", mime_for(&rel))
+                    .header("Cache-Control", "no-cache")
+                    .body(bytes)
+                    .unwrap(),
+                None => tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap(),
+            }
+        })
         .setup(|app| {
             let menu = build_menu(app.handle())?;
             app.set_menu(menu)?;
@@ -474,6 +701,15 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sha256_hex_matches_known_vector() {
+        // NIST FIPS-180-2 example: SHA-256("abc").
+        assert_eq!(
+            sha256_hex(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
 
     #[test]
     fn make_title_no_file_clean() {

@@ -55,6 +55,34 @@ export function refreshHeadsUp(update) {
   renderHeadsUp(dialog, headsUpNotices(lastEnv), headsUpHandlers);
 }
 
+// While a desktop update downloads, replace the heads-up notice with a
+// determinate progress bar. The dialog is already open (the user clicked the
+// notice); a successful update ends in a full reload, which clears this.
+export function showUpdateProgress(done, total) {
+  const dialog = document.getElementById('welcome-dialog');
+  if (!dialog) return;
+  const container = dialog.querySelector('.welcome-heads-up');
+  if (!container) return;
+  container.hidden = false;
+  let fill = container.querySelector('.welcome-update-fill');
+  if (!fill) {
+    container.replaceChildren();
+    const p = document.createElement('p');
+    p.className = 'welcome-heads-up-single';
+    const strong = document.createElement('strong');
+    strong.textContent = 'Updating…';
+    p.appendChild(strong);
+    const track = document.createElement('div');
+    track.className = 'welcome-update-track';
+    fill = document.createElement('div');
+    fill.className = 'welcome-update-fill';
+    track.appendChild(fill);
+    container.append(p, track);
+  }
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  fill.style.width = `${pct}%`;
+}
+
 // Honour the OS "reduce motion" setting. Shared by the open "boot" glitch
 // and the close glitch-out so both degrade to an instant show/hide; also
 // reused by the renderer's "Save as" prompt animation.
@@ -109,7 +137,7 @@ export function headsUpNotices(env) {
       // Firefox / Safari / iOS — no File System Access API, so every save
       // triggers a fresh download instead of writing back to disk.
       active: (e) => !e.hasFsa,
-      text: "your browser can't silently save changes — each save downloads a fresh copy. For native-like save, use Chrome / Edge or the desktop app."
+      text: "Your browser can't silently save changes — each save downloads a fresh copy. For native-like save, use Chrome / Edge or the desktop app."
     },
     {
       id: 'no-cmd-n',
@@ -126,7 +154,7 @@ export function headsUpNotices(env) {
       // reload to the freshly-cached SW assets; desktop: fetch + reload).
       id: 'update-web',
       active: (e) => !!(e.update && e.update.kind === 'web'),
-      text: 'a new version is ready.',
+      text: 'A new version is ready.',
       action: { label: 'Click here to update', onClick: 'applyUpdate' }
     },
     {
@@ -134,7 +162,7 @@ export function headsUpNotices(env) {
       // web layer can't be swapped in place — send the user to a full build.
       id: 'update-native',
       active: (e) => !!(e.update && e.update.kind === 'native'),
-      text: 'a new desktop build is available.',
+      text: 'A new desktop build is available.',
       action: (e) => ({
         label: 'Get the new desktop build →',
         href: (e.update && e.update.url) || 'https://github.com/cportka/dedtxt/releases/latest'
