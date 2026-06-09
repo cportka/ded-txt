@@ -119,6 +119,16 @@ const tauri = {
     };
   },
 
+  // Download + verify + swap the new web layer in Rust; it reloads on success.
+  async applyUpdate() {
+    if (!invoke) return;
+    try {
+      await invoke('apply_update');
+    } catch (e) {
+      console.error('dedtxt: update failed', e);
+    }
+  },
+
   // Tauri uses native OS save dialogs — no in-app filename prompt needed.
   setNameAsker(_fn) {}
 };

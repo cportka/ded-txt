@@ -10,6 +10,7 @@
 // The renderer (src/) calls into these via the standard Tauri invoke()
 // bridge, exposed to JS through src/platform/tauri.js.
 
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -305,15 +306,24 @@ fn pick_file_from_argv(argv: &[String]) -> Option<PathBuf> {
 
 // Where the published web layer and its integrity manifest live.
 const VERSION_URL: &str = "https://dedtxt.app/version.json";
+const DOWNLOAD_BASE: &str = "https://dedtxt.app/";
 const RELEASES_URL: &str = "https://github.com/cportka/dedtxt/releases/latest";
 
-// version.json (built by scripts/build-web.js). We only need the published web
-// version and the minimum native shell it requires; serde ignores the rest.
+// version.json (built by scripts/build-web.js): the published web version, the
+// minimum native shell it requires, and every runtime file with a sha256 so an
+// OTA download can be integrity-checked before it's trusted.
 #[derive(serde::Deserialize)]
 struct Manifest {
     version: String,
     #[serde(rename = "nativeMin")]
     native_min: String,
+    files: Vec<ManifestEntry>,
+}
+
+#[derive(serde::Deserialize)]
+struct ManifestEntry {
+    path: String,
+    sha256: String,
 }
 
 fn fetch_manifest() -> Result<Manifest, String> {
@@ -408,6 +418,70 @@ async fn check_update() -> UpdateCheck {
         current_native: env!("CARGO_PKG_VERSION").to_string(),
         releases_url: RELEASES_URL.to_string(),
     }
+}
+
+fn http_get_bytes(url: &str) -> Result<Vec<u8>, String> {
+    let mut buf = Vec::new();
+    ureq::get(url)
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_reader()
+        .read_to_end(&mut buf)
+        .map_err(|e| e.to_string())?;
+    Ok(buf)
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect()
+}
+
+// Download the published web layer, verify every file's sha256, then atomically
+// activate it and reload. Nothing is activated unless ALL files download and
+// verify, and the bundled layer is never touched — so any failure leaves the
+// running app exactly as it was.
+#[tauri::command]
+async fn apply_update(app: AppHandle) -> Result<String, String> {
+    let manifest = fetch_manifest()?;
+    let root = ota_root(&app).ok_or("no app-data directory")?;
+
+    // Stage into a scratch dir so a partial/failed download is never activated.
+    let staging = root.join(".staging");
+    let _ = std::fs::remove_dir_all(&staging);
+    std::fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
+
+    for entry in &manifest.files {
+        // The manifest is ours, but treat its paths as untrusted input anyway.
+        if entry.path.starts_with('/') || entry.path.split('/').any(|s| s == "..") {
+            return Err(format!("unsafe manifest path: {}", entry.path));
+        }
+        let bytes = http_get_bytes(&format!("{}{}", DOWNLOAD_BASE, entry.path))?;
+        if !sha256_hex(&bytes).eq_ignore_ascii_case(&entry.sha256) {
+            return Err(format!("checksum mismatch: {}", entry.path));
+        }
+        let dest = staging.join(&entry.path);
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&dest, &bytes).map_err(|e| e.to_string())?;
+    }
+
+    // Activate: move the verified tree into place, then point ACTIVE at it. The
+    // pointer is written last, so the new version only goes live once it's fully
+    // on disk; the previous layer (and the bundle) stay put as fallbacks.
+    let target = root.join(&manifest.version);
+    let _ = std::fs::remove_dir_all(&target);
+    std::fs::rename(&staging, &target).map_err(|e| e.to_string())?;
+    std::fs::write(root.join("ACTIVE"), &manifest.version).map_err(|e| e.to_string())?;
+
+    // Reload so the app:// handler serves the freshly-activated layer.
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.eval("location.reload()");
+    }
+    Ok(manifest.version)
 }
 
 fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<Wry>> {
@@ -516,7 +590,8 @@ pub fn run() {
             drain_pending,
             reset_state,
             request_close,
-            check_update
+            check_update,
+            apply_update
         ])
         // Serve the frontend from a custom `app://localhost` origin so bundled
         // and OTA-downloaded assets share one origin (preserving localStorage).
@@ -537,6 +612,7 @@ pub fn run() {
             match std::fs::read(web_root(app).join(&rel)) {
                 Ok(bytes) => tauri::http::Response::builder()
                     .header("Content-Type", mime_for(&rel))
+                    .header("Cache-Control", "no-cache")
                     .body(bytes)
                     .unwrap(),
                 Err(_) => tauri::http::Response::builder()
