@@ -154,6 +154,22 @@ re-open: click the icon in the top-right corner of the editor, or press
 `Esc`. Pressing `Esc` again (or clicking outside the card, or typing any
 character) closes it.
 
+## Updates
+
+DedTxt keeps itself current — no manual re-download.
+
+**Web** (dedtxt.app) — a new deploy is picked up by the service worker in the
+background. Once the fresh assets are cached, the welcome dialog surfaces an
+"A new version is ready" notice; clicking it reloads into the new version.
+
+**Desktop** — on launch the app asks dedtxt.app whether a newer web layer has
+shipped. If the installed build can run it, the welcome dialog offers "Click
+here to update": the new files are downloaded, each checked against a `sha256`
+in the published manifest, then swapped in place (with a progress bar) and the
+window reloads — no reinstall, and local state (like the dismissed-welcome
+flag) carries over. If a release needs a newer *native* shell than you have
+installed, it points you to the Releases page for a fresh installer instead.
+
 ## License
 
 ISC. See [LICENSE](./LICENSE).
