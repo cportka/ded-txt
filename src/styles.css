@@ -955,6 +955,23 @@ dialog#welcome-dialog::backdrop {
 .welcome-heads-up-items li {
   margin: 2px 0;
 }
+/* Determinate progress bar shown in place of the notice while a desktop update
+   downloads. Glitch-flavoured: magenta fill, steps()-timed, motion-gated. */
+.welcome-update-track {
+  margin-top: 8px;
+  height: 4px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.welcome-update-fill {
+  width: 0;
+  height: 100%;
+  background: var(--gx-magenta);
+  transition: width 140ms steps(5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-update-fill { transition: none; }
+}
 
 /* In-app "Save as" prompt for non-FSA browsers. Reuses the welcome
    dialog's card styling, dressed in the same glitch vocabulary (monospace

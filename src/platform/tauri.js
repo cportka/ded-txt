@@ -120,12 +120,25 @@ const tauri = {
   },
 
   // Download + verify + swap the new web layer in Rust; it reloads on success.
-  async applyUpdate() {
-    if (!invoke) return;
+  // Forwards per-file progress (dt://update-progress) to onProgress(done,total)
+  // and resolves false on failure so the caller can restore the notice.
+  async applyUpdate(onProgress) {
+    if (!invoke) return false;
+    let unlisten = null;
     try {
+      if (listen && typeof onProgress === 'function') {
+        unlisten = await listen('dt://update-progress', (e) => {
+          const p = e.payload || {};
+          onProgress(p.done || 0, p.total || 0);
+        });
+      }
       await invoke('apply_update');
+      return true;
     } catch (e) {
       console.error('dedtxt: update failed', e);
+      return false;
+    } finally {
+      if (typeof unlisten === 'function') unlisten();
     }
   },
 

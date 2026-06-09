@@ -391,6 +391,12 @@ fn web_root(app: &AppHandle) -> PathBuf {
     }
 }
 
+#[derive(Clone, Serialize)]
+struct UpdateProgress {
+    done: usize,
+    total: usize,
+}
+
 #[derive(Serialize)]
 struct UpdateCheck {
     // None when the manifest couldn't be fetched (offline / unreachable).
@@ -453,7 +459,9 @@ async fn apply_update(app: AppHandle) -> Result<String, String> {
     let _ = std::fs::remove_dir_all(&staging);
     std::fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
 
-    for entry in &manifest.files {
+    let total = manifest.files.len();
+    let _ = app.emit("dt://update-progress", UpdateProgress { done: 0, total });
+    for (i, entry) in manifest.files.iter().enumerate() {
         // The manifest is ours, but treat its paths as untrusted input anyway.
         if entry.path.starts_with('/') || entry.path.split('/').any(|s| s == "..") {
             return Err(format!("unsafe manifest path: {}", entry.path));
@@ -467,6 +475,7 @@ async fn apply_update(app: AppHandle) -> Result<String, String> {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
         std::fs::write(&dest, &bytes).map_err(|e| e.to_string())?;
+        let _ = app.emit("dt://update-progress", UpdateProgress { done: i + 1, total });
     }
 
     // Activate: move the verified tree into place, then point ACTIVE at it. The
