@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "portka-tools": {
+      "source": {
+        "source": "github",
+        "repo": "cportka/claude-plugins"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "video-bug-analyzer@portka-tools": true
+  }
+}
