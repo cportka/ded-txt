@@ -134,12 +134,14 @@ export function installFind({ editor }) {
   // re-open() can cancel the pending hide before it fires.
   let onGlitchOutEnd = null;
 
-  // Reserve space for the find bar so text never paints under it. Called
-  // whenever the bar opens, closes, grows (replace row toggled), or the
-  // viewport size changes the way its controls wrap. CSS picks the right
-  // axis per media query: --find-bar-h drives padding-top on mobile,
-  // --find-bar-w drives padding-right on desktop. Both vars always get
-  // written so swapping breakpoints (resize across 600px) Just Works.
+  // Reserve space for the find bar (mobile only) so text never paints
+  // under it, and toggle .find-open. Called whenever the bar opens, closes,
+  // grows (replace row toggled), or the viewport size changes the way its
+  // controls wrap. --find-bar-h drives padding-top on mobile; --find-bar-w
+  // is still written but no longer consumed — on desktop the bar overlays
+  // the full-width textarea instead of reserving padding-right. Both vars
+  // are always written so swapping breakpoints (resize across 600px) Just
+  // Works.
   function syncBarMetrics() {
     if (!wrap) return;
     if (bar.hidden) {
@@ -407,9 +409,9 @@ export function installFind({ editor }) {
   // Window resize changes editor.clientWidth (and may add/remove the
   // textarea's scrollbar), which shifts where lines wrap. Re-paint so
   // marks stay aligned with the textarea's text. Also re-measures the
-  // bar: at mobile widths the controls can flex-wrap to additional
-  // rows, growing the reserved padding; crossing the 600px breakpoint
-  // swaps the active axis from --find-bar-h to --find-bar-w.
+  // bar: at mobile widths the controls can flex-wrap to additional rows,
+  // growing the reserved padding-top. (Desktop reserves nothing — the bar
+  // overlays — so crossing the 600px breakpoint simply drops the padding.)
   window.addEventListener('resize', () => {
     if (!bar.hidden) {
       syncBarMetrics();
