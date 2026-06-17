@@ -34,33 +34,33 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
-  /* border-box so the .find-open padding-right (desktop) and
-     padding-top (mobile) are subtracted from the 100% width/height
-     instead of added to it. Without this, the wrap overflows its
-     parent by ~find-bar width on desktop and the absolutely-anchored
-     find bar (right: 56px) gets pushed off the visible viewport. */
+  /* border-box so the .find-open padding-top (mobile) is subtracted
+     from the 100% height instead of added to it. Without this the wrap
+     would overflow its parent by the find bar's height and the
+     absolutely-anchored find bar (right: 56px) could be pushed off the
+     visible viewport. (Desktop reserves no space — the bar overlays the
+     full-width textarea; see the find-dialog rule below.) */
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
-  /* Reserved space for the find bar when it's open. JS writes the bar's
-     measured height + width onto these vars; the layout-specific media
-     queries below pick the right axis. Both default to 0px so closed-
-     state geometry is identical to the bar-not-present baseline. */
+  /* Find-bar footprint, written by JS when the bar opens. Only
+     --find-bar-h is consumed (mobile padding-top, below); --find-bar-w is
+     still written but unused, since the desktop bar overlays at full width
+     rather than narrowing the textarea. Both default to 0px so closed-state
+     geometry matches the bar-not-present baseline. */
   --find-bar-h: 0px;
   --find-bar-w: 0px;
 }
-/* Find dialog reserves its own space — text never paints under it.
-   Mobile: bar becomes a top banner; padding-top pushes the editor (and
-   line-gutter + overlays) down by the bar's measured height.
-   Desktop: bar stays floating top-right; padding-right narrows the
-   textarea's wrap column so every line wraps before reaching the bar.
-   The .find-open class is toggled by JS on open()/close(); the two
-   custom properties are written from bar.getBoundingClientRect(). */
+/* Find dialog placement.
+   Mobile: the bar becomes a top banner; padding-top pushes the editor (and
+   line-gutter + overlays) down by the bar's measured height so text never
+   paints under it.
+   Desktop: the bar overlays the top-right corner at full editor width (like
+   a browser / VS Code find) — no padding is reserved, so the textarea keeps
+   its full wrap column and the active match scrolls into view. The
+   .find-open class is toggled by JS on open()/close(). */
 @media (max-width: 600px) {
   #editor-wrap.find-open { padding-top: var(--find-bar-h); }
-}
-@media (min-width: 601px) {
-  #editor-wrap.find-open { padding-right: var(--find-bar-w); }
 }
 
 /* Subtle line-number gutter. overflow:hidden + inner translateY for
@@ -234,8 +234,9 @@ body {
 
 /* Find + Replace bar. Floats top-right of #editor-wrap, inset by 56px
    so the corner menu button (32px wide + 8px margin + 16px gap) stays
-   clickable. The bar deliberately does NOT push the textarea down —
-   resizing the editor would break the line-gutter scroll sync. */
+   clickable. On desktop it overlays the full-width textarea. The bar
+   deliberately does NOT push the textarea down or narrow it — resizing
+   the editor would break the line-gutter scroll sync. */
 #find-bar {
   position: absolute;
   top: 0;
