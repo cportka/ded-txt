@@ -234,6 +234,72 @@ describe('buildHighlightHtml()', () => {
   });
 });
 
+describe('nextFocusIndex()', () => {
+  const ROW = { count: 5, isInput: false };
+
+  test('Right/Down advance, Left/Up retreat (on a button)', async () => {
+    const { nextFocusIndex } = await freshFind();
+    assert.equal(nextFocusIndex({ ...ROW, index: 1, key: 'ArrowRight' }), 2);
+    assert.equal(nextFocusIndex({ ...ROW, index: 1, key: 'ArrowDown' }), 2);
+    assert.equal(nextFocusIndex({ ...ROW, index: 3, key: 'ArrowLeft' }), 2);
+    assert.equal(nextFocusIndex({ ...ROW, index: 3, key: 'ArrowUp' }), 2);
+  });
+
+  test('wraps around both ends', async () => {
+    const { nextFocusIndex } = await freshFind();
+    assert.equal(nextFocusIndex({ ...ROW, index: 4, key: 'ArrowRight' }), 0);
+    assert.equal(nextFocusIndex({ ...ROW, index: 0, key: 'ArrowLeft' }), 4);
+  });
+
+  test('non-arrow keys are ignored (-1)', async () => {
+    const { nextFocusIndex } = await freshFind();
+    assert.equal(nextFocusIndex({ ...ROW, index: 1, key: 'Tab' }), -1);
+    assert.equal(nextFocusIndex({ ...ROW, index: 1, key: 'Enter' }), -1);
+    assert.equal(nextFocusIndex({ ...ROW, index: 1, key: 'a' }), -1);
+  });
+
+  test('in an input, Left/Right move the caret until it is at the edge', async () => {
+    const { nextFocusIndex } = await freshFind();
+    // Caret mid-text: let the browser move it (-1), do not change focus.
+    assert.equal(
+      nextFocusIndex({ count: 5, index: 0, key: 'ArrowRight', isInput: true, atStart: false, atEnd: false }),
+      -1
+    );
+    assert.equal(
+      nextFocusIndex({ count: 5, index: 2, key: 'ArrowLeft', isInput: true, atStart: false, atEnd: false }),
+      -1
+    );
+    // Caret at the edge: cross into the neighbouring control.
+    assert.equal(
+      nextFocusIndex({ count: 5, index: 0, key: 'ArrowRight', isInput: true, atStart: false, atEnd: true }),
+      1
+    );
+    assert.equal(
+      nextFocusIndex({ count: 5, index: 2, key: 'ArrowLeft', isInput: true, atStart: true, atEnd: false }),
+      1
+    );
+  });
+
+  test('in an input, Up/Down always move regardless of caret position', async () => {
+    const { nextFocusIndex } = await freshFind();
+    assert.equal(
+      nextFocusIndex({ count: 5, index: 0, key: 'ArrowDown', isInput: true, atStart: false, atEnd: false }),
+      1
+    );
+    assert.equal(
+      nextFocusIndex({ count: 5, index: 2, key: 'ArrowUp', isInput: true, atStart: false, atEnd: false }),
+      1
+    );
+  });
+
+  test('guards against an empty list or an out-of-range index (-1)', async () => {
+    const { nextFocusIndex } = await freshFind();
+    assert.equal(nextFocusIndex({ count: 0, index: 0, key: 'ArrowRight' }), -1);
+    assert.equal(nextFocusIndex({ count: 3, index: -1, key: 'ArrowRight' }), -1);
+    assert.equal(nextFocusIndex({ count: 3, index: 5, key: 'ArrowRight' }), -1);
+  });
+});
+
 // --- Overlay structure: marks below the first screenful must still render ---
 //
 // The reported bug was that only matches in the initial viewport highlighted.

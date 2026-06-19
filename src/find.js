@@ -96,6 +96,30 @@ export function buildHighlightHtml(text, matches, activeIdx, escapeFn = escapeHt
   return html;
 }
 
+// Pure focus-routing for the find bar's arrow-key navigation. Given the
+// number of focusable controls (`count`), the focused control's `index`, the
+// pressed `key`, and — for text inputs — whether the caret sits at an edge,
+// return the index to move focus to, or -1 to let the browser handle the key
+// (so Left/Right keep moving the caret inside an input until it's at the
+// edge). Up/Down always move between controls; navigation wraps around the
+// ends. Exported for unit testing; installFind does the DOM wiring.
+export function nextFocusIndex({ count, index, key, isInput, atStart, atEnd }) {
+  if (!Number.isInteger(count) || count <= 0 || index < 0 || index >= count) return -1;
+  let dir;
+  switch (key) {
+    case 'ArrowRight':
+      if (isInput && !atEnd) return -1;
+      dir = 1; break;
+    case 'ArrowLeft':
+      if (isInput && !atStart) return -1;
+      dir = -1; break;
+    case 'ArrowDown': dir = 1; break;
+    case 'ArrowUp': dir = -1; break;
+    default: return -1;
+  }
+  return (index + dir + count) % count;
+}
+
 // Wire the find bar to the editor. Returns { open, close } so the welcome
 // dialog's shortcut button can call open() without going through the keydown
 // path. Pre-fills the input with whatever the editor has selected so the
@@ -452,20 +476,88 @@ export function installFind({ editor }) {
   if (replaceAllBtn) replaceAllBtn.addEventListener('click', replaceAll);
   if (closeBtn) closeBtn.addEventListener('click', close);
 
+  // Open/close the replace row, keeping the toggle's pressed state, the
+  // reserved editor padding, and the overlay all in sync. Shared by the
+  // toggle button and the Tab-from-find shortcut below.
+  function setReplaceOpen(open) {
+    if (replaceToggle) replaceToggle.setAttribute('aria-pressed', String(open));
+    if (replaceRow) replaceRow.hidden = !open;
+    // Bar height (and on mobile, often width too) changed — re-reserve
+    // editor space so the new replace row isn't painted over the text,
+    // and re-paint the overlay so its top/left follows the textarea's
+    // new offset position.
+    syncBarMetrics();
+    paintHighlights();
+  }
+
   if (replaceToggle) {
     replaceToggle.addEventListener('click', () => {
       const next = replaceToggle.getAttribute('aria-pressed') !== 'true';
-      replaceToggle.setAttribute('aria-pressed', String(next));
-      if (replaceRow) replaceRow.hidden = !next;
+      setReplaceOpen(next);
       if (next && replaceInput) replaceInput.focus();
-      // Bar height (and on mobile, often width too) changed — re-reserve
-      // editor space so the new replace row isn't painted over the text,
-      // and re-paint the overlay so its top/left follows the textarea's
-      // new offset position.
-      syncBarMetrics();
-      paintHighlights();
     });
   }
+
+  // --- Keyboard navigation within the bar ---------------------------------
+  // Make the whole find/replace dialog drivable without the mouse:
+  //   • Tab from the find field jumps straight to the replace field, opening
+  //     the replace row first if it's collapsed (Shift+Tab goes back) — the
+  //     VS Code / browser find→replace muscle memory.
+  //   • Arrow keys rove focus across every visible control in the bar. In the
+  //     text fields Left/Right keep moving the caret until it reaches the
+  //     edge, then cross into the neighbouring control; Up/Down always move.
+  //     nextFocusIndex (module scope) holds the pure routing; this maps it to
+  //     DOM focus.
+  const navOrder = [
+    findInput, prevBtn, nextBtn, caseBtn, wordBtn, regexBtn,
+    replaceToggle, closeBtn, replaceInput, replaceBtn, replaceAllBtn,
+  ];
+  // offsetParent is null for a control inside the collapsed (hidden) replace
+  // row, so this list naturally contracts/expands as the row toggles.
+  function navFocusables() {
+    return navOrder.filter((el) => el && el.offsetParent !== null && !el.disabled);
+  }
+  function caretAtStart(el) {
+    return el.selectionStart === 0 && el.selectionEnd === 0;
+  }
+  function caretAtEnd(el) {
+    const n = el.value.length;
+    return el.selectionStart === n && el.selectionEnd === n;
+  }
+
+  bar.addEventListener('keydown', (e) => {
+    const t = e.target;
+    // Tab: find → replace (revealing the row) and replace → find. Other Tabs
+    // fall through to the browser's native focus order.
+    if (e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      if (!e.shiftKey && t === findInput && replaceInput) {
+        e.preventDefault();
+        setReplaceOpen(true);
+        replaceInput.focus();
+      } else if (e.shiftKey && t === replaceInput) {
+        e.preventDefault();
+        findInput.focus();
+      }
+      return;
+    }
+    // Arrow-key roving focus across the bar's controls.
+    const list = navFocusables();
+    const idx = list.indexOf(t);
+    if (idx === -1) return;
+    const isInput = t.tagName === 'INPUT';
+    const dest = nextFocusIndex({
+      count: list.length,
+      index: idx,
+      key: e.key,
+      isInput,
+      atStart: isInput && caretAtStart(t),
+      atEnd: isInput && caretAtEnd(t),
+    });
+    if (dest === -1) return;
+    e.preventDefault();
+    const el = list[dest];
+    if (el && typeof el.focus === 'function') el.focus();
+  });
 
   // Global Cmd/Ctrl+F. Cmd/Ctrl+G steps to the next match (a common
   // convention from BBEdit / Xcode / VS Code's "Find Next" binding).

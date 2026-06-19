@@ -167,6 +167,57 @@ if (welcomeIconBtn) {
   clearSpinOnEnd(welcomeIconBtn);
 }
 
+// Copy text to the clipboard, preferring the async Clipboard API and falling
+// back to a hidden-textarea execCommand for non-secure contexts (e.g. a
+// file:// desktop shell) where navigator.clipboard is unavailable.
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch (_e) { /* clipboard unavailable — nothing else to do */ }
+}
+
+// ETH donation: click the abbreviated address to copy the full one and flash
+// a check mark. data-address is the single source of truth; the visible text
+// is the abbreviation (0x + first 4 … last 4), recomputed here so it can
+// never drift from the address actually copied. stopPropagation keeps the
+// document-level "click anywhere closes the popup" handler (below) from
+// hiding the popup before the confirmation is seen.
+const donateEthBtn = document.getElementById('donate-eth');
+if (donateEthBtn) {
+  const fullAddress = donateEthBtn.dataset.address || '';
+  const addrEl = document.getElementById('donate-eth-addr');
+  if (addrEl && fullAddress.length > 12) {
+    addrEl.textContent = `${fullAddress.slice(0, 6)}…${fullAddress.slice(-4)}`;
+  }
+  let copiedTimer = 0;
+  donateEthBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    copyToClipboard(fullAddress);
+    // Restart the one-shot glitch cleanly so rapid re-clicks re-animate
+    // (same remove → reflow → re-add trick as the welcome icon boot).
+    donateEthBtn.classList.remove('copied');
+    void donateEthBtn.offsetWidth;
+    donateEthBtn.classList.add('copied');
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => donateEthBtn.classList.remove('copied'), 1500);
+  });
+}
+
 // Any click anywhere closes the popup (including clicks on the link, which
 // still navigate first thanks to target="_blank"). The icon's own click
 // handler above stops propagation, so the click that opens the popup
