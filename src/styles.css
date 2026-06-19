@@ -638,48 +638,48 @@ dialog#welcome-dialog::backdrop {
 @keyframes welcome-icon-boot {
   0% {
     opacity: 0;
-    transform: translate3d(-5px, 0, 0) skewX(7deg);
-    filter:
-      drop-shadow(8px 0 0 var(--gx-magenta))
-      drop-shadow(-8px 0 0 var(--gx-cyan));
-  }
-  12% {
-    opacity: 1;
-    transform: translate3d(6px, -2px, 0) skewX(-5deg);
-    /* channel swap + vertical ghost — the "signal lock" stutter */
-    filter:
-      drop-shadow(7px 2px 0 var(--gx-cyan))
-      drop-shadow(-7px -2px 0 var(--gx-magenta));
-  }
-  24% {
-    opacity: 0.82;
-    transform: translate3d(-7px, 1px, 0);
-    filter:
-      drop-shadow(9px 0 0 var(--gx-magenta))
-      drop-shadow(-9px 0 0 var(--gx-cyan));
-  }
-  36% {
-    opacity: 1;
-    transform: translate3d(5px, 0, 0) skewX(4deg);
-    filter:
-      drop-shadow(5px -2px 0 var(--gx-magenta))
-      drop-shadow(-5px 2px 0 var(--gx-cyan));
-  }
-  50% {
-    transform: translate3d(-4px, -1px, 0) skewX(-3deg);
-    filter:
-      drop-shadow(4px 0 0 var(--gx-cyan))
-      drop-shadow(-4px 0 0 var(--gx-magenta));
-  }
-  64% {
-    opacity: 0.9;
-    transform: translate3d(3px, 1px, 0);
+    transform: translate3d(-4px, 0, 0) skewX(5deg);
     filter:
       drop-shadow(6px 0 0 var(--gx-magenta))
       drop-shadow(-6px 0 0 var(--gx-cyan));
   }
+  12% {
+    opacity: 1;
+    transform: translate3d(4px, -1px, 0) skewX(-3deg);
+    /* channel swap + vertical ghost — the "signal lock" stutter */
+    filter:
+      drop-shadow(5px 1px 0 var(--gx-cyan))
+      drop-shadow(-5px -1px 0 var(--gx-magenta));
+  }
+  24% {
+    opacity: 0.88;
+    transform: translate3d(-5px, 1px, 0);
+    filter:
+      drop-shadow(7px 0 0 var(--gx-magenta))
+      drop-shadow(-7px 0 0 var(--gx-cyan));
+  }
+  36% {
+    opacity: 1;
+    transform: translate3d(4px, 0, 0) skewX(3deg);
+    filter:
+      drop-shadow(4px -1px 0 var(--gx-magenta))
+      drop-shadow(-4px 1px 0 var(--gx-cyan));
+  }
+  50% {
+    transform: translate3d(-3px, -1px, 0) skewX(-2deg);
+    filter:
+      drop-shadow(3px 0 0 var(--gx-cyan))
+      drop-shadow(-3px 0 0 var(--gx-magenta));
+  }
+  64% {
+    opacity: 0.94;
+    transform: translate3d(2px, 1px, 0);
+    filter:
+      drop-shadow(4px 0 0 var(--gx-magenta))
+      drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
   78% {
-    transform: translate3d(-2px, 0, 0) skewX(2deg);
+    transform: translate3d(-2px, 0, 0) skewX(1deg);
     filter: drop-shadow(2px 0 0 var(--gx-magenta));
   }
   90% {
@@ -709,22 +709,22 @@ dialog#welcome-dialog::backdrop {
 @keyframes welcome-card-glitch-in {
   0% {
     opacity: 0;
-    transform: translate3d(-4px, -2px, 0) skewX(-3deg);
-    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+    transform: translate3d(-3px, -1px, 0) skewX(-2deg);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
   }
   30% {
     opacity: 1;
-    transform: translate3d(4px, 1px, 0) skewX(2deg);
-    filter: drop-shadow(3px 0 0 var(--gx-cyan)) drop-shadow(-3px 0 0 var(--gx-magenta));
+    transform: translate3d(3px, 1px, 0) skewX(1deg);
+    filter: drop-shadow(2px 0 0 var(--gx-cyan)) drop-shadow(-2px 0 0 var(--gx-magenta));
   }
   55% {
-    opacity: 0.88;
-    transform: translate3d(-3px, 0, 0);
-    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+    opacity: 0.92;
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
   }
   80% {
     opacity: 1;
-    transform: translate3d(2px, 0, 0);
+    transform: translate3d(1px, 0, 0);
     filter: drop-shadow(1px 0 0 var(--gx-magenta));
   }
   100% { opacity: 1; transform: none; filter: none; }
@@ -740,12 +740,12 @@ dialog#welcome-dialog::backdrop {
     text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
   }
   25% {
-    transform: translateX(-2px);
-    text-shadow: 4px 0 0 var(--gx-magenta), -4px 0 0 var(--gx-cyan);
+    transform: translateX(-1px);
+    text-shadow: 3px 0 0 var(--gx-magenta), -3px 0 0 var(--gx-cyan);
   }
   50% {
-    transform: translateX(2px);
-    text-shadow: -3px 0 0 var(--gx-magenta), 3px 0 0 var(--gx-cyan);
+    transform: translateX(1px);
+    text-shadow: -2px 0 0 var(--gx-magenta), 2px 0 0 var(--gx-cyan);
   }
   75% {
     transform: translateX(-1px);
