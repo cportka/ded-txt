@@ -886,6 +886,56 @@ dialog#welcome-dialog::backdrop {
   color: var(--gx-magenta);
   border-bottom-color: var(--gx-magenta);
 }
+/* ETH donation: a click-to-copy control styled like the popup's links.
+   inline-block so the copy-confirmation glitch (transform/filter) applies —
+   inline boxes can't be transformed. The abbreviated address shows at rest;
+   on .copied we swap to a check mark with a one-shot RGB-split glitch
+   (steps()-timed, reduced-motion gated), matching the find-bar / arrow
+   glitch vocabulary. */
+.info-eth {
+  display: inline-block;
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  color: var(--gx-cyan);
+  border-bottom: 1px dotted var(--gx-cyan);
+  cursor: pointer;
+}
+.info-eth:hover,
+.info-eth:focus-visible {
+  color: var(--gx-magenta);
+  border-bottom-color: var(--gx-magenta);
+  outline: none;
+}
+/* The "copied ✓" confirmation rides in the same slot as the address; only
+   one of the two shows at a time. */
+.info-eth .info-eth-done { display: none; }
+.info-eth.copied .info-eth-text { display: none; }
+.info-eth.copied .info-eth-done {
+  display: inline;
+  color: var(--gx-bone);
+  text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+}
+.info-eth.copied { animation: eth-copied-glitch 200ms steps(1, end); }
+@keyframes eth-copied-glitch {
+  0% {
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  50% {
+    transform: translate3d(2px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-cyan)) drop-shadow(-3px 0 0 var(--gx-magenta));
+  }
+  100% { transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .info-eth.copied { animation: none; }
+}
 /* Chevron: two stacked triangles (outline + fill) on the popup's left
    edge, pointing at the icon. Recolored to match the new palette. */
 .info-popup::before,
