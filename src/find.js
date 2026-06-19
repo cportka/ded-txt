@@ -120,11 +120,13 @@ export function nextFocusIndex({ count, index, key, isInput, atStart, atEnd }) {
   return (index + dir + count) % count;
 }
 
-// Wire the find bar to the editor. Returns { open, close } so the welcome
-// dialog's shortcut button can call open() without going through the keydown
-// path. Pre-fills the input with whatever the editor has selected so the
-// "search for the highlighted word" workflow is a single keystroke.
-export function installFind({ editor }) {
+// Wire the find bar to the editor. Returns { open, close, reset }. The
+// optional `closeWelcome` (injected by the renderer) is the welcome dialog's
+// animated dismiss; Cmd/Ctrl+F routes through it so the modal — which traps
+// focus — is closed before the bar opens. Pre-fills the input with whatever
+// the editor has selected so the "search for the highlighted word" workflow
+// is a single keystroke.
+export function installFind({ editor, closeWelcome }) {
   const bar = document.getElementById('find-bar');
   const findInput = document.getElementById('find-input');
   const replaceInput = document.getElementById('find-replace-input');
@@ -320,7 +322,11 @@ export function installFind({ editor }) {
     syncBarMetrics();
     refresh();
     findInput.focus();
-    findInput.select();
+    // Park the caret at the END of the prefilled query rather than selecting
+    // it, so the user can immediately extend/edit the word (and a stray
+    // keystroke doesn't wipe the whole query).
+    const end = findInput.value.length;
+    findInput.setSelectionRange(end, end);
     // One-shot glitch-in. Remove + reflow + re-add so a re-open mid-
     // animation restarts cleanly (same trick as the welcome icon boot).
     if (!prefersReducedMotion()) {
@@ -567,7 +573,13 @@ export function installFind({ editor }) {
     if (e.key === 'f' || e.key === 'F') {
       e.preventDefault();
       const sel = editor.value.slice(editor.selectionStart, editor.selectionEnd);
-      open(sel || findInput.value);
+      const prefill = sel || findInput.value;
+      // Dismiss the welcome dialog first if it's up: it's modal and traps
+      // focus, so opening the bar underneath it wouldn't focus the input.
+      // closeWelcome runs its callback immediately when the dialog is already
+      // closed (the common case), so this is a no-op wrapper otherwise.
+      if (typeof closeWelcome === 'function') closeWelcome(() => open(prefill));
+      else open(prefill);
     } else if ((e.key === 'g' || e.key === 'G') && !bar.hidden) {
       e.preventDefault();
       step(e.shiftKey ? -1 : 1);
