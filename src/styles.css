@@ -633,38 +633,60 @@ dialog#welcome-dialog::backdrop {
    a smooth fade. Same RGB-split vocabulary as the icon's static
    chromatic aberration — just briefly amplified, then collapsed back. */
 .welcome-icon-btn.booting .welcome-icon {
-  animation: welcome-icon-boot 390ms steps(1, end);
+  animation: welcome-icon-boot 450ms steps(1, end);
 }
 @keyframes welcome-icon-boot {
   0% {
     opacity: 0;
-    transform: translate3d(-3px, 0, 0);
+    transform: translate3d(-5px, 0, 0) skewX(7deg);
     filter:
-      drop-shadow(5px 0 0 var(--gx-magenta))
-      drop-shadow(-5px 0 0 var(--gx-cyan));
+      drop-shadow(8px 0 0 var(--gx-magenta))
+      drop-shadow(-8px 0 0 var(--gx-cyan));
   }
-  20% {
+  12% {
     opacity: 1;
-    transform: translate3d(3px, -1px, 0);
+    transform: translate3d(6px, -2px, 0) skewX(-5deg);
+    /* channel swap + vertical ghost — the "signal lock" stutter */
     filter:
-      drop-shadow(3px 0 0 var(--gx-magenta))
-      drop-shadow(-3px 0 0 var(--gx-cyan));
+      drop-shadow(7px 2px 0 var(--gx-cyan))
+      drop-shadow(-7px -2px 0 var(--gx-magenta));
   }
-  40% {
-    transform: translate3d(-2px, 1px, 0);
+  24% {
+    opacity: 0.82;
+    transform: translate3d(-7px, 1px, 0);
     filter:
-      drop-shadow(2px 0 0 var(--gx-magenta))
-      drop-shadow(-2px 0 0 var(--gx-cyan));
+      drop-shadow(9px 0 0 var(--gx-magenta))
+      drop-shadow(-9px 0 0 var(--gx-cyan));
   }
-  60% {
+  36% {
+    opacity: 1;
+    transform: translate3d(5px, 0, 0) skewX(4deg);
+    filter:
+      drop-shadow(5px -2px 0 var(--gx-magenta))
+      drop-shadow(-5px 2px 0 var(--gx-cyan));
+  }
+  50% {
+    transform: translate3d(-4px, -1px, 0) skewX(-3deg);
+    filter:
+      drop-shadow(4px 0 0 var(--gx-cyan))
+      drop-shadow(-4px 0 0 var(--gx-magenta));
+  }
+  64% {
+    opacity: 0.9;
+    transform: translate3d(3px, 1px, 0);
+    filter:
+      drop-shadow(6px 0 0 var(--gx-magenta))
+      drop-shadow(-6px 0 0 var(--gx-cyan));
+  }
+  78% {
+    transform: translate3d(-2px, 0, 0) skewX(2deg);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta));
+  }
+  90% {
     transform: translate3d(1px, 0, 0);
     filter:
-      drop-shadow(1px 0 0 var(--gx-magenta))
-      drop-shadow(-1px 0 0 var(--gx-cyan));
-  }
-  80% {
-    transform: translate3d(0, 0, 0);
-    filter: drop-shadow(2px 0 0 var(--gx-magenta));
+      drop-shadow(1px 0 0 var(--gx-cyan))
+      drop-shadow(-1px 0 0 var(--gx-magenta));
   }
   100% {
     opacity: 1;
@@ -674,6 +696,65 @@ dialog#welcome-dialog::backdrop {
 }
 @media (prefers-reduced-motion: reduce) {
   .welcome-icon-btn.booting .welcome-icon { animation: none; }
+}
+/* One-shot glitch-IN on dialog open: the whole card boots in with the same
+   RGB-split + jitter family as the icon, just shorter, so the main window
+   itself feels like it snaps in rather than only the icon. welcome.js stamps
+   .glitching-in and clears it on animationend. Declared BEFORE the glitch-out
+   rule so a dismiss that lands mid-stamp still wins the cascade (equal
+   specificity → later source wins). */
+.welcome-card.glitching-in {
+  animation: welcome-card-glitch-in 220ms steps(1, end);
+}
+@keyframes welcome-card-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(-4px, -2px, 0) skewX(-3deg);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  30% {
+    opacity: 1;
+    transform: translate3d(4px, 1px, 0) skewX(2deg);
+    filter: drop-shadow(3px 0 0 var(--gx-cyan)) drop-shadow(-3px 0 0 var(--gx-magenta));
+  }
+  55% {
+    opacity: 0.88;
+    transform: translate3d(-3px, 0, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  80% {
+    opacity: 1;
+    transform: translate3d(2px, 0, 0);
+    filter: drop-shadow(1px 0 0 var(--gx-magenta));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+/* Version stamp gets its own quick RGB-split shudder during the boot, on top
+   of its resting 1px chromatic split. */
+.welcome-card.glitching-in .welcome-version {
+  animation: welcome-version-glitch 220ms steps(1, end);
+}
+@keyframes welcome-version-glitch {
+  0%, 100% {
+    transform: none;
+    text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+  }
+  25% {
+    transform: translateX(-2px);
+    text-shadow: 4px 0 0 var(--gx-magenta), -4px 0 0 var(--gx-cyan);
+  }
+  50% {
+    transform: translateX(2px);
+    text-shadow: -3px 0 0 var(--gx-magenta), 3px 0 0 var(--gx-cyan);
+  }
+  75% {
+    transform: translateX(-1px);
+    text-shadow: 2px 0 0 var(--gx-cyan), -2px 0 0 var(--gx-magenta);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-card.glitching-in,
+  .welcome-card.glitching-in .welcome-version { animation: none; }
 }
 /* Glitch-out on dialog dismiss. welcome.js stamps .glitching-out on the
    card, plays this, then calls dialog.close() on animationend. Same

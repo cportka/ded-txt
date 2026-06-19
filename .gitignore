@@ -17,3 +17,6 @@ src-tauri/WixTools/
 *.log
 .idea/
 .vscode/
+
+# video-bug-analyzer (portka-tools) frame extractions
+.frames/
