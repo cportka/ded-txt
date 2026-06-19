@@ -93,7 +93,9 @@ function doNew() {
 // especially on touch), then closes the dialog and runs the action.
 // installFind wires its own Cmd/Ctrl+F handler; we keep a reference so the
 // welcome-dialog Find row can open the bar without going through keydown.
-const find = installFind({ editor });
+// closeWelcome is injected so Cmd/Ctrl+F dismisses the (modal, focus-
+// trapping) welcome dialog before opening the bar.
+const find = installFind({ editor, closeWelcome });
 function doFind() { find.open(); }
 
 // Floating scroll-to-start / scroll-to-end arrows. update() is called after

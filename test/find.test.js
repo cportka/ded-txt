@@ -392,4 +392,26 @@ describe('installFind() overlay wiring', () => {
     assert.equal(highlights.innerHTML, undefined, 'outer clip window never holds the marks');
     assert.ok(highlights.style.width, 'outer clip window receives the box geometry');
   });
+
+  test('open() prefills the query and parks the caret at its end (not selected)', async () => {
+    const sel = [];
+    const findInput = makeEl({ value: '', setSelectionRange(s, e) { sel.length = 0; sel.push(s, e); } });
+    const editor = makeEl({ value: 'x chris y' });
+    const byId = {
+      'find-bar': makeEl(),
+      'find-input': findInput,
+      'find-counter': makeEl(),
+      'editor-wrap': makeEl(),
+      'editor-highlights': makeEl(),
+      'editor-highlights-inner': makeEl(),
+    };
+    globalThis.document = { getElementById: (id) => byId[id] || null, addEventListener() {} };
+    globalThis.window = { addEventListener() {}, matchMedia: () => ({ matches: true }) };
+
+    const { installFind } = await freshFind();
+    installFind({ editor }).open('chris');
+
+    assert.equal(findInput.value, 'chris', 'query prefilled');
+    assert.deepEqual(sel, [5, 5], 'caret parked at the end, nothing selected');
+  });
 });
