@@ -408,6 +408,25 @@ function openDialog() {
   dialog.setAttribute('tabindex', '-1');
   dialog.showModal();
 
+  // One-shot whole-card glitch-in on every open, paired with the icon boot
+  // below so the main window snaps in glitchy (not just the icon). Same
+  // remove → reflow → re-add restart trick + name-filtered animationend
+  // cleanup so rapid re-opens re-fire cleanly. The version stamp's own
+  // shudder is CSS-scoped to .glitching-in, so it rides along and stops when
+  // this class is cleared.
+  const card = dialog.querySelector('.welcome-card');
+  if (card && !prefersReducedMotion()) {
+    card.classList.remove('glitching-in');
+    void card.offsetWidth;
+    card.classList.add('glitching-in');
+    const onCardGlitchEnd = (e) => {
+      if (e.animationName !== 'welcome-card-glitch-in') return;
+      card.classList.remove('glitching-in');
+      card.removeEventListener('animationend', onCardGlitchEnd);
+    };
+    card.addEventListener('animationend', onCardGlitchEnd);
+  }
+
   // Stamp a one-shot glitch "boot" on the icon every time we open. CSS
   // does the animation (.welcome-icon-btn.booting → keyframes
   // welcome-icon-boot); we just (re)apply the class and clean up via a
