@@ -1,6 +1,6 @@
 [package]
 name = "dedtxt"
-version = "1.0.0-rc.57"
+version = "1.0.0-rc.58"
 description = "DedTxt — a dead simple plain-text editor."
 authors = ["Chris Portka"]
 edition = "2021"

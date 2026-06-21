@@ -1105,110 +1105,6 @@ dialog#welcome-dialog::backdrop {
   .welcome-update-fill { transition: none; }
 }
 
-/* In-app "Save as" prompt for non-FSA browsers. Reuses the welcome
-   dialog's card styling, dressed in the same glitch vocabulary (monospace
-   + chromatic-aberration accents) with a glitch in/out animation. */
-dialog#save-as-dialog {
-  border: none;
-  padding: 0;
-  background: transparent;
-  color: var(--fg);
-  max-width: min(280px, calc(100% - 32px));
-  outline: none;
-}
-dialog#save-as-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.55);
-}
-.save-as-card {
-  /* Width override; everything else inherits from .welcome-card */
-  max-width: 100%;
-}
-.save-as-title {
-  margin: 0 0 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-align: center;
-  color: var(--gx-bone);
-  /* Chromatic-aberration echo, matching the find counter and version stamp. */
-  text-shadow:
-    1px 0 0 var(--gx-magenta),
-    -1px 0 0 var(--gx-cyan);
-}
-#save-as-name {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0 0 12px;
-  padding: 8px 10px;
-  border: 1px solid var(--muted);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--fg);
-  /* Monospace to match the find inputs and the editor — the filename reads
-     as terminal-style text, in keeping with the glitch surface. */
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 14px;
-}
-#save-as-name:focus {
-  outline: 1px solid var(--gx-cyan);
-  outline-offset: -1px;
-  border-color: var(--gx-cyan);
-}
-.save-as-actions {
-  display: flex;
-  gap: 8px;
-}
-.save-as-actions .welcome-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-}
-/* Secondary (Cancel) variant of the welcome button — transparent so
-   Save reads as the primary action. */
-.save-as-cancel-btn {
-  background: transparent;
-  color: var(--fg);
-  border-color: var(--muted);
-}
-/* Hover picks up the icon's chromatic split, same as #find-close — keeps the
-   Save/Cancel buttons in the glitch family without changing their fill. */
-.save-as-actions .welcome-btn:hover {
-  text-shadow:
-    1px 0 0 var(--gx-magenta),
-    -1px 0 0 var(--gx-cyan);
-}
-
-/* Glitch the card in on open and out on dismiss. The card already carries
-   .welcome-card, so dismissal reuses welcome-card-glitch-out (toggled by
-   promptForFilename); only the entrance needs its own keyframe. Mirrors
-   find-bar-glitch-in: opacity + a small translate jitter + RGB-split ghosts
-   collapsing to none, steps() for a blocky digital feel. */
-.save-as-card.save-glitch-in {
-  animation: save-as-glitch-in 165ms steps(1, end);
-}
-@keyframes save-as-glitch-in {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 6px, 0);
-    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
-  }
-  35% {
-    opacity: 1;
-    transform: translate3d(-3px, -1px, 0);
-    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
-  }
-  65% {
-    transform: translate3d(2px, 0, 0);
-    filter: drop-shadow(1px 0 0 var(--gx-magenta)) drop-shadow(-1px 0 0 var(--gx-cyan));
-  }
-  100% { opacity: 1; transform: none; filter: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .save-as-card.save-glitch-in { animation: none; }
-}
-
 /* Touch-device font-size bump. iOS Safari auto-zooms any input or
    textarea with font-size < 16px when it receives focus — tapping
    into the editor or the find input shifts the entire layout. Lifting
@@ -1225,8 +1121,7 @@ dialog#save-as-dialog::backdrop {
   #text-editor,
   #editor-highlights-inner,
   #editor-mirror,
-  #find-bar input,
-  #save-as-name {
+  #find-bar input {
     font-size: 16px;
   }
   /* Bigger tap targets on phones — the desktop 22x20-ish buttons are

@@ -50,6 +50,42 @@ async function main() {
   // Favicon — modern browsers honor PNG favicons fine.
   await sharp(svg).resize(64, 64).png().toFile(path.join(webIconsDir, 'favicon.png'));
 
+  // Open Graph / social card (1200x630): the app icon on the left, tagline +
+  // URL on the right, on the brand's dark background. Social crawlers can't use
+  // the animated UI, so this still-frame carries the glitch look (chromatic
+  // RGB-split text echoing the wordmark).
+  const OG_W = 1200;
+  const OG_H = 630;
+  const ogIcon = await sharp(svg).resize(468, 468).png().toBuffer();
+  const line = (y, size, text) =>
+    `<text x="643" y="${y + 3}" font-size="${size}" fill="#ff3d8a" opacity="0.85">${text}</text>` +
+    `<text x="637" y="${y - 2}" font-size="${size}" fill="#cfe9ff" opacity="0.45">${text}</text>` +
+    `<text x="640" y="${y}" font-size="${size}" fill="#f0ede4">${text}</text>`;
+  const ogBg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_W}" height="${OG_H}" viewBox="0 0 ${OG_W} ${OG_H}">
+      <defs>
+        <linearGradient id="og" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#161616"/><stop offset="1" stop-color="#000000"/>
+        </linearGradient>
+      </defs>
+      <rect width="${OG_W}" height="${OG_H}" fill="url(#og)"/>
+      <g fill="#ff3d8a" opacity="0.12">
+        <rect x="640" y="150" width="470" height="8"/>
+        <rect x="640" y="372" width="360" height="8"/>
+        <rect x="640" y="470" width="250" height="8"/>
+      </g>
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="700">
+        ${line(250, 52, 'a dead simple')}
+        ${line(322, 52, 'plain-text editor')}
+        <text x="640" y="426" font-size="40" font-weight="700" fill="#ff3d8a">dedtxt.app</text>
+      </g>
+    </svg>`
+  );
+  await sharp(ogBg)
+    .composite([{ input: ogIcon, top: Math.round((OG_H - 468) / 2), left: 96 }])
+    .png()
+    .toFile(path.join(webIconsDir, 'og-image.png'));
+
   console.log('Wrote icons to build/, src/icons/, and src-tauri/icons/');
 }
 

@@ -43,10 +43,6 @@ let currentName = null;
 let dirty = false;
 
 let loadCb = null;
-// Renderer-supplied async prompter: askName(suggested) → Promise<string|null>.
-// Only used in the non-FSA download-fallback path so Firefox/Safari users
-// get a tab title + a consistent download name on first save.
-let askName = null;
 
 function hasFsAccess() {
   return typeof window !== 'undefined' && typeof window.showOpenFilePicker === 'function';
@@ -163,20 +159,27 @@ async function writeHandle(handle, payload) {
   await writable.close();
 }
 
-function downloadFallback(payload, suggestedName, mime) {
+// Normalize a save filename: strip path separators (defense-in-depth for the
+// download attribute) and surrounding dots, fall back to a default base, and
+// guarantee a .txt extension when the user didn't supply one. The native save
+// pickers let the user type any extension themselves; this governs the default
+// name and the non-FSA download name. Exported for unit testing.
+export function normalizeFilename(name) {
+  const s = (name || '').trim()
+    .replace(/[/\\]+/g, '_')
+    .replace(/^\.+/, '')
+    .replace(/\.+$/, '');
+  if (!s) return 'untitled.txt';
+  return /\.[^.\s/\\]+$/.test(s) ? s : `${s}.txt`;
+}
+
+function downloadFallback(payload, name, mime) {
   // Blob accepts Uint8Array or string as a BlobPart, no branch needed.
   const blob = new Blob([payload], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  // Strip path separators and leading dots so a hostile or careless filename
-  // can't write outside the user's intended save target. Browsers also
-  // refuse path separators in `download` themselves, but being explicit
-  // means we don't depend on that and confusion ("Save As" prefilling with
-  // ../../foo.txt) doesn't reach the user.
-  a.download = (suggestedName || 'Untitled.txt')
-    .replace(/[/\\]/g, '_')
-    .replace(/^\.+/, '_');
+  a.download = name || 'untitled.txt';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -204,7 +207,7 @@ const web = {
     if (hasFsAccess() && typeof window.showSaveFilePicker === 'function') {
       try {
         const handle = await window.showSaveFilePicker({
-          suggestedName: currentName || 'Untitled.txt',
+          suggestedName: currentName || 'untitled.txt',
         });
         await writeHandle(handle, payload);
         currentHandle = handle;
@@ -219,20 +222,16 @@ const web = {
         return { ok: false, error: err.message };
       }
     }
-    // Safari / Firefox fallback: trigger a one-shot download. Without an FS
-    // handle there's nothing to re-save to, so this path repeats every save.
-    // If currentName is null AND the renderer registered a prompter, ask
-    // once for a filename so the tab can show something meaningful and
-    // future saves reuse the same suggested download name.
-    if (!currentName && askName) {
-      const picked = await askName('Untitled.txt');
-      if (picked == null) return { ok: false, canceled: true };
-      currentName = picked;
-      updateTitle();
-    }
-    const suggestedName = currentName || 'Untitled.txt';
-    downloadFallback(payload, suggestedName, mime);
-    return { ok: true, filePath: suggestedName };
+    // Safari / Firefox: no native save picker, so trigger a download. We no
+    // longer prompt in-app for a name — that stacked a second dialog on top of
+    // the browser's own download prompt (which already lets the user name +
+    // place the file). Reuse the open/known name if we have one, else default
+    // to untitled.txt. We deliberately DON'T adopt the default as currentName:
+    // the download API never reports what the browser's dialog actually saved
+    // the file as, so the tab title must not assert a name the user didn't pick.
+    const name = normalizeFilename(currentName || 'untitled.txt');
+    downloadFallback(payload, name, mime);
+    return { ok: true, filePath: name };
   },
 
   async openDroppedFile(file) {
@@ -286,8 +285,6 @@ const web = {
   // reloads to pick up the freshly-cached assets.
   async checkUpdate() { return { updateKind: 'none' }; },
   async applyUpdate() { if (typeof location !== 'undefined') location.reload(); },
-
-  setNameAsker(fn) { askName = fn; }
 };
 
 export default web;
