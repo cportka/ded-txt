@@ -60,6 +60,25 @@ fs.copyFileSync(path.join(out, 'index.html'), path.join(out, '404.html'));
 // 6. Disable Jekyll so files starting with _ are served verbatim.
 fs.writeFileSync(path.join(out, '.nojekyll'), '');
 
+// 6b. SEO: robots.txt + a minimal sitemap so crawlers index the canonical URL.
+fs.writeFileSync(
+  path.join(out, 'robots.txt'),
+  'User-agent: *\nAllow: /\n\nSitemap: https://dedtxt.app/sitemap.xml\n'
+);
+const lastmod = new Date().toISOString().slice(0, 10);
+fs.writeFileSync(
+  path.join(out, 'sitemap.xml'),
+  '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+  '  <url>\n' +
+  '    <loc>https://dedtxt.app/</loc>\n' +
+  `    <lastmod>${lastmod}</lastmod>\n` +
+  '    <changefreq>monthly</changefreq>\n' +
+  '    <priority>1.0</priority>\n' +
+  '  </url>\n' +
+  '</urlset>\n'
+);
+
 // 7. Emit version.json — the update/OTA manifest. The desktop app fetches this
 // to learn the latest web-layer version (the webview CSP blocks cross-origin
 // fetches, so the native side does it); both desktop and web compare against it
@@ -72,7 +91,7 @@ const pkg = require('../package.json');
 // command — most releases leave it untouched so web updates hot-swap in place.
 const NATIVE_MIN = '1.0.0-rc.49';
 // Web-deploy-only artifacts the running app never loads — kept out of the manifest.
-const MANIFEST_EXCLUDE = new Set(['404.html', 'CNAME', '.nojekyll', 'version.json', 'app/index.html']);
+const MANIFEST_EXCLUDE = new Set(['404.html', 'CNAME', '.nojekyll', 'version.json', 'app/index.html', 'robots.txt', 'sitemap.xml']);
 
 function listFiles(dir, base = '') {
   const found = [];

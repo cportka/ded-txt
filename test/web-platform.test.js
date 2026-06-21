@@ -349,6 +349,19 @@ describe('src/platform/web.js', () => {
       assert.equal(document.title, 'first.txt — DedTxt');
     });
 
+    test('picker suggestedName defaults to untitled.txt, then uses the known name', async () => {
+      const suggested = [];
+      const handle = makeFakeHandle('picked.txt');
+      installGlobals({ showSaveFilePicker: async (opts) => { suggested.push(opts.suggestedName); return handle; } });
+      const web = await freshWeb();
+
+      await web.saveFile('a');          // no name yet → default
+      web.newFile();                    // drop the handle + name
+      web.setName('notes.md');          // simulate an opened / known name
+      await web.saveFile('b');          // → suggests the known name
+      assert.deepEqual(suggested, ['untitled.txt', 'notes.md']);
+    });
+
     test('subsequent saves write silently to the stored handle — no second picker', async () => {
       // Regression: rc.20 lacked mode:'readwrite' so Chrome treated the
       // handle as read-only and re-prompted. Even with readwrite, the
@@ -664,56 +677,24 @@ describe('src/platform/web.js', () => {
   });
 
   describe('saveFile() — non-FSA (download-fallback) path', () => {
-    test('first save triggers a Blob download with the default "Untitled.txt" name when no asker', async () => {
+    test('first save downloads a Blob named "untitled.txt" but does NOT claim that name in the title', async () => {
       const env = installGlobals();
       const web = await freshWeb();
 
       const res = await web.saveFile('some text');
-      assert.deepEqual(res, { ok: true, filePath: 'Untitled.txt' });
-      assert.equal(env.anchors.find(a => a.download).download, 'Untitled.txt');
+      assert.deepEqual(res, { ok: true, filePath: 'untitled.txt' });
+      assert.equal(env.anchors.find(a => a.download).download, 'untitled.txt');
       assert.equal(env.blobs.length, 1);
       assert.deepEqual(env.blobs[0].parts, ['some text']);
       assert.equal(env.blobs[0].options.type, 'text/plain;charset=utf-8');
-    });
-
-    test('asker is called once on first save and the name is remembered for the second', async () => {
-      const env = installGlobals();
-      const web = await freshWeb();
-      let askCount = 0;
-      web.setNameAsker(async (suggested) => { askCount += 1; return `my-${suggested}`; });
-
-      const r1 = await web.saveFile('first');
-      assert.equal(askCount, 1);
-      assert.equal(r1.filePath, 'my-Untitled.txt');
-      assert.equal(document.title, 'my-Untitled.txt — DedTxt');
-
-      const r2 = await web.saveFile('second');
-      assert.equal(askCount, 1, 'asker must only fire once');
-      assert.equal(r2.filePath, 'my-Untitled.txt');
-      assert.equal(env.blobs.length, 2);
-    });
-
-    test('cancelling the asker returns {canceled:true} and does NOT set a name', async () => {
-      installGlobals();
-      const web = await freshWeb();
-      web.setNameAsker(async () => null);
-
-      const res = await web.saveFile('content');
-      assert.deepEqual(res, { ok: false, canceled: true });
-      // Title must not have been set.
+      // The download API never reports what the browser's own save dialog
+      // saved the file as, so the tab title must NOT assert "untitled.txt".
       assert.equal(document.title, 'DedTxt');
-
-      // Next save must still ask (no name was stored).
-      let askCount = 0;
-      web.setNameAsker(async () => { askCount += 1; return 'finally.txt'; });
-      await web.saveFile('retry');
-      assert.equal(askCount, 1);
     });
 
-    test('three saves result in three blobs (no silent re-use of handle)', async () => {
+    test('each save re-downloads — there is no FSA handle to write through', async () => {
       const env = installGlobals();
       const web = await freshWeb();
-      web.setNameAsker(async () => 'foo.txt');
 
       await web.saveFile('one');
       await web.saveFile('two');
@@ -721,51 +702,33 @@ describe('src/platform/web.js', () => {
 
       assert.equal(env.blobs.length, 3);
       assert.deepEqual(env.blobs.map(b => b.parts[0]), ['one', 'two', 'three']);
-      assert.equal(document.title, 'foo.txt — DedTxt');
+      assert.equal(document.title, 'DedTxt');
     });
 
-    test('opening a file first skips the prompt — currentName already set', async () => {
+    test('an opened file reuses its name for the download (and the title keeps showing it)', async () => {
       const env = installGlobals();
       const web = await freshWeb();
       web.onLoad(() => {});
-      let askCount = 0;
-      web.setNameAsker(async () => { askCount += 1; return 'should-not-be-asked.txt'; });
 
       await web.openDroppedFile(makeFakeFile('readme.md', 'old'));
       assert.equal(document.title, 'readme.md — DedTxt');
 
       const res = await web.saveFile('new');
-      assert.equal(askCount, 0);
       assert.equal(res.filePath, 'readme.md');
+      assert.equal(env.anchors.find(a => a.download).download, 'readme.md');
       assert.equal(env.blobs.length, 1);
       assert.equal(document.title, 'readme.md — DedTxt');
     });
 
-    test('no asker registered → falls back to silent "Untitled.txt" download', async () => {
-      // Backwards-compat with rc.22-23 behaviour for any caller that
-      // doesn't wire up the prompter.
+    test('binary save downloads with the octet-stream mime', async () => {
       const env = installGlobals();
       const web = await freshWeb();
 
-      const res = await web.saveFile('content');
-      assert.deepEqual(res, { ok: true, filePath: 'Untitled.txt' });
-      assert.equal(env.blobs.length, 1);
-      assert.deepEqual(env.blobs[0].parts, ['content']);
-      // Title still doesn't claim "Untitled.txt" — rc.22 invariant.
-      assert.equal(document.title, 'DedTxt');
-    });
-
-    test('asker is only consulted on the non-FSA path, not on FSA saves', async () => {
-      const handle = makeFakeHandle('fsa.txt');
-      installGlobals({ showSaveFilePicker: async () => handle });
-      const web = await freshWeb();
-      let askCount = 0;
-      web.setNameAsker(async () => { askCount += 1; return 'wrong.txt'; });
-
-      const res = await web.saveFile('payload');
+      // Latin-1 "ÿ" (single byte 0xFF) saved in binary mode.
+      const res = await web.saveFile('ÿ', true);
       assert.equal(res.ok, true);
-      assert.equal(res.filePath, 'fsa.txt');
-      assert.equal(askCount, 0, 'FSA save-picker path must not call the in-app asker');
+      assert.equal(env.blobs.length, 1);
+      assert.equal(env.blobs[0].options.type, 'application/octet-stream');
     });
   });
 
@@ -914,5 +877,46 @@ describe('src/platform/web.js', () => {
       assert.match(res.error, /too large/i);
       assert.equal(loadedCalled, false);
     });
+  });
+});
+
+describe('normalizeFilename() (src/platform/web.js)', () => {
+  async function fresh() {
+    const cb = `?cb=${Date.now()}-${Math.random()}`;
+    const mod = await import('../src/platform/web.js' + cb);
+    return mod.normalizeFilename;
+  }
+
+  test('keeps an existing extension', async () => {
+    const n = await fresh();
+    assert.equal(n('notes.md'), 'notes.md');
+    assert.equal(n('archive.tar.gz'), 'archive.tar.gz');
+    assert.equal(n('untitled.txt'), 'untitled.txt');
+  });
+
+  test('appends .txt when no extension is given', async () => {
+    const n = await fresh();
+    assert.equal(n('notes'), 'notes.txt');
+    assert.equal(n('my report'), 'my report.txt');
+  });
+
+  test('blank / nullish → untitled.txt', async () => {
+    const n = await fresh();
+    assert.equal(n(''), 'untitled.txt');
+    assert.equal(n('   '), 'untitled.txt');
+    assert.equal(n(null), 'untitled.txt');
+    assert.equal(n(undefined), 'untitled.txt');
+  });
+
+  test('strips trailing dots before deciding on an extension', async () => {
+    const n = await fresh();
+    assert.equal(n('foo.'), 'foo.txt');
+    assert.equal(n('foo...'), 'foo.txt');
+  });
+
+  test('neutralizes path separators (download-name safety)', async () => {
+    const n = await fresh();
+    assert.equal(n('/abs/path.txt'), '_abs_path.txt');
+    assert.ok(!/[\\/]/.test(n('../../etc/passwd')), 'no path separators remain');
   });
 });

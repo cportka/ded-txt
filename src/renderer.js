@@ -1,5 +1,5 @@
 import platform from './platform/index.js';
-import { maybeShowWelcome, showWelcome, closeWelcome, prefersReducedMotion, setUpdateResult, refreshHeadsUp, setHeadsUpHandlers, showUpdateProgress } from './welcome.js';
+import { maybeShowWelcome, showWelcome, closeWelcome, setUpdateResult, refreshHeadsUp, setHeadsUpHandlers, showUpdateProgress } from './welcome.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
 import { initScrollArrows } from './scroll-arrows.js';
@@ -326,112 +326,6 @@ platform.onLoad(({ content, isBinary }) => {
 
 platform.onMenuNew?.(doNew);
 platform.onMenuSave(doSave);
-
-// In-app "Save as" prompt used by the web shim on non-FSA browsers
-// (Firefox / Safari / iOS). Returns the picked name, or null if cancelled.
-// Wires up backdrop-click + Escape + close events so all the natural ways
-// to dismiss a <dialog> resolve to null exactly once.
-function promptForFilename(suggested) {
-  const dialog = document.getElementById('save-as-dialog');
-  const input = document.getElementById('save-as-name');
-  const okBtn = document.getElementById('save-as-ok');
-  const cancelBtn = document.getElementById('save-as-cancel');
-  if (!dialog || !input || !okBtn || !cancelBtn) {
-    // Should not happen, but degrade gracefully if the markup is missing.
-    return Promise.resolve(suggested || 'Untitled.txt');
-  }
-  const card = dialog.querySelector('.welcome-card');
-  return new Promise((resolve) => {
-    input.value = suggested || 'Untitled.txt';
-    let settled = false;
-
-    const teardown = () => {
-      okBtn.removeEventListener('click', onOk);
-      cancelBtn.removeEventListener('click', onCancel);
-      dialog.removeEventListener('cancel', onCancelEvt);
-      dialog.removeEventListener('close', onClose);
-      dialog.removeEventListener('click', onBackdrop);
-      input.removeEventListener('keydown', onKey);
-    };
-
-    // animate === true plays the card glitch-out before closing (dismissals).
-    // For "Save" it MUST be false: the caller's download fires right after
-    // this resolve, and on iOS Safari that only works inside the original tap
-    // — a ~240ms glitch defer would drop the user-activation gesture (the same
-    // failure that broke the welcome Open/Save shortcuts). Reduced motion and
-    // a missing card also close instantly.
-    const finish = (value, animate) => {
-      if (settled) return;
-      settled = true;
-      teardown();
-      if (!animate || !card || prefersReducedMotion()) {
-        if (dialog.open) dialog.close();
-        resolve(value);
-        return;
-      }
-      let done = false;
-      const closeNow = () => {
-        if (done) return;
-        done = true;
-        card.removeEventListener('animationend', onGlitchEnd);
-        card.classList.remove('glitching-out');
-        if (dialog.open) dialog.close();
-        resolve(value);
-      };
-      const onGlitchEnd = (e) => {
-        if (e.animationName === 'welcome-card-glitch-out') closeNow();
-      };
-      // Drop the entrance class first — its rule sits later in the cascade and
-      // would otherwise win the `animation` property over the glitch-out.
-      card.classList.remove('save-glitch-in', 'glitching-out');
-      void card.offsetWidth;
-      card.classList.add('glitching-out');
-      card.addEventListener('animationend', onGlitchEnd);
-      // Safety net if animationend never lands (interrupted / unsupported).
-      setTimeout(closeNow, 270);
-    };
-
-    // Save resolves in-tap (no glitch-out) so the download stays in-gesture.
-    const onOk = () => {
-      const trimmed = (input.value || '').trim();
-      finish(trimmed || 'Untitled.txt', false);
-    };
-    // Dismissals have no downstream gesture, so they get the glitch-out.
-    const onCancel = () => finish(null, true);
-    const onBackdrop = (e) => { if (e.target === dialog) finish(null, true); };
-    // Native ESC fires 'cancel' first; intercept it to play the glitch-out
-    // (mirrors welcome.js). Under reduced motion, let the native close proceed.
-    const onCancelEvt = (e) => {
-      if (prefersReducedMotion()) return;
-      e.preventDefault();
-      finish(null, true);
-    };
-    // Catch-all: any other close (incl. reduced-motion ESC) resolves once.
-    const onClose = () => finish(null, false);
-    const onKey = (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); onOk(); }
-    };
-
-    okBtn.addEventListener('click', onOk);
-    cancelBtn.addEventListener('click', onCancel);
-    dialog.addEventListener('cancel', onCancelEvt);
-    dialog.addEventListener('close', onClose);
-    dialog.addEventListener('click', onBackdrop);
-    input.addEventListener('keydown', onKey);
-
-    dialog.showModal();
-    // One-shot glitch-in (skipped under reduced motion). Reflow between remove
-    // and add so a rapid re-open re-fires cleanly.
-    if (card && !prefersReducedMotion()) {
-      card.classList.remove('save-glitch-in');
-      void card.offsetWidth;
-      card.classList.add('save-glitch-in');
-    }
-    // Focus + select-all so Enter-to-confirm or just-typing is one keystroke.
-    try { input.focus(); input.select(); } catch (e) { /* ignore */ }
-  });
-}
-platform.setNameAsker?.(promptForFilename);
 
 platform.onSaveAndClose(async () => {
   const result = await doSave();

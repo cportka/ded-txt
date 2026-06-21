@@ -141,9 +141,6 @@ const tauri = {
       if (typeof unlisten === 'function') unlisten();
     }
   },
-
-  // Tauri uses native OS save dialogs — no in-app filename prompt needed.
-  setNameAsker(_fn) {}
 };
 
 // Once the DOM is up, pull any paths Rust buffered before the frontend
