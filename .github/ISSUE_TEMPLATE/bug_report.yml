@@ -1,0 +1,33 @@
+name: Bug report
+description: Something in DedTxt isn't working right.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve DedTxt! Please fill in what you can.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: Steps to reproduce, expected vs. actual.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where?
+      description: Browser + version and OS (e.g. "Firefox 140 on Windows 11").
+      placeholder: e.g. Safari 18 on iOS 18
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DedTxt version
+      description: Shown in the welcome dialog (click the icon, top-right). e.g. v1.0.0-rc.59
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else?
+      description: Console errors, screenshots, a sample file, etc.

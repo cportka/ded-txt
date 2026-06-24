@@ -137,7 +137,7 @@ export function headsUpNotices(env) {
       // Firefox / Safari / iOS — no File System Access API, so every save
       // triggers a fresh download instead of writing back to disk.
       active: (e) => !e.hasFsa,
-      text: "Your browser can't silently save changes — each save downloads a fresh copy. For native-like save, use Chrome / Edge or the desktop app."
+      text: "Your browser can't silently save changes — each save downloads a fresh copy. For native-like save, use Chrome or Edge."
     },
     {
       id: 'no-cmd-n',

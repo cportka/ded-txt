@@ -1,0 +1,81 @@
+# Changelog
+
+All notable changes to DedTxt. This is the single source of project history —
+older planning notes have been folded in here. DedTxt is in a pre-1.0
+release-candidate series; the version is kept in lockstep across
+`src/version.js`, `package.json`, `src-tauri/tauri.conf.json`, and
+`src-tauri/Cargo.toml`.
+
+Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+
+## [1.0.0-rc.59]
+
+### Changed
+- **Native desktop builds paused.** Installers (macOS / Windows / Linux via
+  Tauri) are deprecated for now — the installable PWA at <https://dedtxt.app/>
+  is the shipping target. The Tauri code, Rust unit tests, and CI are
+  preserved: the desktop bundling + release jobs are gated off, and Rust tests
+  now run on every push so the desktop code stays green and ready to revive
+  (see [FUTURE.md](./FUTURE.md)).
+- **Welcome dialog:** replaced the "Get desktop builds" link with an **"Install
+  as web app"** button that fires the browser's PWA install prompt. It hides
+  itself when install isn't possible (iOS Safari, Firefox, already installed).
+- The web build now stamps the real version into the welcome dialog's version
+  span, so view-source / crawlers / pre-hydration HTML show the shipped version
+  instead of the `v0.0.0` placeholder.
+
+### Added
+- **Bitcoin donation** address alongside Ethereum in the about popup
+  (click to copy, same glitch confirmation).
+- A small **link back to the GitHub project** in the welcome dialog.
+- **`llms.txt`** for LLM / agent discoverability.
+- GitHub **issue templates**, a **pull-request template**, **`CONTRIBUTING.md`**,
+  and **`FUNDING.yml`** (Sponsor button).
+- This **`CHANGELOG.md`** and a sparse **[`FUTURE.md`](./FUTURE.md)** roadmap.
+
+## [1.0.0-rc.58]
+
+### Changed
+- One native Save dialog on the web: removed the in-app "Save as" modal.
+  Chrome / Edge use the File System Access picker; Firefox / Safari download
+  directly. Default filename is `untitled.txt`; a typed extension is honored.
+
+### Added
+- SEO + social: meta description, canonical, Open Graph + Twitter cards, a
+  `WebApplication` JSON-LD block, a generated 1200×630 `og-image.png`,
+  `robots.txt`, and `sitemap.xml`.
+
+## [1.0.0-rc.57] and earlier — the polish series
+
+The bulk of the rc series refined a deliberately tiny editor. Highlights:
+
+- **Find & replace** (rc.33): a visible match overlay (vivid `::selection` +
+  highlight layer), replace navigation, and a mobile-friendly find bar that
+  overlays the editor instead of reflowing it (rc.39–rc.48).
+- **Auto-update without re-downloads** (rc.49–rc.52): the service worker swaps
+  in fresh web assets and the welcome dialog surfaces "A new version is ready";
+  the desktop shell can OTA-swap the web layer with `sha256`-verified files via
+  a `version.json` manifest.
+- **Universal raw-file viewer** (rc.29–rc.31): open any file — valid UTF-8 is
+  text, anything else shows as Latin-1 binary and round-trips byte-exact.
+- **Glitch UI vocabulary** (rc.34, rc.39, rc.57): RGB-split accents, `steps()`
+  keyframes, the welcome-icon "boot" and whole-card glitch, all gated behind
+  `prefers-reduced-motion`.
+- **Welcome dialog** (rc.1–rc.27): a first-visit, once-only menu with clickable
+  shortcuts, an info popup, data-driven "Heads up" notices, and a version stamp.
+- **Save behavior & tab title** (rc.20–rc.25): silent re-save through a real
+  file handle on Chromium; accurate `<name> — DedTxt` / `• <name> •` titles.
+- **Security & perf** passes (rc.32, rc.36): tightened CSP (dropped
+  `unsafe-inline`), plus assorted fixes.
+- macOS universal binary (rc.35); a long tail of mobile / iOS Safari fixes.
+
+## [0.x] — foundations
+
+- Rewrote the desktop shell from Electron to **Tauri 2** (a Rust main process).
+- Dropped the Android / iOS / Capacitor scaffolding to focus on web + desktop.
+- Established the platform-agnostic renderer with a `platform/{web,tauri}.js`
+  split, the PWA (service worker + manifest), and `dedtxt.app` via GitHub Pages.
+
+[1.0.0-rc.59]: https://github.com/cportka/dedtxt/commits/main
+[1.0.0-rc.58]: https://github.com/cportka/dedtxt/commits/main
+[1.0.0-rc.57]: https://github.com/cportka/dedtxt/commits/main

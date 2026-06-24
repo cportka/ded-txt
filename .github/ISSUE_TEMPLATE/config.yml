@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Try DedTxt
+    url: https://dedtxt.app/
+    about: The live web app.
+  - name: Discussions
+    url: https://github.com/cportka/dedtxt/discussions
+    about: Questions, ideas, and show-and-tell (enable Discussions in repo settings to use this).
