@@ -15,9 +15,13 @@ line-ending munging.
 
 Two targets, same code:
 
-- **Desktop** — macOS / Windows / Linux native via [Tauri 2](https://v2.tauri.app/) (~5–15 MB installers). Builds are unsigned; on first launch macOS asks you to right-click → Open and Windows SmartScreen needs "More info" → "Run anyway".
 - **Web** at <https://dedtxt.app/> — the editor itself, installable as a PWA
   from any modern browser (including iOS and Android via "Add to Home Screen").
+  **This is the shipping target.**
+- **Desktop** — macOS / Windows / Linux native via [Tauri 2](https://v2.tauri.app/).
+  **Native installer builds are paused for now** in favor of the PWA; the code,
+  Rust tests, and CI are kept current so they can be revived later (see
+  [FUTURE.md](./FUTURE.md) and [CHANGELOG.md](./CHANGELOG.md)).
 
 ## Requirements
 
@@ -69,7 +73,12 @@ returns one of two modules with the same interface (`tauri.js` for the
 desktop app, `web.js` for the PWA). Adding a new platform means writing a
 new module and teaching `platform/index.js` how to detect it.
 
-## Build desktop installers
+## Build desktop installers (paused)
+
+> **Native desktop builds are deprecated for now** — the PWA is the shipping
+> target. The tooling below still works locally and the Rust code stays tested
+> in CI (the `desktop-check` job), but no installers are auto-built or released.
+> See [FUTURE.md](./FUTURE.md) to revive them.
 
 Each OS builds its own installers locally (Tauri uses the host platform's
 build tooling — codesign, nsis, dpkg, etc.):
@@ -80,10 +89,10 @@ npm run build:win         # .msi + NSIS .exe
 npm run build:linux       # AppImage + .deb + .rpm
 ```
 
-Outputs go to `src-tauri/target/release/bundle/`. For full cross-platform
-builds, push a `v*` tag (or trigger the workflow manually) — the GitHub
-Actions workflow builds all three on the matching runner OS and attaches
-them to a Release.
+Outputs go to `src-tauri/target/release/bundle/`. The GitHub Actions `desktop`
++ `release` jobs that built all three OSes on a `v*` tag are currently disabled
+(`if: ${{ false }}`); re-enable them (and restore the tag trigger) to ship
+installers again.
 
 ## Build the web app
 
@@ -121,10 +130,11 @@ DedTxt for txt/md/log/json/csv/ini/yml/yaml/xml.
 
 ## Save behavior
 
-There's one Save, not Save / Save As. The first save on an unnamed buffer
-prompts for a filename; every save after that writes silently to that same
-file. Open a different file and Save targets the new one — there is no
-"save as a different file" path.
+There's one Save, not Save / Save As. Open a different file and Save targets
+the new one — there is no "save as a different file" path. The save dialog is
+always the browser's own; DedTxt never stacks its own filename prompt on top.
+A fresh buffer defaults to `untitled.txt`, and any extension you type is kept
+(`notes.md` stays `notes.md`).
 
 The tab title is bare "DedTxt" until you've actually opened or saved a real
 file; after that it's `<name> — DedTxt` when clean and `• <name> • — DedTxt`
@@ -137,14 +147,10 @@ are silent. The native save picker only appears the first time you save an
 unnamed buffer.
 
 **Firefox, Safari, and every iOS browser** lack the File System Access API —
-there's no JS path to write to a real file on disk. The first save in a
-session shows a small in-app prompt asking for a filename; that name is
-remembered for the rest of the session and reused as the suggested download
-name on every subsequent save. Each save still creates a fresh download
-(that's the browser's only writable mechanism), and depending on the user's
-browser settings the browser itself may also show a "where to save?" dialog.
-For native-like silent save behavior, use a Chromium browser or the desktop
-Tauri build.
+there's no JS path to write to a real file on disk, so each save triggers a
+download instead. Depending on your browser settings that either lands in your
+Downloads folder under the current name or shows the browser's own "where to
+save?" dialog. For native-like silent save, use a Chromium browser.
 
 ## Welcome dialog
 
@@ -169,6 +175,17 @@ in the published manifest, then swapped in place (with a progress bar) and the
 window reloads — no reinstall, and local state (like the dismissed-welcome
 flag) carries over. If a release needs a newer *native* shell than you have
 installed, it points you to the Releases page for a fresh installer instead.
+
+## Contributing & history
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — dev setup, the PR checklist, and the
+  "dead simple" non-goals.
+- [CHANGELOG.md](./CHANGELOG.md) — release history (the single source of truth).
+- [FUTURE.md](./FUTURE.md) — the short list of ideas worth keeping around.
+
+Bugs and ideas are welcome via the GitHub issue templates. The app's about
+popup (click the icon, top-right) also has donation links if you'd like to
+support the project.
 
 ## License
 

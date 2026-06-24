@@ -13,14 +13,14 @@
   <link rel="apple-touch-icon" href="./icons/icon-512.png" />
 
   <!-- SEO + social cards -->
-  <meta name="description" content="DedTxt — a dead simple, dependency-free plain-text editor that runs in your browser and as a desktop app. No accounts, no tracking, works offline." />
+  <meta name="description" content="DedTxt — a dead simple, dependency-free plain-text editor that runs in any modern browser and installs as a PWA. No accounts, no tracking, works offline." />
   <meta name="author" content="Chris Portka" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://dedtxt.app/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="DedTxt" />
   <meta property="og:title" content="DedTxt — a dead simple plain-text editor" />
-  <meta property="og:description" content="A dependency-free plain-text editor in your browser and on the desktop. No accounts, no tracking, works offline." />
+  <meta property="og:description" content="A dependency-free plain-text editor that runs in your browser and installs as a PWA. No accounts, no tracking, works offline." />
   <meta property="og:url" content="https://dedtxt.app/" />
   <meta property="og:image" content="https://dedtxt.app/icons/og-image.png" />
   <meta property="og:image:width" content="1200" />
@@ -28,7 +28,7 @@
   <meta property="og:image:alt" content="The DedTxt glitch skull logo and wordmark on a dark background." />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="DedTxt — a dead simple plain-text editor" />
-  <meta name="twitter:description" content="A dependency-free plain-text editor in your browser and on the desktop. No accounts, no tracking, works offline." />
+  <meta name="twitter:description" content="A dependency-free plain-text editor that runs in your browser and installs as a PWA. No accounts, no tracking, works offline." />
   <meta name="twitter:image" content="https://dedtxt.app/icons/og-image.png" />
   <meta name="twitter:image:alt" content="The DedTxt glitch skull logo and wordmark on a dark background." />
   <script type="application/ld+json">
@@ -37,9 +37,9 @@
     "@type": "WebApplication",
     "name": "DedTxt",
     "url": "https://dedtxt.app/",
-    "description": "A dead simple, dependency-free plain-text editor for the browser and desktop.",
+    "description": "A dead simple, dependency-free plain-text editor for the browser, installable as a PWA.",
     "applicationCategory": "Productivity",
-    "operatingSystem": "Web, Windows, macOS, Linux",
+    "operatingSystem": "Any",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "author": { "@type": "Person", "name": "Chris Portka" }
   }
@@ -106,22 +106,32 @@
         </button>
       </div>
       <div class="welcome-heads-up" hidden></div>
-      <p class="welcome-downloads">
-        <a href="https://github.com/cportka/dedtxt/releases/latest" target="_blank" rel="noopener">Get desktop builds →</a>
-      </p>
+      <button type="button" id="install-pwa" class="welcome-install" hidden>Install as web app</button>
     </form>
     <div id="info-popup" class="info-popup" hidden>
       <p><a href="https://venmo.com/portka" target="_blank" rel="noopener">venmo me a donation</a></p>
       <p>
-        <button type="button" id="donate-eth" class="info-eth"
+        <button type="button" id="donate-eth" class="info-crypto"
                 data-address="0x354c2aB3f7a23F74cdDC745B26aEA53EC1602203"
                 aria-label="Copy Ethereum donation address to clipboard">
-          <span class="info-eth-text">donate eth: <span id="donate-eth-addr">0x354c…2203</span></span>
-          <span class="info-eth-done" aria-hidden="true">copied ✓</span>
+          <span class="info-crypto-text">donate eth: <span id="donate-eth-addr">0x354c…2203</span></span>
+          <span class="info-crypto-done" aria-hidden="true">copied ✓</span>
+        </button>
+      </p>
+      <p>
+        <button type="button" id="donate-btc" class="info-crypto"
+                data-address="3J4XRAwhHwJWQb4F4qw5yTCrs5Zg1s1vaR"
+                aria-label="Copy Bitcoin donation address to clipboard">
+          <span class="info-crypto-text">donate btc: <span id="donate-btc-addr">3J4X…1vaR</span></span>
+          <span class="info-crypto-done" aria-hidden="true">copied ✓</span>
         </button>
       </p>
       <p>by chris portka</p>
-      <p><a href="https://github.com/cportka/dedtxt/blob/main/PRIVACY.md" target="_blank" rel="noopener">privacy</a></p>
+      <p>
+        <a href="https://github.com/cportka/dedtxt" target="_blank" rel="noopener">github</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/cportka/dedtxt/blob/main/PRIVACY.md" target="_blank" rel="noopener">privacy</a>
+      </p>
     </div>
   </dialog>
 

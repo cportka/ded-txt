@@ -1,0 +1,31 @@
+# DedTxt
+
+> A dead simple, dependency-free plain-text editor. Runs in any modern browser
+> and installs as a PWA (https://dedtxt.app/). No accounts, no tracking, works
+> offline. Raw bytes in, raw bytes out — UTF-8 by default, no BOM, no
+> line-ending munging.
+
+DedTxt is intentionally minimal: a single textarea and your file, with find &
+replace, always-on word wrap, a line-number gutter, and silent save on Chromium
+browsers (via the File System Access API). It is built from vanilla HTML, CSS,
+and ES modules with no runtime dependencies. A Tauri desktop build exists in the
+source, but native installers are paused for now in favor of the PWA.
+
+## Project
+
+- [Web app](https://dedtxt.app/): the editor itself.
+- [Source on GitHub](https://github.com/cportka/dedtxt): code, issues, and pull requests.
+- [README](https://github.com/cportka/dedtxt/blob/main/README.md): overview, build steps, keyboard shortcuts.
+- [Changelog](https://github.com/cportka/dedtxt/blob/main/CHANGELOG.md): release history.
+- [Privacy](https://github.com/cportka/dedtxt/blob/main/PRIVACY.md): the app collects no data.
+
+## Contributing
+
+- [Contributing guide](https://github.com/cportka/dedtxt/blob/main/CONTRIBUTING.md)
+- [Future ideas](https://github.com/cportka/dedtxt/blob/main/FUTURE.md)
+
+## Notes for agents
+
+- DedTxt stores no user data on any server; files stay local to the device.
+- The web app updates via the service-worker lifecycle, not by polling a version
+  file — a cache-first fetch would serve a stale copy.

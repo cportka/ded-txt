@@ -33,6 +33,20 @@ rmRf(out);
 // 1. Editor lives at root — dedtxt.app/ IS the app.
 copyTree(src, out);
 
+// 1b. Stamp the real version into the welcome dialog's version span. renderer.js
+// also sets it at runtime, but injecting it here means view-source, crawlers,
+// and pre-hydration HTML show the shipped version instead of the v0.0.0
+// placeholder (which reads as "unfinished" to exactly the people who peek).
+const stampVersion = require('../package.json').version;
+const indexPath = path.join(out, 'index.html');
+fs.writeFileSync(
+  indexPath,
+  fs.readFileSync(indexPath, 'utf8').replace(
+    /(<span id="welcome-version">)[^<]*(<\/span>)/,
+    `$1v${stampVersion}$2`
+  )
+);
+
 // 2. CNAME owns the custom domain on every gh-pages deploy.
 const cnameSrc = path.join(root, 'CNAME');
 if (fs.existsSync(cnameSrc)) {
@@ -91,7 +105,7 @@ const pkg = require('../package.json');
 // command — most releases leave it untouched so web updates hot-swap in place.
 const NATIVE_MIN = '1.0.0-rc.49';
 // Web-deploy-only artifacts the running app never loads — kept out of the manifest.
-const MANIFEST_EXCLUDE = new Set(['404.html', 'CNAME', '.nojekyll', 'version.json', 'app/index.html', 'robots.txt', 'sitemap.xml']);
+const MANIFEST_EXCLUDE = new Set(['404.html', 'CNAME', '.nojekyll', 'version.json', 'app/index.html', 'robots.txt', 'sitemap.xml', 'llms.txt']);
 
 function listFiles(dir, base = '') {
   const found = [];

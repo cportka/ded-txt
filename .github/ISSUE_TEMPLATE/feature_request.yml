@@ -1,0 +1,21 @@
+name: Feature request / idea
+description: Suggest an improvement — while keeping DedTxt dead simple.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DedTxt is deliberately minimal (see FUTURE.md). Ideas that keep it small
+        and fast, with no new runtime dependencies, are the most likely to land.
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What would you like, and what problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / prior art
+      description: Other tools or approaches you've considered.

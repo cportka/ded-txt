@@ -1,5 +1,6 @@
 import platform from './platform/index.js';
 import { maybeShowWelcome, showWelcome, closeWelcome, setUpdateResult, refreshHeadsUp, setHeadsUpHandlers, showUpdateProgress } from './welcome.js';
+import { initInstallPrompt } from './pwa-install.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
 import { initScrollArrows } from './scroll-arrows.js';
@@ -193,32 +194,42 @@ function fallbackCopy(text) {
   } catch (_e) { /* clipboard unavailable — nothing else to do */ }
 }
 
-// ETH donation: click the abbreviated address to copy the full one and flash
-// a check mark. data-address is the single source of truth; the visible text
-// is the abbreviation (0x + first 4 … last 4), recomputed here so it can
-// never drift from the address actually copied. stopPropagation keeps the
-// document-level "click anywhere closes the popup" handler (below) from
-// hiding the popup before the confirmation is seen.
-const donateEthBtn = document.getElementById('donate-eth');
-if (donateEthBtn) {
-  const fullAddress = donateEthBtn.dataset.address || '';
-  const addrEl = document.getElementById('donate-eth-addr');
+// Crypto donations (ETH + BTC): click the abbreviated address to copy the full
+// one and flash a check mark. data-address is the single source of truth; the
+// visible text is an abbreviation recomputed here so it can never drift from
+// the address actually copied. stopPropagation keeps the document-level "click
+// anywhere closes the popup" handler (below) from hiding the popup before the
+// confirmation is seen.
+function wireCopyAddress(btnId, addrId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const fullAddress = btn.dataset.address || '';
+  const addrEl = document.getElementById(addrId);
   if (addrEl && fullAddress.length > 12) {
-    addrEl.textContent = `${fullAddress.slice(0, 6)}…${fullAddress.slice(-4)}`;
+    // 0x-prefixed (ETH) keeps the 0x + first 4; everything else (BTC) shows
+    // the first 4 — both with the last 4.
+    const head = fullAddress.startsWith('0x') ? 6 : 4;
+    addrEl.textContent = `${fullAddress.slice(0, head)}…${fullAddress.slice(-4)}`;
   }
   let copiedTimer = 0;
-  donateEthBtn.addEventListener('click', (e) => {
+  btn.addEventListener('click', (e) => {
     e.stopPropagation();
     copyToClipboard(fullAddress);
     // Restart the one-shot glitch cleanly so rapid re-clicks re-animate
     // (same remove → reflow → re-add trick as the welcome icon boot).
-    donateEthBtn.classList.remove('copied');
-    void donateEthBtn.offsetWidth;
-    donateEthBtn.classList.add('copied');
+    btn.classList.remove('copied');
+    void btn.offsetWidth;
+    btn.classList.add('copied');
     clearTimeout(copiedTimer);
-    copiedTimer = setTimeout(() => donateEthBtn.classList.remove('copied'), 1500);
+    copiedTimer = setTimeout(() => btn.classList.remove('copied'), 1500);
   });
 }
+wireCopyAddress('donate-eth', 'donate-eth-addr');
+wireCopyAddress('donate-btc', 'donate-btc-addr');
+
+// "Install as web app" button in the welcome dialog (hidden unless the PWA is
+// actually installable).
+initInstallPrompt();
 
 // Any click anywhere closes the popup (including clicks on the link, which
 // still navigate first thanks to target="_blank"). The icon's own click

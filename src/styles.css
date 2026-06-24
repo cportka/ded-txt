@@ -887,38 +887,29 @@ dialog#welcome-dialog::backdrop {
   .welcome-shortcut-key { display: none; }
 }
 
-.welcome-downloads {
-  margin: 0 0 12px;
-  padding: 8px 0 0;
-  border-top: 1px solid var(--muted);
-  text-align: center;
-  font-size: 14px;
-}
-.welcome-downloads a {
-  color: var(--fg);
-  text-decoration: none;
-  border-bottom: 1px solid var(--muted);
-  padding-bottom: 1px;
-}
-.welcome-downloads a:hover {
-  border-bottom-color: var(--fg);
-}
-.welcome-btn {
+/* "Install as web app" — JS unhides this only when the browser fires
+   beforeinstallprompt (i.e. the PWA is genuinely installable: a supporting
+   engine, https, not already installed). On iOS Safari / Firefox / an
+   installed instance the event never fires, so the button stays hidden.
+   Replaces the old "Get desktop builds" link now that the PWA is the
+   shipping target. Magenta-outlined with the popup's chromatic echo. */
+.welcome-install {
   display: block;
-  margin: 0 auto;
-  min-width: 100px;
-  padding: 8px 24px;
+  width: 100%;
+  margin: 14px 0 2px;
+  padding: 9px 16px;
+  border: 1px solid var(--gx-magenta);
   border-radius: 8px;
-  /* Fixed dark-slate fill with white text — sits cleanly on both the
-     editor's dark and light card themes and on the pale info popup. */
-  border: 1px solid #2D3A42;
-  background: #2D3A42;
-  color: #ffffff;
+  background: transparent;
+  color: var(--fg);
   font: inherit;
   font-weight: 600;
+  letter-spacing: 0.3px;
   cursor: pointer;
+  text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
 }
-.welcome-btn:hover { opacity: 0.92; }
+.welcome-install:hover { background: rgba(255, 61, 138, 0.10); }
+.welcome-install[hidden] { display: none; }
 
 /* Info popup — terminal-window aesthetic pulled from the icon's
    chromatic-aberration palette. Monospaced, lowercased, magenta border
@@ -967,13 +958,13 @@ dialog#welcome-dialog::backdrop {
   color: var(--gx-magenta);
   border-bottom-color: var(--gx-magenta);
 }
-/* ETH donation: a click-to-copy control styled like the popup's links.
+/* Crypto donation (ETH / BTC): a click-to-copy control styled like the popup's links.
    inline-block so the copy-confirmation glitch (transform/filter) applies —
    inline boxes can't be transformed. The abbreviated address shows at rest;
    on .copied we swap to a check mark with a one-shot RGB-split glitch
    (steps()-timed, reduced-motion gated), matching the find-bar / arrow
    glitch vocabulary. */
-.info-eth {
+.info-crypto {
   display: inline-block;
   background: transparent;
   border: none;
@@ -987,23 +978,23 @@ dialog#welcome-dialog::backdrop {
   border-bottom: 1px dotted var(--gx-cyan);
   cursor: pointer;
 }
-.info-eth:hover,
-.info-eth:focus-visible {
+.info-crypto:hover,
+.info-crypto:focus-visible {
   color: var(--gx-magenta);
   border-bottom-color: var(--gx-magenta);
   outline: none;
 }
 /* The "copied ✓" confirmation rides in the same slot as the address; only
    one of the two shows at a time. */
-.info-eth .info-eth-done { display: none; }
-.info-eth.copied .info-eth-text { display: none; }
-.info-eth.copied .info-eth-done {
+.info-crypto .info-crypto-done { display: none; }
+.info-crypto.copied .info-crypto-text { display: none; }
+.info-crypto.copied .info-crypto-done {
   display: inline;
   color: var(--gx-bone);
   text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
 }
-.info-eth.copied { animation: eth-copied-glitch 200ms steps(1, end); }
-@keyframes eth-copied-glitch {
+.info-crypto.copied { animation: crypto-copied-glitch 200ms steps(1, end); }
+@keyframes crypto-copied-glitch {
   0% {
     transform: translate3d(-2px, 0, 0);
     filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
@@ -1015,7 +1006,7 @@ dialog#welcome-dialog::backdrop {
   100% { transform: none; filter: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .info-eth.copied { animation: none; }
+  .info-crypto.copied { animation: none; }
 }
 /* Chevron: two stacked triangles (outline + fill) on the popup's left
    edge, pointing at the icon. Recolored to match the new palette. */
