@@ -18,7 +18,9 @@
   "keywords": [
     "text-editor",
     "plain-text",
-    "tauri"
+    "editor",
+    "pwa",
+    "offline"
   ],
   "scripts": {
     "start": "node scripts/build-icons.js && tauri dev",

@@ -16,6 +16,7 @@ const listen = t ? t.event.listen : null;
 
 let loadCb = null;
 let newCb = null;
+let openCb = null;
 let saveCb = null;
 let saveAndCloseCb = null;
 const pendingLoads = [];
@@ -46,6 +47,7 @@ if (listen) {
 
   // Menu actions from the system menu bar.
   listen('dt://menu-new', () => { if (newCb) newCb(); });
+  listen('dt://menu-open', () => { if (openCb) openCb(); });
   listen('dt://menu-save', () => { if (saveCb) saveCb(); });
   listen('dt://save-and-close', () => { if (saveAndCloseCb) saveAndCloseCb(); });
 
@@ -95,6 +97,7 @@ const tauri = {
     while (pendingLoads.length) cb(pendingLoads.shift());
   },
   onMenuNew(cb) { newCb = cb; },
+  onMenuOpen(cb) { openCb = cb; },
   onMenuSave(cb) { saveCb = cb; },
   onSaveAndClose(cb) { saveAndCloseCb = cb; },
   confirmClose() { if (invoke) invoke('confirm_close'); },
