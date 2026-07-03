@@ -17,7 +17,7 @@ repo audit. Shipped work lives in [CHANGELOG.md](./CHANGELOG.md).
   full, revoked permission) or a failed open leaves the user with no feedback but
   the dirty bullet — "I pressed Save and nothing told me it failed" is a
   trust-critical gap for a 1.0 editor. `web.js` already returns `{ok:false,
-  error}`; add a small notice (reuse the heads-up / glitch vocabulary).
+  error}`; add a small notice (reuse the heads-up / glitch vocabulary).  Prefer a small glitch-styled error notice.
 - **Resolve the PWA `file_handlers` promise.** `manifest.webmanifest` advertises
   "open .txt / .md / .json / … with DedTxt", but no `window.launchQueue`
   consumer exists, so an installed PWA set as the file handler opens **blank** and
