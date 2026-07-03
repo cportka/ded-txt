@@ -336,6 +336,7 @@ platform.onLoad(({ content, isBinary }) => {
 });
 
 platform.onMenuNew?.(doNew);
+platform.onMenuOpen?.(doOpen);
 platform.onMenuSave(doSave);
 
 platform.onSaveAndClose(async () => {

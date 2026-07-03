@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; connect-src 'self' ipc: http://ipc.localhost;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; form-action 'none'; style-src 'self'; script-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self' ipc: http://ipc.localhost;" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#111111" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -52,11 +52,11 @@
   <div id="editor-wrap">
     <div id="line-gutter" aria-hidden="true"><div id="line-gutter-inner"></div></div>
     <div id="editor-highlights" aria-hidden="true"><div id="editor-highlights-inner"></div></div>
-    <textarea id="text-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft"></textarea>
+    <textarea id="text-editor" aria-label="Text editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft"></textarea>
     <div id="editor-mirror" aria-hidden="true"></div>
-    <form id="find-bar" hidden onsubmit="return false">
+    <form id="find-bar" role="search" aria-label="Find in document" hidden>
       <div class="find-row">
-        <input type="text" id="find-input" placeholder="find" autocomplete="off" spellcheck="false" />
+        <input type="text" id="find-input" placeholder="find" aria-label="Find" autocomplete="off" spellcheck="false" />
         <span id="find-counter" class="find-counter">0 / 0</span>
         <button type="button" id="find-prev" class="find-btn" title="Previous (Shift+Enter)" aria-label="Previous match">↑</button>
         <button type="button" id="find-next" class="find-btn" title="Next (Enter)" aria-label="Next match">↓</button>
@@ -67,13 +67,13 @@
         <button type="button" id="find-close" class="find-btn" title="Close (Esc)" aria-label="Close find bar">✕</button>
       </div>
       <div class="find-row" id="find-replace-row" hidden>
-        <input type="text" id="find-replace-input" placeholder="replace" autocomplete="off" spellcheck="false" />
+        <input type="text" id="find-replace-input" placeholder="replace" aria-label="Replace with" autocomplete="off" spellcheck="false" />
         <button type="button" id="find-replace" class="find-btn find-replace-btn" title="Replace current match">Replace</button>
         <button type="button" id="find-replace-all" class="find-btn find-replace-btn" title="Replace all matches">All</button>
       </div>
     </form>
   </div>
-  <button id="menu-toggle" type="button" aria-label="Show menu" title="Menu">
+  <button id="menu-toggle" type="button" aria-haspopup="dialog" aria-label="Show menu" title="Menu">
     <img src="./icons/icon-192.png" alt="" aria-hidden="true" />
   </button>
 

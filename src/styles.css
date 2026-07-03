@@ -875,6 +875,14 @@ dialog#welcome-dialog::backdrop {
     text-shadow: none;
   }
 }
+/* Reduced-motion: gate the click-feedback spins + the shortcut flash. These
+   were the only animations left ungated; per the project contract all motion
+   degrades to an instant state under prefers-reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  #menu-toggle.spinning img,
+  .welcome-icon-btn.spinning .welcome-icon { animation: none; }
+  .welcome-shortcut.activating { animation: none; }
+}
 .welcome-shortcut-key {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: #7A8590;

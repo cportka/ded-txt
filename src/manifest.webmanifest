@@ -2,6 +2,8 @@
   "name": "DedTxt",
   "short_name": "DedTxt",
   "id": "/",
+  "lang": "en",
+  "dir": "ltr",
   "description": "A dead simple plain-text editor.",
   "start_url": "./",
   "scope": "./",

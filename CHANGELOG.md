@@ -8,6 +8,40 @@ release-candidate series; the version is kept in lockstep across
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc.60]
+
+A cleanup + hardening pass seeded by a full multi-lens repo audit, plus the
+session-handoff docs.
+
+### Fixed
+- **Offline regression from rc.59:** `pwa-install.js` is imported at startup but
+  was missing from the service worker's precache `SHELL`, so an offline reload
+  right after an update could boot to a blank app. Now precached.
+- **Replace All is undoable again:** it replaced the buffer via `editor.value =`,
+  wiping the textarea's native undo stack; it now uses `setRangeText` (like
+  Replace), so Ctrl+Z restores the pre-replace text.
+- **Desktop File→Open was dead:** Rust emitted `dt://menu-open` but nothing
+  listened, so the menu item (and Cmd/Ctrl+O) did nothing. Added the symmetric
+  `onMenuOpen` wiring (web no-op, tauri listener → renderer `doOpen`). Desktop is
+  paused, but the fix keeps it revival-ready.
+
+### Accessibility & security
+- Labelled the core controls: `aria-label` on the editor textarea + find/replace
+  inputs, `role="search"` on the find bar, `aria-haspopup` on the menu button.
+- Gated the last two ungated animations (the menu/icon spin and the shortcut
+  flash) behind `prefers-reduced-motion`, per the project's motion contract.
+- Tightened the CSP: dropped the unused `img-src data:`, added `base-uri 'none'`
+  + `form-action 'none'`, and removed a dead inline `onsubmit` that tripped a CSP
+  violation on every load.
+
+### Changed
+- `manifest.webmanifest`: added `lang` + `dir`.
+- Docs: expanded `CLAUDE.md` (architecture map, platform contract, invariants),
+  rewrote `FUTURE.md` as the 1.0 roadmap, added a Find shortcut row + an Updates
+  qualifier to the README, and refreshed `package.json` keywords (pwa / offline).
+- Fixed two stale comments (`welcome.js` referenced the removed rc.58 "Save as"
+  prompt; `update.js` is the paused desktop path, not the web update flow).
+
 ## [1.0.0-rc.59]
 
 ### Changed
@@ -76,6 +110,7 @@ The bulk of the rc series refined a deliberately tiny editor. Highlights:
 - Established the platform-agnostic renderer with a `platform/{web,tauri}.js`
   split, the PWA (service worker + manifest), and `dedtxt.app` via GitHub Pages.
 
+[1.0.0-rc.60]: https://github.com/cportka/dedtxt/commits/main
 [1.0.0-rc.59]: https://github.com/cportka/dedtxt/commits/main
 [1.0.0-rc.58]: https://github.com/cportka/dedtxt/commits/main
 [1.0.0-rc.57]: https://github.com/cportka/dedtxt/commits/main

@@ -274,6 +274,7 @@ const web = {
   },
 
   onMenuNew(_cb) { /* no system menus on web */ },
+  onMenuOpen(_cb) { /* no system menus on web */ },
   onMenuSave(_cb) { /* no system menus on web */ },
 
   onSaveAndClose(_cb) { /* not applicable in browser */ },

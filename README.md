@@ -123,6 +123,7 @@ npm run gen:icons         # regenerates Tauri, PWA, and macOS/Windows icon sets
 | New               | `Cmd + N`    | `Ctrl + N` |
 | Open              | `Cmd + O`    | `Ctrl + O` |
 | Save              | `Cmd + S`    | `Ctrl + S` |
+| Find              | `Cmd + F`    | `Ctrl + F` |
 | Toggle welcome    | `Esc`        | `Esc`      |
 
 Drop a file onto the window to open it. The OS "Open with…" menu lists
@@ -168,7 +169,7 @@ DedTxt keeps itself current — no manual re-download.
 background. Once the fresh assets are cached, the welcome dialog surfaces an
 "A new version is ready" notice; clicking it reloads into the new version.
 
-**Desktop** — on launch the app asks dedtxt.app whether a newer web layer has
+**Desktop** *(paused as of rc.59 — no new installers ship right now)* — on launch the app asks dedtxt.app whether a newer web layer has
 shipped. If the installed build can run it, the welcome dialog offers "Click
 here to update": the new files are downloaded, each checked against a `sha256`
 in the published manifest, then swapped in place (with a progress bar) and the
