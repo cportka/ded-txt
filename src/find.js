@@ -409,10 +409,11 @@ export function installFind({ editor, closeWelcome }) {
       state.opts
     );
     if (count === 0) return;
-    // .value assignment to keep the change as a single operation; the native
-    // undo stack loses history but the explicit one-shot is closer to what a
-    // user expects from "Replace All".
-    editor.value = text;
+    // Splice the whole document via setRangeText (like replaceOne) so the edit
+    // stays a single operation AND the textarea's native undo stack captures it
+    // — Ctrl+Z restores the pre-Replace-All text. (Assigning .value would wipe
+    // the undo history.)
+    editor.setRangeText(text, 0, before.length, 'end');
     editor.dispatchEvent(new Event('input', { bubbles: true }));
     refresh();
   }

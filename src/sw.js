@@ -11,6 +11,7 @@ const SHELL = [
   './styles.css',
   './renderer.js',
   './welcome.js',
+  './pwa-install.js',
   './version.js',
   './line-numbers.js',
   './find.js',

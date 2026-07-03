@@ -8,6 +8,24 @@ release-candidate series; the version is kept in lockstep across
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc.60]
+
+### Fixed
+- **Offline regression from rc.59:** `pwa-install.js` is imported at startup but
+  was missing from the service worker's precache `SHELL`, so an offline reload in
+  the window right after an update could boot to a blank app. Now precached.
+- **Replace All is undoable again:** it replaced the buffer via `editor.value =`,
+  which wipes the textarea's native undo stack; it now uses `setRangeText` (like
+  Replace), so Ctrl+Z restores the pre-replace text.
+
+### Changed
+- `manifest.webmanifest`: added `lang` + `dir`.
+- Handoff docs: expanded `CLAUDE.md` (architecture map + working agreements) and
+  rewrote `FUTURE.md` as the 1.0 roadmap, seeded by a full multi-lens repo audit.
+- Fixed two stale code comments (`welcome.js` referenced the removed rc.58
+  "Save as" prompt; `update.js` claimed it drove the web update flow — it's the
+  paused desktop path).
+
 ## [1.0.0-rc.59]
 
 ### Changed

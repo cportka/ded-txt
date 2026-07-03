@@ -1,8 +1,9 @@
-// Pure version-comparison + update-classification helpers, shared by the
-// renderer's update flow and unit tests. The desktop (Rust) side performs the
-// actual network fetch — the webview CSP blocks cross-origin requests — then
-// hands the raw versions here, so the "which kind of update is this?" decision
-// lives in exactly one place.
+// Pure version-comparison + update-classification helpers for the desktop
+// update path (currently paused) and its unit tests. On desktop the Rust side
+// performs the actual network fetch — the webview CSP blocks cross-origin
+// requests — then hands the raw versions here, so the "which kind of update is
+// this?" decision lives in exactly one place. The web/PWA build does NOT use
+// this; it detects updates via the service-worker lifecycle (see renderer.js).
 
 // Parse a "MAJOR.MINOR.PATCH(-rc.N)" string into comparable parts. Returns
 // null for anything unparseable so callers can treat it as "no information".

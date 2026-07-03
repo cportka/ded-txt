@@ -84,8 +84,7 @@ export function showUpdateProgress(done, total) {
 }
 
 // Honour the OS "reduce motion" setting. Shared by the open "boot" glitch
-// and the close glitch-out so both degrade to an instant show/hide; also
-// reused by the renderer's "Save as" prompt animation.
+// and the close glitch-out so both degrade to an instant show/hide.
 export function prefersReducedMotion() {
   return typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
