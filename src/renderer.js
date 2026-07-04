@@ -4,6 +4,8 @@ import { initInstallPrompt } from './pwa-install.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
 import { initScrollArrows } from './scroll-arrows.js';
+import { showNotice, formatResultError } from './notice.js';
+import { createDraftStash, describeDraft } from './drafts.js';
 
 // Restart the one-shot spin animation cleanly: drop the class, force a
 // reflow so the browser doesn't coalesce the toggle into a no-op, then
@@ -39,6 +41,26 @@ let dirty = false;
 // holds Latin-1 (one char per source byte). Save must re-encode each
 // char's low byte back to raw bytes instead of writing as UTF-8.
 let binaryMode = false;
+// Last name the platform reported for this buffer (open / save result).
+// Only used to label the crash-recovery draft — the platform owns the title.
+let currentFileName = null;
+
+// Crash / draft recovery: stash the dirty buffer to localStorage (debounced
+// on input, flushed on page hide) so a crash or accidental close can offer a
+// restore on the next boot. See drafts.js for the full clear/keep semantics.
+const draftStash = createDraftStash({
+  storage: (() => {
+    try { return window.localStorage; } catch (_e) { /* private mode */ }
+    // Inert stand-in so every stash call is a safe no-op.
+    return { getItem() { return null; }, setItem() {}, removeItem() {} };
+  })(),
+  getSnapshot: () => ({
+    content: editor.value,
+    name: currentFileName,
+    isBinary: binaryMode,
+    dirty
+  })
+});
 
 function setDirty(next) {
   if (next === dirty) return;
@@ -57,17 +79,28 @@ async function doSave() {
   // byte (preserving the source file's raw bytes round-trip).
   const result = await platform.saveFile(editor.value, binaryMode);
   if (result && result.ok) {
-    savedSnapshot = editor.value;
-    setDirty(false);
+    if (result.filePath) currentFileName = result.filePath;
+    if (result.unconfirmed) {
+      // Firefox/Safari download-fallback save: the download API can't
+      // confirm the file actually landed, so the buffer stays dirty (and
+      // the recovery draft stays stashed) until a verifiable save.
+    } else {
+      savedSnapshot = editor.value;
+      setDirty(false);
+      draftStash.clear();
+    }
+  } else {
+    const msg = formatResultError(result, 'Save');
+    if (msg) showNotice(msg, { kind: 'error' });
   }
   return result;
 }
 
 async function doOpen() {
   const result = await platform.openFile();
-  if (result && result.ok) {
-    // onLoad callback updates the editor.
-  }
+  // Success flows through the onLoad callback; cancels stay silent.
+  const msg = formatResultError(result, 'Open');
+  if (msg) showNotice(msg, { kind: 'error' });
   return result;
 }
 
@@ -77,9 +110,12 @@ function doNew() {
     if (!ok) return;
   }
   binaryMode = false;
+  currentFileName = null;
   editor.value = '';
   savedSnapshot = '';
   setDirty(false);
+  // The user explicitly discarded the buffer — drop the recovery draft too.
+  draftStash.clear();
   // Clear find state from the previous document so stale match highlights and
   // the find bar don't linger on the now-empty editor.
   find.reset();
@@ -152,10 +188,18 @@ function showInfoPopup() {
   if (!infoPopup) return;
   positionInfoPopup();
   infoPopup.hidden = false;
+  if (welcomeIconBtn) welcomeIconBtn.setAttribute('aria-expanded', 'true');
+  // Move focus to the popup's first link so keyboard users land inside it
+  // (it sits at the end of the dialog's DOM — tabbing there from the icon
+  // would otherwise mean walking every shortcut button first). Escape hands
+  // focus back to the icon.
+  const first = infoPopup.querySelector('a, button');
+  if (first) first.focus();
 }
 
 function hideInfoPopup() {
   if (infoPopup) infoPopup.hidden = true;
+  if (welcomeIconBtn) welcomeIconBtn.setAttribute('aria-expanded', 'false');
 }
 
 if (welcomeIconBtn) {
@@ -239,15 +283,22 @@ document.addEventListener('click', () => {
   if (infoPopup && !infoPopup.hidden) hideInfoPopup();
 });
 
-// Any keypress closes the popup. Capture phase so we run before the
-// dialog's auto-dismiss handler; stopImmediatePropagation prevents that
+// Keyboard handling while the popup is open. Capture phase so we run before
+// the dialog's auto-dismiss handler; stopImmediatePropagation prevents that
 // handler from also firing and triggering a dialog dismiss + insert.
+// Tab/Shift+Tab pass through so keyboard users can actually reach the
+// popup's links and copy buttons (it used to close on ANY keydown, trapping
+// them out); Enter/Space activate a focused control inside it; Escape (or
+// any other typing) closes it, returning focus to the icon on Escape.
 document.addEventListener('keydown', (e) => {
-  if (infoPopup && !infoPopup.hidden) {
-    hideInfoPopup();
-    e.stopImmediatePropagation();
-    e.preventDefault();
-  }
+  if (!infoPopup || infoPopup.hidden) return;
+  if (e.key === 'Tab') return;
+  if (infoPopup.contains(document.activeElement)
+    && (e.key === 'Enter' || e.key === ' ')) return;
+  hideInfoPopup();
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  if (e.key === 'Escape' && welcomeIconBtn) welcomeIconBtn.focus();
 }, true);
 
 // When the welcome dialog is open and the user starts typing, dismiss the
@@ -296,7 +347,19 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-editor.addEventListener('input', recomputeDirty);
+editor.addEventListener('input', () => {
+  recomputeDirty();
+  // Debounced crash-recovery stash — only writes while dirty (drafts.js).
+  draftStash.schedule();
+});
+
+// The tab can vanish before a pending debounce fires — flush the stash the
+// moment the page hides. pagehide covers bfcache navigations and closes;
+// visibilitychange covers tab switches and mobile app backgrounding.
+window.addEventListener('pagehide', () => draftStash.flush());
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') draftStash.flush();
+});
 
 editor.addEventListener('keydown', (e) => {
   if (e.key === 'Tab') {
@@ -318,8 +381,9 @@ editor.addEventListener('keydown', (e) => {
   }
 });
 
-platform.onLoad(({ content, isBinary }) => {
+platform.onLoad(({ filePath, content, isBinary }) => {
   binaryMode = !!isBinary;
+  currentFileName = filePath || null;
   editor.value = content ?? '';
   savedSnapshot = editor.value;
   setDirty(false);
@@ -345,16 +409,66 @@ platform.onSaveAndClose(async () => {
 });
 
 window.addEventListener('dragover', (e) => { e.preventDefault(); });
-window.addEventListener('drop', (e) => {
+window.addEventListener('drop', async (e) => {
   e.preventDefault();
   const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
   if (!file) return;
-  platform.openDroppedFile(file);
+  const result = await platform.openDroppedFile(file);
+  const msg = formatResultError(result, 'Open');
+  if (msg) showNotice(msg, { kind: 'error' });
 });
 
 editor.focus();
 initLineNumbers();
 maybeShowWelcome();
+
+// Boot-time draft recovery: if a dirty buffer was stashed before a crash /
+// close, offer to restore it. The offer is sticky (waits for a decision) and
+// stashing is suspended while it's up, so fresh typing can't overwrite the
+// recoverable draft before the user chooses.
+{
+  const draft = draftStash.peek();
+  if (draft) {
+    draftStash.suspend();
+    showNotice(describeDraft(draft, Date.now()), {
+      sticky: true,
+      actions: [
+        {
+          label: 'Restore',
+          onClick: () => {
+            // Don't clobber text the user typed while the offer sat open.
+            if (editor.value !== '' && editor.value !== draft.content
+              && !window.confirm('Replace the current text with the recovered draft?')) {
+              draftStash.resume();
+              return;
+            }
+            binaryMode = draft.isBinary;
+            currentFileName = draft.name;
+            editor.value = draft.content;
+            // A restored draft is by definition unsaved — snapshot stays
+            // empty so the dirty marker comes on (and stashing resumes).
+            savedSnapshot = '';
+            recomputeDirty();
+            if (draft.name && typeof platform.setName === 'function') platform.setName(draft.name);
+            find.reset();
+            refreshLineNumbers();
+            arrows.update();
+            editor.focus();
+            draftStash.resume();
+            draftStash.schedule();
+          }
+        },
+        {
+          label: 'Discard',
+          onClick: () => {
+            draftStash.clear();
+            draftStash.resume();
+          }
+        }
+      ]
+    });
+  }
+}
 
 // "Update available" notice. The actionable heads-up entry (welcome.js) calls
 // back here to apply it; guard unsaved work first since applying reloads.

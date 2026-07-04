@@ -2,7 +2,10 @@
   color-scheme: dark;
   --bg: #111111;
   --fg: #f4f4f4;
-  --muted: #666666;
+  /* #8a8a8a on #111 is ~5.5:1 — WCAG AA for normal text. The old #666666
+     (~3.3:1) failed AA for every --muted text surface (find counter,
+     heads-up notices, placeholder). Borders ride along slightly brighter. */
+  --muted: #8a8a8a;
   /* Glitch palette — pulled straight from build/icon.svg so the popup
      and the chromatic-aberration accents read as the same family as the
      skull icon. Used only by .info-popup and the subtle "glitch
@@ -12,6 +15,20 @@
   --gx-cyan: #cfe9ff;
   --gx-ink: #0a0a0a;
   --gx-ink-2: #1a1a1a;
+}
+/* Standard screen-reader-only pattern: rendered (so SRs and crawlers see
+   it) but visually removed without display:none. Used by the page h1. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 html, body {
   width: 100%;
@@ -791,6 +808,46 @@ dialog#welcome-dialog::backdrop {
 .welcome-icon-btn.spinning .welcome-icon {
   animation: menu-spin 1000ms cubic-bezier(0.05, 0.9, 0.25, 1);
 }
+/* Explicit ✕ close for the welcome dialog — Escape / backdrop click are
+   invisible dismiss paths on touch and to screen-reader users. Pinned to
+   the card's top-right corner; same chromatic-aberration X treatment as
+   #find-close. The card is the positioning context. */
+.welcome-card { position: relative; }
+.welcome-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+.welcome-close:hover,
+.welcome-close:focus-visible {
+  outline: none;
+  border-color: var(--muted);
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+/* Comfortable thumb target on touch. */
+@media (any-hover: none) and (pointer: coarse) {
+  .welcome-close { min-width: 36px; min-height: 36px; }
+}
+
 .welcome-sub {
   margin: 0 0 2px;
   color: #7A8590;
@@ -1102,6 +1159,145 @@ dialog#welcome-dialog::backdrop {
 }
 @media (prefers-reduced-motion: reduce) {
   .welcome-update-fill { transition: none; }
+}
+
+/* Toast notices (save/open failures, draft recovery) — notice.js appends
+   cards into the fixed #notice-region at bottom-center. Terminal-window
+   aesthetic from the same family as .info-popup: ink background, monospace,
+   RGB-split text; errors trade the muted border for magenta + a soft glow.
+   Glitch in/out mirror the find bar's steps() vocabulary and are gated
+   behind prefers-reduced-motion per the project contract. */
+#notice-region {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, calc(100vw - 24px));
+  /* The empty region must never eat clicks aimed at the editor. */
+  pointer-events: none;
+}
+.notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--gx-ink);
+  color: var(--gx-bone);
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.notice-error {
+  border-color: var(--gx-magenta);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    0 0 12px rgba(255, 61, 138, 0.35);
+}
+.notice-text {
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+  /* Long error strings wrap instead of pushing the buttons off-screen. */
+  overflow-wrap: anywhere;
+}
+/* Action buttons (Restore / Discard) — chromatic underlined controls in the
+   same voice as the info popup's links. */
+.notice-action {
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--gx-cyan);
+  border-bottom: 1px dotted var(--gx-cyan);
+}
+.notice-action:hover,
+.notice-action:focus-visible {
+  color: var(--gx-magenta);
+  border-bottom-color: var(--gx-magenta);
+  outline: none;
+}
+.notice-dismiss {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  margin: 0;
+  padding: 0 2px;
+  min-width: 22px;
+  min-height: 22px;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+.notice-dismiss:hover,
+.notice-dismiss:focus-visible {
+  outline: none;
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+.notice.notice-glitch-in  { animation: notice-glitch-in 150ms steps(1, end); }
+.notice.notice-glitch-out { animation: notice-glitch-out 135ms steps(1, end); animation-fill-mode: forwards; }
+@keyframes notice-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(-2px, -1px, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  65% {
+    transform: translate3d(1px, 0, 0);
+    filter: drop-shadow(1px 0 0 var(--gx-magenta)) drop-shadow(-1px 0 0 var(--gx-cyan));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes notice-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  40% {
+    opacity: 1;
+    transform: translate3d(2px, 0, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(-3px, 1px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+    filter: drop-shadow(5px 0 0 var(--gx-magenta)) drop-shadow(-5px 0 0 var(--gx-cyan));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice.notice-glitch-in,
+  .notice.notice-glitch-out { animation: none; }
+}
+/* Bigger touch targets for the notice controls on phones. */
+@media (any-hover: none) and (pointer: coarse) {
+  .notice { font-size: 13px; }
+  .notice-dismiss { min-width: 36px; min-height: 36px; }
 }
 
 /* Touch-device font-size bump. iOS Safari auto-zooms any input or

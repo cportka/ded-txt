@@ -43,6 +43,10 @@ let currentName = null;
 let dirty = false;
 
 let loadCb = null;
+// A load that fired before the renderer registered its onLoad callback —
+// possible when a launchQueue file launch is delivered during startup. Held
+// here and replayed as soon as onLoad wires up, so the file isn't dropped.
+let pendingLoad = null;
 
 function hasFsAccess() {
   return typeof window !== 'undefined' && typeof window.showOpenFilePicker === 'function';
@@ -68,11 +72,10 @@ function fireLoad(name, content, isBinary) {
   // reflects the fresh file, not a leftover bullet from the previous one.
   currentName = name;
   dirty = false;
-  if (loadCb) {
-    const payload = { filePath: name, content };
-    if (isBinary) payload.isBinary = true;
-    loadCb(payload);
-  }
+  const payload = { filePath: name, content };
+  if (isBinary) payload.isBinary = true;
+  if (loadCb) loadCb(payload);
+  else pendingLoad = payload;
   updateTitle();
 }
 
@@ -231,7 +234,10 @@ const web = {
     // the file as, so the tab title must not assert a name the user didn't pick.
     const name = normalizeFilename(currentName || 'untitled.txt');
     downloadFallback(payload, name, mime);
-    return { ok: true, filePath: name };
+    // unconfirmed: the download API gives no success/failure signal, so the
+    // renderer must NOT mark the buffer clean off this result — the dirty
+    // marker (and the crash-recovery draft) stay until a verifiable save.
+    return { ok: true, unconfirmed: true, filePath: name };
   },
 
   async openDroppedFile(file) {
@@ -270,7 +276,13 @@ const web = {
 
   onLoad(cb) {
     loadCb = cb;
-    // Surface the original name on the next setName/load so the title is correct.
+    // Replay a load that arrived before the renderer subscribed (see
+    // fireLoad) — e.g. an OS file-handler launch delivered during startup.
+    if (pendingLoad) {
+      const payload = pendingLoad;
+      pendingLoad = null;
+      loadCb(payload);
+    }
   },
 
   onMenuNew(_cb) { /* no system menus on web */ },
@@ -287,5 +299,26 @@ const web = {
   async checkUpdate() { return { updateKind: 'none' }; },
   async applyUpdate() { if (typeof location !== 'undefined') location.reload(); },
 };
+
+// PWA file_handlers (manifest.webmanifest): when the installed app is chosen
+// as the OS handler for a text file, the launch arrives here as a
+// FileSystemFileHandle — no picker involved. Route it through the same read
+// path as Open and keep the handle so subsequent saves write back silently
+// (writeHandle re-requests write permission on first save if the launch
+// handle came in read-only). Registered at module load; launches that arrive
+// before the renderer subscribes are buffered by fireLoad/onLoad above.
+if (typeof window !== 'undefined'
+  && window.launchQueue
+  && typeof window.launchQueue.setConsumer === 'function') {
+  window.launchQueue.setConsumer(async (launchParams) => {
+    const handle = launchParams && launchParams.files && launchParams.files[0];
+    if (!handle || typeof handle.getFile !== 'function') return;
+    try {
+      const file = await handle.getFile();
+      const res = await readAndFire(file);
+      if (res.ok) currentHandle = handle;
+    } catch (_e) { /* unreadable launch file — keep the empty buffer */ }
+  });
+}
 
 export default web;

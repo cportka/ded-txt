@@ -415,3 +415,22 @@ describe('installFind() overlay wiring', () => {
     assert.deepEqual(sel, [5, 5], 'caret parked at the end, nothing selected');
   });
 });
+
+describe('findRefreshDelay() — large-document debounce policy', () => {
+  test('small documents search on every keystroke (0 delay)', async () => {
+    const { findRefreshDelay } = await freshFind();
+    assert.equal(findRefreshDelay(0), 0);
+    assert.equal(findRefreshDelay(10_000), 0);
+  });
+
+  test('documents at/over the threshold wait for a typing pause', async () => {
+    const { findRefreshDelay, FIND_DEBOUNCE_THRESHOLD, FIND_DEBOUNCE_MS } = await freshFind();
+    assert.equal(findRefreshDelay(FIND_DEBOUNCE_THRESHOLD), FIND_DEBOUNCE_MS);
+    assert.equal(findRefreshDelay(FIND_DEBOUNCE_THRESHOLD * 10), FIND_DEBOUNCE_MS);
+  });
+
+  test('the boundary sits exactly at the threshold', async () => {
+    const { findRefreshDelay, FIND_DEBOUNCE_THRESHOLD } = await freshFind();
+    assert.equal(findRefreshDelay(FIND_DEBOUNCE_THRESHOLD - 1), 0);
+  });
+});

@@ -17,6 +17,22 @@
     { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
+  "screenshots": [
+    {
+      "src": "./screenshots/editor-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Editing a plain-text note in DedTxt with line numbers"
+    },
+    {
+      "src": "./screenshots/editor-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "The DedTxt menu on a phone: New, Save, Open, Find"
+    }
+  ],
   "file_handlers": [
     {
       "action": "./",

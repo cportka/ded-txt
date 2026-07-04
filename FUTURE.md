@@ -4,6 +4,12 @@ DedTxt stays *dead simple* — most "more of an editor" ideas are non-goals. Thi
 is the roadmap toward a confident 1.0 and beyond, seeded by a full multi-lens
 repo audit. Shipped work lives in [CHANGELOG.md](./CHANGELOG.md).
 
+*(rc.61 promoted the old "Later / nice-to-have" list into the pre-1.0 scope and
+shipped most of it: save/open error notices, `launchQueue` file handling, crash
+/ draft recovery, the SHELL / build / CSS-parity test guards, the a11y pass,
+find debouncing, the honest download-fallback dirty state, and manifest install
+screenshots. What's below is what's left.)*
+
 ## Before 1.0.0
 
 - **Cut the 1.0.0 release.** You can't be a confident 1.0 while every version
@@ -11,19 +17,18 @@ repo audit. Shipped work lives in [CHANGELOG.md](./CHANGELOG.md).
   continuously-deployed PWA (semver bumps on user-visible change? treat the build
   SHA as the real deploy id?), set all four version files to `1.0.0`, tag
   `v1.0.0`, and cut a source GitHub Release so the changelog can use real tags.
-  *(A product decision — yours to make.)*
-- **Surface save/open failures.** The renderer discards `result.error`, and there
-  is no toast / status / `aria-live` surface anywhere. A failed FSA write (disk
-  full, revoked permission) or a failed open leaves the user with no feedback but
-  the dirty bullet — "I pressed Save and nothing told me it failed" is a
-  trust-critical gap for a 1.0 editor. `web.js` already returns `{ok:false,
-  error}`; add a small notice (reuse the heads-up / glitch vocabulary).  Prefer a small glitch-styled error notice.
-- **Resolve the PWA `file_handlers` promise.** `manifest.webmanifest` advertises
-  "open .txt / .md / .json / … with DedTxt", but no `window.launchQueue`
-  consumer exists, so an installed PWA set as the file handler opens **blank** and
-  drops the file. Either wire `launchQueue` into the open path (route the handle
-  through `web.js` so re-saves stay silent) or drop the `file_handlers`
-  declaration. rc.59's install button made this more reachable.
+  From then on the repo follows the Portka standard's enforced SemVer
+  (`tests/run-tests.sh`) with no rc exception. *(A product decision — yours to
+  make.)*
+- **Light/dark toggle.** Locked dark today. Deliberately deferred out of the
+  rc.61 batch — needs a real design pass so the glitch palette (`--gx-*`) reads
+  on a light ground, not just a variable swap.
+- **Save-encoding choice.** UTF-8-only today (binary buffers round-trip
+  Latin-1). A minimal encoding picker on save is the last "real editor" gap for
+  files that must stay in a legacy encoding.
+- **More sponsor options.** Venmo + ETH + BTC today; the GitHub Sponsor button
+  is wired via `.github/FUNDING.yml`. Adding others needs account details only
+  the owner can supply.
 
 ## Desktop (revive when ready)
 
@@ -48,23 +53,11 @@ Native installers are paused; the code + Rust tests are kept green by the CI
 *(The dead desktop File→Open menu — `dt://menu-open` was emitted but never
 listened for — was fixed in rc.60.)*
 
-## Later / nice-to-have
+## Later / post-1.0 ideas
 
-- **Crash / draft recovery** — periodically stash the buffer to `localStorage` so
-  an accidental close or reload can offer to restore unsaved text.
-- **Test hardening** — a `SHELL`-completeness test (would have caught the rc.59
-  offline regression), a `build-web.js` smoke test, and a find/gutter CSS-parity
-  test. These are the load-bearing invariants with no current guard.
-- **A11y polish** — raise `--muted` text contrast to WCAG AA; make the info /
-  donation popup keyboard-reachable (it closes on any keydown today, trapping its
-  github/privacy/donation links); add `aria-live` to the find counter; give the
-  welcome dialog a visible close affordance for touch/SR users.
-- **PWA install polish** — add manifest `screenshots` (wide + narrow) for the
-  richer install card; consider the `black-translucent` iOS status-bar style.
-- **Debounce find** for multi-MB documents (today every keystroke reruns a
-  whole-document regex scan + repaints the entire highlight overlay).
-- **Don't mark the buffer clean** on the unconfirmable Firefox/Safari
-  download-fallback save (the download API can't report success).
-- **Small stuff** — a light/dark toggle (locked dark today), a save-encoding
-  choice (UTF-8-only today), and more sponsor options (Venmo + ETH + BTC today;
-  the GitHub Sponsor button is wired via `.github/FUNDING.yml`).
+- **Draft recovery for huge buffers** — the localStorage stash caps at ~2 M
+  chars (quota safety); an IndexedDB backend would cover the full 25 MB range.
+- **Multi-tab draft isolation** — the stash is a single key; two dirty tabs
+  overwrite each other's draft (last writer wins).
+- **security.txt contact hardening** — points at GitHub advisories/issues
+  today; a dedicated security contact address would be nicer.

@@ -368,9 +368,8 @@ function openDialog() {
   renderHeadsUp(dialog, headsUpNotices(env), headsUpHandlers);
 
   // Wire up close + backdrop-click listeners once; subsequent opens
-  // reuse them. The dialog has no explicit dismiss button — Escape (the
-  // built-in <dialog> behavior), backdrop click, and any shortcut row
-  // all close it.
+  // reuse them. Escape (the built-in <dialog> behavior), backdrop click,
+  // the ✕ close button, and any shortcut row all close it.
   if (!listenersAttached) {
     // Click outside the card (i.e. on the backdrop, which is the dialog
     // element itself with showModal()) dismisses the dialog. Clicks inside
@@ -379,6 +378,11 @@ function openDialog() {
     dialog.addEventListener('click', (e) => {
       if (e.target === dialog) closeWelcome();
     });
+
+    // Visible close affordance — Escape and backdrop clicks are invisible
+    // dismiss paths to touch and screen-reader users; the ✕ is explicit.
+    const closeBtn = dialog.querySelector('#welcome-close');
+    if (closeBtn) closeBtn.addEventListener('click', () => closeWelcome());
 
     // Native Escape fires 'cancel' before 'close'. Intercept it so ESC plays
     // the glitch-out too: preventDefault stops the immediate native close,

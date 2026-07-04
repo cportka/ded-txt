@@ -96,6 +96,18 @@ export function buildHighlightHtml(text, matches, activeIdx, escapeFn = escapeHt
   return html;
 }
 
+// Debounce policy for live find-as-you-type. Small documents re-search on
+// every keystroke (instant feedback); past the threshold each keystroke
+// would rerun a whole-document regex scan AND rebuild the full highlight
+// overlay, so typing into a multi-MB file stutters — those wait for a short
+// pause instead. Returns the delay in ms (0 = search immediately).
+// Exported for unit testing.
+export const FIND_DEBOUNCE_THRESHOLD = 500 * 1000; // chars
+export const FIND_DEBOUNCE_MS = 150;
+export function findRefreshDelay(textLength) {
+  return textLength >= FIND_DEBOUNCE_THRESHOLD ? FIND_DEBOUNCE_MS : 0;
+}
+
 // Pure focus-routing for the find bar's arrow-key navigation. Given the
 // number of focusable controls (`count`), the focused control's `index`, the
 // pressed `key`, and — for text inputs — whether the caret sits at an edge,
@@ -292,7 +304,36 @@ export function installFind({ editor, closeWelcome }) {
     highlightsInner.style.transform = `translateY(${-editor.scrollTop}px)`;
   }
 
+  // Debounced refresh for typing in the find input. Navigation/replace act
+  // on state.matches, so anything that consumes matches flushes a pending
+  // search first — stale matches must never be stepped through or replaced.
+  let refreshTimer = 0;
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = 0;
+    const delay = findRefreshDelay(editor.value.length);
+    if (delay === 0) {
+      refresh();
+      return;
+    }
+    refreshTimer = setTimeout(() => {
+      refreshTimer = 0;
+      refresh();
+    }, delay);
+  }
+  function flushRefresh() {
+    if (!refreshTimer) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = 0;
+    refresh();
+  }
+  function cancelRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = 0;
+  }
+
   function step(delta) {
+    flushRefresh();
     if (state.matches.length === 0) return;
     state.idx = (state.idx + delta + state.matches.length) % state.matches.length;
     counter.textContent = `${state.idx + 1} / ${state.matches.length}`;
@@ -341,6 +382,10 @@ export function installFind({ editor, closeWelcome }) {
     // pressed twice) — nothing to do.
     if (bar.hidden || onGlitchOutEnd) return;
 
+    // A debounced search still pending would fire after the bar hides and
+    // steal focus back to the find input (select() refocuses it) — drop it.
+    cancelRefresh();
+
     // Finalise the hide: reset the bar to a calm single-row state, drop the
     // overlay, release the reserved padding. Shared by the animated and
     // reduced-motion paths. Deferred so the replace row glitches out with
@@ -382,6 +427,7 @@ export function installFind({ editor, closeWelcome }) {
   }
 
   function replaceOne() {
+    flushRefresh();
     if (state.matches.length === 0 || state.idx < 0) return;
     const [start, end] = state.matches[state.idx];
     let replacement;
@@ -401,6 +447,7 @@ export function installFind({ editor, closeWelcome }) {
   }
 
   function replaceAll() {
+    flushRefresh();
     const before = editor.value;
     const { text, count } = applyReplaceAll(
       before,
@@ -450,7 +497,7 @@ export function installFind({ editor, closeWelcome }) {
     }
   });
 
-  findInput.addEventListener('input', refresh);
+  findInput.addEventListener('input', scheduleRefresh);
 
   findInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -592,6 +639,7 @@ export function installFind({ editor, closeWelcome }) {
   // so stale highlights/counter from the previous file never linger. close()
   // animates and keeps the query; reset() is the hard reset.
   function reset() {
+    cancelRefresh();
     if (onGlitchOutEnd) {
       bar.removeEventListener('animationend', onGlitchOutEnd);
       onGlitchOutEnd = null;
