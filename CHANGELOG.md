@@ -50,6 +50,18 @@ the light theme). Also onboards the repo to the Portka standard.
   version stays `1.0.0-rc.N` (valid SemVer prerelease) until the 1.0.0 cut.
 
 ### Fixed
+- **Draft-recovery hardening** (from the pre-merge adversarial review of this
+  very batch): Restore drops any file handle picked up while the offer was
+  pending, so a later Ctrl+S can't silently overwrite an unrelated opened
+  file with draft content; closing the offer with ✕ resumes stashing instead
+  of silently disabling crash recovery for the session; declining Restore's
+  confirm keeps the offer (and the stored draft) alive; a confirmed save or
+  New while the offer is undecided no longer deletes the previous session's
+  draft; undoing back to the saved text clears this session's now-stale
+  draft; Tab-inserts and the welcome dialog's forwarded first keystroke now
+  schedule stashes; OS-launched (`launchQueue`) open failures surface an
+  error notice instead of a silently blank editor; `PRIVACY.md` documents
+  the `dedtxt-draft` key.
 - **The download-fallback save no longer lies about being saved.** On
   Firefox/Safari (no FSA) a save triggers a download the browser can't
   confirm; the result is now `{ok, unconfirmed}` and the buffer keeps its

@@ -28,14 +28,21 @@ export function formatResultError(result, verb) {
 }
 
 // Show a notice. Options:
-//   kind:    'error' adds the magenta error treatment.
-//   sticky:  true disables the auto-hide (used by the draft-restore offer,
-//            which must wait for an explicit user decision).
-//   actions: [{ label, onClick }] rendered as inline buttons; clicking one
-//            dismisses the notice first, then runs the handler.
+//   kind:      'error' adds the magenta error treatment.
+//   sticky:    true disables the auto-hide (used by the draft-restore offer,
+//              which must wait for an explicit user decision).
+//   actions:   [{ label, onClick }] rendered as inline buttons. onClick runs
+//              FIRST; returning false keeps the notice up (so a handler can
+//              show a confirm() and leave the offer standing on cancel).
+//              Any other return dismisses the notice.
+//   onDismiss: called exactly once when the notice leaves for ANY reason —
+//              action, ✕ button, or auto-hide. Lets the caller release
+//              state tied to the notice's lifetime (the draft stash's
+//              suspend flag) without caring which path closed it.
 // Returns { el, dismiss } or null when the region is missing (tests, or a
 // stripped-down host page).
 export function showNotice(message, opts = {}) {
+  if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return null;
   const region = document.getElementById('notice-region');
   if (!region) return null;
 
@@ -66,6 +73,7 @@ export function showNotice(message, opts = {}) {
     if (dismissed) return;
     dismissed = true;
     clearTimeout(hideTimer);
+    if (typeof opts.onDismiss === 'function') opts.onDismiss();
     if (prefersReducedMotion()) {
       remove();
       return;
@@ -82,8 +90,10 @@ export function showNotice(message, opts = {}) {
     btn.className = 'notice-action';
     btn.textContent = action.label;
     btn.addEventListener('click', () => {
+      // Handler first: it may decline (confirm() canceled) by returning
+      // false, in which case the notice must survive the click.
+      if (typeof action.onClick === 'function' && action.onClick() === false) return;
       dismiss();
-      if (typeof action.onClick === 'function') action.onClick();
     });
     el.appendChild(btn);
   }

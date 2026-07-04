@@ -835,9 +835,15 @@ dialog#welcome-dialog::backdrop {
     1px 0 0 var(--gx-magenta),
     -1px 0 0 var(--gx-cyan);
 }
-.welcome-close:hover,
+.welcome-close:hover {
+  border-color: var(--muted);
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
 .welcome-close:focus-visible {
-  outline: none;
+  outline: 1px solid var(--gx-cyan);
+  outline-offset: 1px;
   border-color: var(--muted);
   text-shadow:
     2px 0 0 var(--gx-magenta),
@@ -1224,11 +1230,16 @@ dialog#welcome-dialog::backdrop {
   color: var(--gx-cyan);
   border-bottom: 1px dotted var(--gx-cyan);
 }
-.notice-action:hover,
+.notice-action:hover {
+  color: var(--gx-magenta);
+  border-bottom-color: var(--gx-magenta);
+}
+/* Keyboard focus gets a real ring, not just a hue shift. */
 .notice-action:focus-visible {
   color: var(--gx-magenta);
   border-bottom-color: var(--gx-magenta);
-  outline: none;
+  outline: 1px solid var(--gx-cyan);
+  outline-offset: 2px;
 }
 .notice-dismiss {
   background: transparent;
@@ -1246,9 +1257,14 @@ dialog#welcome-dialog::backdrop {
     1px 0 0 var(--gx-magenta),
     -1px 0 0 var(--gx-cyan);
 }
-.notice-dismiss:hover,
+.notice-dismiss:hover {
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
 .notice-dismiss:focus-visible {
-  outline: none;
+  outline: 1px solid var(--gx-cyan);
+  outline-offset: 1px;
   text-shadow:
     2px 0 0 var(--gx-magenta),
     -2px 0 0 var(--gx-cyan);

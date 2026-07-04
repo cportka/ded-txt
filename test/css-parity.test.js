@@ -112,6 +112,44 @@ describe('editor / highlights / mirror text-layout parity (styles.css)', () => {
     });
   }
 
+  test('media-scoped parity-prop overrides always cover all three layers', () => {
+    // A viewport-conditional override of any text-layout prop on ONE layer
+    // (e.g. a mobile-only font-size on the textarea alone) drifts the marks
+    // exactly like a top-level change would — but only on that viewport.
+    // For every @media condition, any parity prop declared for one of the
+    // three ids must be declared identically for all three.
+    const byMedia = new Map();
+    for (const r of rules) {
+      if (!r.media) continue;
+      const d = declsOf(r.body);
+      const selectors = r.selector.split(',').map((s) => s.trim());
+      for (const id of IDS) {
+        if (!selectors.includes(id)) continue;
+        if (!byMedia.has(r.media)) byMedia.set(r.media, {});
+        const perId = byMedia.get(r.media);
+        perId[id] = Object.assign(perId[id] || {}, d);
+      }
+    }
+    for (const [media, perId] of byMedia) {
+      const declaredProps = new Set();
+      for (const id of Object.keys(perId)) {
+        for (const p of Object.keys(perId[id])) {
+          if (PARITY_PROPS.includes(p)) declaredProps.add(p);
+        }
+      }
+      for (const prop of declaredProps) {
+        const values = IDS.map((id) => (perId[id] || {})[prop]);
+        for (const [i, id] of IDS.entries()) {
+          assert.equal(
+            values[i], values[0],
+            `In ${media}: ${id} '${prop}' (${values[i]}) diverges from ${IDS[0]} (${values[0]}) — ` +
+            'a media-scoped layout change must cover all three layers.'
+          );
+        }
+      }
+    }
+  });
+
   test('the touch-viewport font-size bump covers all three layers together', () => {
     // The 16px lift (defeats iOS auto-zoom) must apply to the textarea AND
     // both mirrors, or character positions drift only on phones.

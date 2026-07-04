@@ -138,6 +138,23 @@ describe('src/drafts.js', () => {
       assert.equal(mod.parseDraft(storage.getItem(mod.DRAFT_KEY)).content, 'typed over the offer');
     });
 
+    test('a clean buffer clears only a draft THIS session wrote (undo case), never a previous session\'s', () => {
+      // A stale draft from a previous session must survive clean-buffer
+      // writes — it's the subject of the pending restore offer.
+      const storage = fakeStorage({ [mod.DRAFT_KEY]: '{"content":"old session","savedAt":1}' });
+      const { stash, state } = makeStash({ content: 'saved text', dirty: false }, storage);
+      stash.flush();
+      assert.equal(mod.parseDraft(storage.getItem(mod.DRAFT_KEY)).content, 'old session');
+      // This session edits (stash written), then undoes back to the saved
+      // text: the now-stale draft is removed so no bogus offer appears.
+      state.snap = { content: 'edited', dirty: true };
+      stash.flush();
+      assert.equal(mod.parseDraft(storage.getItem(mod.DRAFT_KEY)).content, 'edited');
+      state.snap = { content: 'saved text', dirty: false };
+      stash.flush();
+      assert.equal(storage.getItem(mod.DRAFT_KEY), null);
+    });
+
     test('peek() surfaces the parsed draft and survives corrupt storage', () => {
       const storage = fakeStorage({ [mod.DRAFT_KEY]: '{"content":"kept","savedAt":9}' });
       const { stash } = makeStash({ content: '', dirty: false }, storage);

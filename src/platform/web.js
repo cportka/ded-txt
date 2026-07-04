@@ -1,6 +1,11 @@
 // Web platform: uses the File System Access API where available, with
 // a download/upload fallback for Safari & Firefox. The renderer treats
 // this just like Electron's window.dt.
+//
+// The notice import is a deliberate layering exception: launchQueue file
+// launches are platform-initiated (no renderer call to return a result to),
+// so a failed OS-launched open must surface its own error notice here.
+import { showNotice, formatResultError } from '../notice.js';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
@@ -313,11 +318,18 @@ if (typeof window !== 'undefined'
   window.launchQueue.setConsumer(async (launchParams) => {
     const handle = launchParams && launchParams.files && launchParams.files[0];
     if (!handle || typeof handle.getFile !== 'function') return;
+    let result;
     try {
       const file = await handle.getFile();
-      const res = await readAndFire(file);
-      if (res.ok) currentHandle = handle;
-    } catch (_e) { /* unreadable launch file — keep the empty buffer */ }
+      result = await readAndFire(file);
+      if (result.ok) currentHandle = handle;
+    } catch (err) {
+      result = { ok: false, error: err && err.message };
+    }
+    // A user who double-clicked a file and got a blank editor with no
+    // explanation would (rightly) call that broken — say what happened.
+    const msg = formatResultError(result, 'Open');
+    if (msg) showNotice(msg, { kind: 'error' });
   });
 }
 

@@ -84,8 +84,10 @@
   <button id="scroll-bottom" type="button" class="scroll-arrow" aria-label="Scroll to end" title="Scroll to end" hidden>↓</button>
 
   <!-- Toast notices (save/open failures, draft recovery). Static so the
-       aria-live region exists at page load; notice.js appends cards here. -->
-  <div id="notice-region" role="alert" aria-live="assertive"></div>
+       aria-live region exists at page load; notice.js appends cards here.
+       aria-atomic=false (and no role=alert, whose implicit atomic=true would
+       re-announce EVERY notice) so only the newly-added card is read out. -->
+  <div id="notice-region" aria-live="assertive" aria-atomic="false"></div>
 
   <dialog id="welcome-dialog" aria-label="DedTxt menu">
     <form method="dialog" class="welcome-card">

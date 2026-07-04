@@ -61,6 +61,10 @@ const draftStash = createDraftStash({
     dirty
   })
 });
+// True while the boot-time Restore/Discard offer is on screen. While set,
+// nothing else may clear the stored draft — it belongs to the previous
+// session and only the offer's own buttons decide its fate.
+let restoreOfferPending = false;
 
 function setDirty(next) {
   if (next === dirty) return;
@@ -79,15 +83,20 @@ async function doSave() {
   // byte (preserving the source file's raw bytes round-trip).
   const result = await platform.saveFile(editor.value, binaryMode);
   if (result && result.ok) {
-    if (result.filePath) currentFileName = result.filePath;
     if (result.unconfirmed) {
       // Firefox/Safari download-fallback save: the download API can't
       // confirm the file actually landed, so the buffer stays dirty (and
-      // the recovery draft stays stashed) until a verifiable save.
+      // the recovery draft stays stashed) until a verifiable save. The
+      // returned name is only a suggestion the browser may not have used —
+      // don't adopt it as the buffer's name either.
     } else {
+      if (result.filePath) currentFileName = result.filePath;
       savedSnapshot = editor.value;
       setDirty(false);
-      draftStash.clear();
+      // While the boot restore offer is undecided, the stored draft belongs
+      // to the PREVIOUS session — saving the current buffer must not delete
+      // it out from under the pending Restore/Discard question.
+      if (!restoreOfferPending) draftStash.clear();
     }
   } else {
     const msg = formatResultError(result, 'Save');
@@ -114,8 +123,10 @@ function doNew() {
   editor.value = '';
   savedSnapshot = '';
   setDirty(false);
-  // The user explicitly discarded the buffer — drop the recovery draft too.
-  draftStash.clear();
+  // The user explicitly discarded the buffer — drop the recovery draft too,
+  // unless the boot restore offer is still undecided (that draft is the
+  // previous session's; only its own Restore/Discard buttons may settle it).
+  if (!restoreOfferPending) draftStash.clear();
   // Clear find state from the previous document so stale match highlights and
   // the find bar don't linger on the now-empty editor.
   find.reset();
@@ -292,7 +303,10 @@ document.addEventListener('click', () => {
 // any other typing) closes it, returning focus to the icon on Escape.
 document.addEventListener('keydown', (e) => {
   if (!infoPopup || infoPopup.hidden) return;
-  if (e.key === 'Tab') return;
+  // Tab (incl. Shift+Tab) and bare modifier presses must not close the
+  // popup, or Shift+Tab-ing through its links would be impossible.
+  if (e.key === 'Tab' || e.key === 'Shift' || e.key === 'Control'
+    || e.key === 'Alt' || e.key === 'Meta') return;
   if (infoPopup.contains(document.activeElement)
     && (e.key === 'Enter' || e.key === ' ')) return;
   hideInfoPopup();
@@ -332,6 +346,8 @@ if (welcomeDialog) {
     const end = editor.selectionEnd;
     editor.setRangeText(ch, start, end, 'end');
     recomputeDirty();
+    // setRangeText fires no 'input' event — stash the draft explicitly.
+    draftStash.schedule();
     refreshLineNumbers();
   });
 }
@@ -368,6 +384,8 @@ editor.addEventListener('keydown', (e) => {
     const end = editor.selectionEnd;
     editor.setRangeText('\t', start, end, 'end');
     recomputeDirty();
+    // setRangeText fires no 'input' event — stash the draft explicitly.
+    draftStash.schedule();
     return;
   }
   const mod = e.metaKey || e.ctrlKey;
@@ -430,18 +448,35 @@ maybeShowWelcome();
   const draft = draftStash.peek();
   if (draft) {
     draftStash.suspend();
+    restoreOfferPending = true;
     showNotice(describeDraft(draft, Date.now()), {
       sticky: true,
+      // Fires on EVERY way the offer leaves (Restore, Discard, the ✕
+      // button). Without this, closing the offer via ✕ would leave the
+      // stash suspended for the whole session — crash recovery silently
+      // dead. ✕ means "not now": stashing resumes protecting the CURRENT
+      // buffer; the old draft survives until new edits overwrite it.
+      onDismiss: () => {
+        restoreOfferPending = false;
+        draftStash.resume();
+      },
       actions: [
         {
           label: 'Restore',
           onClick: () => {
             // Don't clobber text the user typed while the offer sat open.
+            // Returning false keeps the offer (and the suspended stash) up,
+            // so declining costs nothing — the draft stays recoverable.
             if (editor.value !== '' && editor.value !== draft.content
               && !window.confirm('Replace the current text with the recovered draft?')) {
-              draftStash.resume();
-              return;
+              return false;
             }
+            // Drop any file association picked up while the offer was
+            // pending (Ctrl+O / OS file-handler launch): the restored
+            // draft is NOT that file's content, and a silent FSA re-save
+            // would overwrite the wrong file. newFile() resets the
+            // platform's handle + name, so the next save prompts.
+            if (typeof platform.newFile === 'function') platform.newFile();
             binaryMode = draft.isBinary;
             currentFileName = draft.name;
             editor.value = draft.content;
@@ -454,15 +489,14 @@ maybeShowWelcome();
             refreshLineNumbers();
             arrows.update();
             editor.focus();
-            draftStash.resume();
-            draftStash.schedule();
+            // No re-stash here: the stored draft already holds this content,
+            // and the stash resumes via onDismiss right after this returns.
           }
         },
         {
           label: 'Discard',
           onClick: () => {
             draftStash.clear();
-            draftStash.resume();
           }
         }
       ]

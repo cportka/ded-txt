@@ -83,14 +83,29 @@ export function createDraftStash({ storage, getSnapshot, debounceMs = STASH_DEBO
   // While the boot-time restore offer is pending, new edits must not
   // overwrite the recoverable draft — suspended until the user decides.
   let suspended = false;
+  // True once THIS session has written the draft. A clean buffer then means
+  // the stored draft is stale (the user undid back to the saved text) and
+  // gets removed — but a draft from a PREVIOUS session is never auto-removed
+  // on a clean write, only by an explicit clear()/overwrite.
+  let wroteDraft = false;
 
   function writeNow() {
     if (suspended) return;
     const snap = getSnapshot();
-    if (!snap || !snap.dirty) return;
+    if (!snap) return;
+    if (!snap.dirty) {
+      if (wroteDraft) {
+        wroteDraft = false;
+        try { storage.removeItem(DRAFT_KEY); } catch (_e) { /* ignore */ }
+      }
+      return;
+    }
     const s = serializeDraft(snap);
     if (!s) return;
-    try { storage.setItem(DRAFT_KEY, s); } catch (_e) { /* quota / private mode */ }
+    try {
+      storage.setItem(DRAFT_KEY, s);
+      wroteDraft = true;
+    } catch (_e) { /* quota / private mode */ }
   }
 
   return {
@@ -109,6 +124,7 @@ export function createDraftStash({ storage, getSnapshot, debounceMs = STASH_DEBO
     clear() {
       clearTimeout(timer);
       timer = 0;
+      wroteDraft = false;
       try { storage.removeItem(DRAFT_KEY); } catch (_e) { /* ignore */ }
     },
     peek() {

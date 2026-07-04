@@ -34,11 +34,15 @@ function shellEntries() {
 }
 
 // Static imports only: `import X from '...'` / `import { a } from '...'` /
-// `import '...'`. Dynamic `import('...')` has no whitespace after the
-// keyword, so the \s+ in the pattern excludes it by construction.
+// `import '...'` (side-effect) — including multi-line binding lists.
+// Dynamic `import('...')` has no whitespace after the keyword, so the \s+
+// in the pattern excludes it by construction. The binding part is matched
+// with [^;'"] (never crossing a quote or statement end): a greedy
+// [\s\S]*?from would swallow a side-effect import whole by hunting for the
+// NEXT statement's `from`, silently dropping it from the crawl.
 function staticImports(source) {
   const out = [];
-  const re = /(?:^|\n)\s*import\s+(?:[\s\S]*?from\s+)?['"]([^'"]+)['"]/g;
+  const re = /(?:^|\n)\s*import\s+(?:[^;'"]+?from\s+)?['"]([^'"]+)['"]/g;
   let m;
   while ((m = re.exec(source)) !== null) out.push(m[1]);
   return out;
@@ -61,6 +65,21 @@ function crawl(entryRel) {
   }
   return [...seen];
 }
+
+describe('staticImports() self-test (the crawler must see every import form)', () => {
+  test('named, default, side-effect and multi-line imports are all captured', () => {
+    const src = [
+      "import './side-effect.js';",
+      "import def from './default.js';",
+      "import { a, b } from './named.js';",
+      "import {\n  c,\n  d,\n} from './multiline.js';",
+      "const lazy = await import('./dynamic.js');"
+    ].join('\n');
+    assert.deepEqual(staticImports(src), [
+      './side-effect.js', './default.js', './named.js', './multiline.js'
+    ]);
+  });
+});
 
 describe('sw.js SHELL completeness', () => {
   test('every statically-imported module is precached', () => {

@@ -248,10 +248,17 @@ export function installFind({ editor, closeWelcome }) {
     const next = btn.getAttribute('aria-pressed') !== 'true';
     btn.setAttribute('aria-pressed', String(next));
     syncOpts();
+    // This refresh supersedes any pending debounced one — drop it so a huge
+    // document isn't scanned twice back-to-back.
+    cancelRefresh();
     refresh();
   }
 
-  function refresh() {
+  // `interactive: false` rebuilds matches/counter/overlay WITHOUT touching
+  // the textarea selection or focus — used when a debounced search lands
+  // after the user has already clicked away from the find input (select()
+  // would clobber their caret and yank focus back to the bar).
+  function refresh(interactive = true) {
     state.matches = buildMatches(editor.value, findInput.value, state.opts);
     if (state.matches.length === 0) {
       state.idx = -1;
@@ -264,9 +271,9 @@ export function installFind({ editor, closeWelcome }) {
     // Try to preserve the current index across edits; otherwise reset to 0.
     if (state.idx < 0 || state.idx >= state.matches.length) state.idx = 0;
     counter.textContent = `${state.idx + 1} / ${state.matches.length}`;
-    select(state.matches[state.idx]);
+    if (interactive) select(state.matches[state.idx]);
     paintHighlights();
-    scrollToActiveMatch();
+    if (interactive) scrollToActiveMatch();
   }
 
   function select([start, end]) {
@@ -318,7 +325,9 @@ export function installFind({ editor, closeWelcome }) {
     }
     refreshTimer = setTimeout(() => {
       refreshTimer = 0;
-      refresh();
+      // Only drive selection/scroll if the user is still in the find input;
+      // a late search must never steal focus or move their editor caret.
+      refresh(document.activeElement === findInput);
     }, delay);
   }
   function flushRefresh() {
@@ -361,6 +370,7 @@ export function installFind({ editor, closeWelcome }) {
     // place; otherwise the match starts in the bar's reserved band and
     // a second paint frame is needed to correct it.
     syncBarMetrics();
+    cancelRefresh();
     refresh();
     findInput.focus();
     // Park the caret at the END of the prefilled query rather than selecting
