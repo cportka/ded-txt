@@ -93,6 +93,22 @@ fs.writeFileSync(
   '</urlset>\n'
 );
 
+// 6c. RFC 9116 security contact at the standard /.well-known/security.txt
+// path. GitHub Pages can't set response headers, but it serves static files
+// fine. Expires is re-stamped one year out on every deploy, so the contact
+// can never quietly go stale (an expired security.txt is worse than none).
+const wellKnownDir = path.join(out, '.well-known');
+fs.mkdirSync(wellKnownDir, { recursive: true });
+const securityExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+fs.writeFileSync(
+  path.join(wellKnownDir, 'security.txt'),
+  'Contact: https://github.com/cportka/dedtxt/security/advisories/new\n' +
+  'Contact: https://github.com/cportka/dedtxt/issues\n' +
+  `Expires: ${securityExpires}\n` +
+  'Preferred-Languages: en\n' +
+  'Canonical: https://dedtxt.app/.well-known/security.txt\n'
+);
+
 // 7. Emit version.json — the update/OTA manifest. The desktop app fetches this
 // to learn the latest web-layer version (the webview CSP blocks cross-origin
 // fetches, so the native side does it); both desktop and web compare against it
@@ -105,7 +121,7 @@ const pkg = require('../package.json');
 // command — most releases leave it untouched so web updates hot-swap in place.
 const NATIVE_MIN = '1.0.0-rc.49';
 // Web-deploy-only artifacts the running app never loads — kept out of the manifest.
-const MANIFEST_EXCLUDE = new Set(['404.html', 'CNAME', '.nojekyll', 'version.json', 'app/index.html', 'robots.txt', 'sitemap.xml', 'llms.txt']);
+const MANIFEST_EXCLUDE = new Set(['404.html', 'CNAME', '.nojekyll', 'version.json', 'app/index.html', 'robots.txt', 'sitemap.xml', 'llms.txt', '.well-known/security.txt']);
 
 function listFiles(dir, base = '') {
   const found = [];

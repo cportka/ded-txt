@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#111111" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="DedTxt" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icons/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="./icons/icon-512.png" />
@@ -49,6 +49,9 @@
   <title>DedTxt — a dead simple plain-text editor</title>
 </head>
 <body>
+  <!-- Visually-hidden page heading: the UI is a full-viewport editor with no
+       chrome for a visible h1, but crawlers + screen readers still get one. -->
+  <h1 class="visually-hidden">DedTxt — a dead simple plain-text editor</h1>
   <div id="editor-wrap">
     <div id="line-gutter" aria-hidden="true"><div id="line-gutter-inner"></div></div>
     <div id="editor-highlights" aria-hidden="true"><div id="editor-highlights-inner"></div></div>
@@ -57,7 +60,7 @@
     <form id="find-bar" role="search" aria-label="Find in document" hidden>
       <div class="find-row">
         <input type="text" id="find-input" placeholder="find" aria-label="Find" autocomplete="off" spellcheck="false" />
-        <span id="find-counter" class="find-counter">0 / 0</span>
+        <span id="find-counter" class="find-counter" role="status" aria-live="polite">0 / 0</span>
         <button type="button" id="find-prev" class="find-btn" title="Previous (Shift+Enter)" aria-label="Previous match">↑</button>
         <button type="button" id="find-next" class="find-btn" title="Next (Enter)" aria-label="Next match">↓</button>
         <button type="button" id="find-case" class="find-toggle" title="Case sensitive" aria-pressed="false" aria-label="Case sensitive">Aa</button>
@@ -80,9 +83,16 @@
   <button id="scroll-top" type="button" class="scroll-arrow" aria-label="Scroll to start" title="Scroll to start" hidden>↑</button>
   <button id="scroll-bottom" type="button" class="scroll-arrow" aria-label="Scroll to end" title="Scroll to end" hidden>↓</button>
 
+  <!-- Toast notices (save/open failures, draft recovery). Static so the
+       aria-live region exists at page load; notice.js appends cards here.
+       aria-atomic=false (and no role=alert, whose implicit atomic=true would
+       re-announce EVERY notice) so only the newly-added card is read out. -->
+  <div id="notice-region" aria-live="assertive" aria-atomic="false"></div>
+
   <dialog id="welcome-dialog" aria-label="DedTxt menu">
     <form method="dialog" class="welcome-card">
-      <button type="button" class="welcome-icon-btn" id="welcome-icon-btn" aria-label="About DedTxt">
+      <button type="button" id="welcome-close" class="welcome-close" aria-label="Close menu" title="Close">✕</button>
+      <button type="button" class="welcome-icon-btn" id="welcome-icon-btn" aria-label="About DedTxt" aria-controls="info-popup" aria-expanded="false">
         <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
       </button>
       <p class="welcome-sub">A dead simple plain-text editor.</p>

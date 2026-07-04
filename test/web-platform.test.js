@@ -682,7 +682,9 @@ describe('src/platform/web.js', () => {
       const web = await freshWeb();
 
       const res = await web.saveFile('some text');
-      assert.deepEqual(res, { ok: true, filePath: 'untitled.txt' });
+      // unconfirmed: the download API can't verify the write landed, so the
+      // renderer must keep the buffer dirty off this result (FUTURE.md item).
+      assert.deepEqual(res, { ok: true, unconfirmed: true, filePath: 'untitled.txt' });
       assert.equal(env.anchors.find(a => a.download).download, 'untitled.txt');
       assert.equal(env.blobs.length, 1);
       assert.deepEqual(env.blobs[0].parts, ['some text']);
@@ -918,5 +920,96 @@ describe('normalizeFilename() (src/platform/web.js)', () => {
     const n = await fresh();
     assert.equal(n('/abs/path.txt'), '_abs_path.txt');
     assert.ok(!/[\\/]/.test(n('../../etc/passwd')), 'no path separators remain');
+  });
+});
+
+describe('launchQueue file-handler integration (src/platform/web.js)', () => {
+  const { beforeEach: beforeEachLQ } = require('node:test');
+  beforeEachLQ(() => { uninstallGlobals(); });
+
+  // The consumer is registered at module load, so launchQueue must exist on
+  // window BEFORE the import. Returns the captured consumer for manual firing.
+  function installWithLaunchQueue() {
+    const env = installGlobals();
+    const captured = {};
+    env.win.launchQueue = {
+      setConsumer(fn) { captured.consumer = fn; }
+    };
+    return { env, captured };
+  }
+
+  test('registers a consumer when window.launchQueue exists', async () => {
+    const { captured } = installWithLaunchQueue();
+    await freshWeb();
+    assert.equal(typeof captured.consumer, 'function');
+  });
+
+  test('no launchQueue on window → module still loads fine', async () => {
+    installGlobals();
+    const web = await freshWeb();
+    assert.equal(web.name, 'web');
+  });
+
+  test('a launched file flows through onLoad and adopts the handle for silent re-save', async () => {
+    const { captured } = installWithLaunchQueue();
+    const web = await freshWeb();
+    let loaded = null;
+    web.onLoad((p) => { loaded = p; });
+
+    const handle = makeFakeHandle('launched.txt');
+    // Seed the fake handle's stored content via its own write surface.
+    const w = await handle.createWritable();
+    await w.write('from the OS');
+    await w.close();
+
+    await captured.consumer({ files: [handle] });
+    assert.deepEqual(loaded, { filePath: 'launched.txt', content: 'from the OS' });
+    assert.equal(document.title, 'launched.txt — DedTxt');
+
+    // Re-save writes through the launch handle silently — no picker.
+    const res = await web.saveFile('edited');
+    assert.deepEqual(res, { ok: true, filePath: 'launched.txt' });
+    assert.deepEqual(handle.writes, ['from the OS', 'edited']);
+  });
+
+  test('a launch delivered before onLoad subscribes is buffered, not dropped', async () => {
+    const { captured } = installWithLaunchQueue();
+    const web = await freshWeb();
+
+    const handle = makeFakeHandle('early.txt');
+    const w = await handle.createWritable();
+    await w.write('early bird');
+    await w.close();
+
+    // Fire the launch BEFORE the renderer registers its callback.
+    await captured.consumer({ files: [handle] });
+
+    let loaded = null;
+    web.onLoad((p) => { loaded = p; });
+    assert.deepEqual(loaded, { filePath: 'early.txt', content: 'early bird' });
+  });
+
+  test('an empty or malformed launch is ignored', async () => {
+    const { captured } = installWithLaunchQueue();
+    const web = await freshWeb();
+    let loadedCalled = false;
+    web.onLoad(() => { loadedCalled = true; });
+
+    await captured.consumer({ files: [] });
+    await captured.consumer({});
+    await captured.consumer(null);
+    await captured.consumer({ files: [{ notAHandle: true }] });
+    assert.equal(loadedCalled, false);
+  });
+
+  test('a handle whose getFile() throws leaves the buffer untouched', async () => {
+    const { captured } = installWithLaunchQueue();
+    const web = await freshWeb();
+    let loadedCalled = false;
+    web.onLoad(() => { loadedCalled = true; });
+
+    await captured.consumer({ files: [{ getFile: async () => { throw new Error('gone'); } }] });
+    assert.equal(loadedCalled, false);
+    assert.equal(document.title, 'DedTxt');
   });
 });

@@ -8,6 +8,83 @@ release-candidate series; the version is kept in lockstep across
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc.61]
+
+The 1.0.0-prep batch: the old FUTURE.md "Later / nice-to-have" list was
+promoted into the pre-1.0 scope and most of it shipped here (everything except
+the light theme). Also onboards the repo to the Portka standard.
+
+### Added
+- **Save/open failures are finally visible.** A new glitch-styled toast
+  (`notice.js` + the `#notice-region` aria-live region) surfaces
+  `Save failed — …` / `Open failed — …` with the platform's error detail;
+  canceled pickers stay silent. Previously a failed FSA write was swallowed —
+  the top 1.0 trust gap.
+- **Crash / draft recovery** (`drafts.js`): while the buffer is dirty it's
+  stashed to localStorage (debounced 1.5 s, flushed on page hide, capped at
+  2 M chars); the next boot offers *Restore / Discard*. Cleared on confirmed
+  save, New, or Discard — deliberately kept after the unverifiable
+  download-fallback save and after Open.
+- **PWA `file_handlers` actually work now.** A `window.launchQueue` consumer
+  routes OS-launched files through the normal open path and keeps the file
+  handle, so re-saves stay silent. Launches that arrive before the renderer
+  subscribes are buffered, not dropped. (The manifest advertised this for
+  releases; an installed PWA set as the handler opened blank.)
+- **PWA install polish:** manifest `screenshots` (wide 1280×800 + narrow
+  750×1334, generated from the real app) for the richer install card, and the
+  `black-translucent` iOS status-bar style (safe-area padding already
+  compensates).
+- **`/.well-known/security.txt`** (RFC 9116) emitted by the web build, with
+  Expires re-stamped one year out on every deploy.
+- **Test hardening — the three untested load-bearing invariants now have
+  guards:** a SHELL-completeness test (crawls renderer.js's static import
+  graph vs `sw.js`'s precache — would have caught the rc.59 offline
+  regression), a `build-web.js` smoke test over the real dist-web output, and
+  a find/gutter CSS-parity test pinning `#text-editor` /
+  `#editor-highlights-inner` / `#editor-mirror` text-layout equality incl. the
+  16 px touch bump.
+- **Portka standard onboarding:** committed `.claude/settings.json` (plugin
+  marketplace + permissions allowlist), the workflow block in
+  `.claude/CLAUDE.md`, and `tests/run-tests.sh` + `tests/version-sync.test.mjs`
+  enforcing version/CHANGELOG sync (wired into CI). Pre-1.0 exception: the
+  version stays `1.0.0-rc.N` (valid SemVer prerelease) until the 1.0.0 cut.
+
+### Fixed
+- **Draft-recovery hardening** (from the pre-merge adversarial review of this
+  very batch): Restore drops any file handle picked up while the offer was
+  pending, so a later Ctrl+S can't silently overwrite an unrelated opened
+  file with draft content; closing the offer with ✕ resumes stashing instead
+  of silently disabling crash recovery for the session; declining Restore's
+  confirm keeps the offer (and the stored draft) alive; a confirmed save or
+  New while the offer is undecided no longer deletes the previous session's
+  draft; undoing back to the saved text clears this session's now-stale
+  draft; Tab-inserts and the welcome dialog's forwarded first keystroke now
+  schedule stashes; OS-launched (`launchQueue`) open failures surface an
+  error notice instead of a silently blank editor; `PRIVACY.md` documents
+  the `dedtxt-draft` key.
+- **The download-fallback save no longer lies about being saved.** On
+  Firefox/Safari (no FSA) a save triggers a download the browser can't
+  confirm; the result is now `{ok, unconfirmed}` and the buffer keeps its
+  dirty marker + recovery draft until a verifiable save. (Chromium FSA saves
+  behave as before.)
+- **Find in multi-MB documents no longer rescans on every keystroke** —
+  queries against buffers ≥ 500 k chars debounce 150 ms; navigation/replace
+  flush the pending search first so they never act on stale matches. Small
+  documents keep instant-as-you-type search.
+
+### Accessibility
+- `--muted` lifted `#666` → `#8a8a8a` (~3.3:1 → ~5.5:1 on the editor
+  background) — the find counter, heads-up notices, and placeholder now pass
+  WCAG AA.
+- The info/donation popup is keyboard-reachable: opening it moves focus to its
+  first link, Tab walks its controls, Enter/Space activate them, Escape closes
+  and returns focus to the icon (it used to close on *any* keydown, trapping
+  keyboard users out); the icon button now carries `aria-expanded` +
+  `aria-controls`.
+- The welcome dialog has a visible ✕ close button (Escape / backdrop-click
+  were invisible dismiss paths on touch and to screen readers).
+- The find counter (`3 / 17`) is an `aria-live` status region.
+
 ## [1.0.0-rc.60]
 
 A cleanup + hardening pass seeded by a full multi-lens repo audit, plus the

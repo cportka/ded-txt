@@ -11,7 +11,8 @@ A dead simple plain-text editor.
 A bit like TextEdit or Notepad, but even simpler and with fewer features.
 No hidden text. No formatting. No settings to fiddle with. Just a textarea
 and your file. Raw bytes in, raw bytes out — UTF-8 by default, no BOM, no
-line-ending munging.
+line-ending munging. If the tab dies with unsaved text, the next visit
+offers to restore it.
 
 Two targets, same code:
 

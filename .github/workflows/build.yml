@@ -32,6 +32,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # Portka standard: version is valid SemVer + CHANGELOG agrees.
+      - run: bash tests/run-tests.sh
       - run: npm run build:web
 
       - name: Upload web bundle
