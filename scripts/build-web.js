@@ -102,8 +102,8 @@ fs.mkdirSync(wellKnownDir, { recursive: true });
 const securityExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 fs.writeFileSync(
   path.join(wellKnownDir, 'security.txt'),
-  'Contact: https://github.com/cportka/dedtxt/security/advisories/new\n' +
-  'Contact: https://github.com/cportka/dedtxt/issues\n' +
+  'Contact: https://github.com/cportka/ded-txt/security/advisories/new\n' +
+  'Contact: https://github.com/cportka/ded-txt/issues\n' +
   `Expires: ${securityExpires}\n` +
   'Preferred-Languages: en\n' +
   'Canonical: https://dedtxt.app/.well-known/security.txt\n'

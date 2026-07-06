@@ -1,3 +1,11 @@
-# GitHub "Sponsor" button. Crypto options (ETH + BTC, click-to-copy) live in
-# the app's about popup; Venmo is surfaced here as a custom link.
-custom: ["https://venmo.com/portka"]
+# Shows a "Sponsor" button on the repo. Same funding options as the
+# portka-tools marketplace (cportka/claude-plugins): Buy Me a Coffee, Venmo,
+# BTC, ETH. GitHub renders the platform keys (github / buy_me_a_coffee) as
+# first-class buttons; `custom:` takes URLs, so the two crypto addresses link
+# to their block explorers. The ETH/BTC addresses match the app's about popup.
+github: [cportka]
+buy_me_a_coffee: chrisportka
+custom:
+  - https://venmo.com/portka # Venmo
+  - https://mempool.space/address/3J4XRAwhHwJWQb4F4qw5yTCrs5Zg1s1vaR # $BTC
+  - https://etherscan.io/address/0x354c2aB3f7a23F74cdDC745B26aEA53EC1602203 # $ETH

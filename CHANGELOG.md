@@ -8,6 +8,42 @@ release-candidate series; the version is kept in lockstep across
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc.62]
+
+Release-runway polish: a one-click install path, update-flow hardening for a
+continuously-deployed PWA, the repo rename, and a refreshed social card.
+
+### Added
+- **One-click install from the menu.** When the browser offers a PWA install
+  (Chromium, https, not already installed), the welcome dialog's Heads-up box
+  shows an "install" line whose action replays the native install prompt in a
+  single click — the same shape as the update notice. It appears on its own if
+  `beforeinstallprompt` fires after the dialog is already open, and clears
+  itself once installed. The old standalone "Install as web app" button was
+  removed so there's exactly one install affordance. `pwa-install.js` is now a
+  testable install controller (`canInstall` / `prompt` / `onChange`).
+- **Updates surface on their own.** An always-open installed PWA now re-checks
+  for a new deploy when its tab regains focus (throttled to every 30 min), so
+  the one-click "update" notice appears without the user manually reloading —
+  the browser's built-in ~24h service-worker check is far too slow for a
+  continuously-deployed app. New `sw-update.js` holds the (unit-tested) "when
+  to surface" + "when to re-check" decisions; a real v1→v2 update cycle is now
+  covered end-to-end in a headless browser.
+- **GitHub social preview** (`.github/social-preview.png`, 1280×640) generated
+  by `build-icons.js` in the brand's glitch language — upload it via the repo's
+  Settings → Social preview.
+
+### Changed
+- **Repository renamed `dedtxt` → `ded-txt`.** All `github.com/cportka/dedtxt`
+  references updated across the app, docs, manifest, security.txt, and Rust
+  crate. The product name (**DedTxt**), the domain (**dedtxt.app**), and the
+  npm package name (`dedtxt`) are unchanged.
+- **Sponsor options** expanded to match the portka-tools marketplace: GitHub
+  Sponsors, Buy Me a Coffee, Venmo, plus BTC/ETH block-explorer links.
+- The service-worker update contract is now documented in `sw.js` and guarded
+  by `sw-update` + `sw-shell` tests, so a future refactor can't silently break
+  the one-click update or reintroduce the rc.59 offline regression.
+
 ## [1.0.0-rc.61]
 
 The 1.0.0-prep batch: the old FUTURE.md "Later / nice-to-have" list was
@@ -187,7 +223,7 @@ The bulk of the rc series refined a deliberately tiny editor. Highlights:
 - Established the platform-agnostic renderer with a `platform/{web,tauri}.js`
   split, the PWA (service worker + manifest), and `dedtxt.app` via GitHub Pages.
 
-[1.0.0-rc.60]: https://github.com/cportka/dedtxt/commits/main
-[1.0.0-rc.59]: https://github.com/cportka/dedtxt/commits/main
-[1.0.0-rc.58]: https://github.com/cportka/dedtxt/commits/main
-[1.0.0-rc.57]: https://github.com/cportka/dedtxt/commits/main
+[1.0.0-rc.60]: https://github.com/cportka/ded-txt/commits/main
+[1.0.0-rc.59]: https://github.com/cportka/ded-txt/commits/main
+[1.0.0-rc.58]: https://github.com/cportka/ded-txt/commits/main
+[1.0.0-rc.57]: https://github.com/cportka/ded-txt/commits/main

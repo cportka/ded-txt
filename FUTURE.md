@@ -26,9 +26,6 @@ screenshots. What's below is what's left.)*
 - **Save-encoding choice.** UTF-8-only today (binary buffers round-trip
   Latin-1). A minimal encoding picker on save is the last "real editor" gap for
   files that must stay in a legacy encoding.
-- **More sponsor options.** Venmo + ETH + BTC today; the GitHub Sponsor button
-  is wired via `.github/FUNDING.yml`. Adding others needs account details only
-  the owner can supply.
 
 ## Desktop (revive when ready)
 

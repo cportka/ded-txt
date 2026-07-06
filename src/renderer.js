@@ -1,11 +1,12 @@
 import platform from './platform/index.js';
-import { maybeShowWelcome, showWelcome, closeWelcome, setUpdateResult, refreshHeadsUp, setHeadsUpHandlers, showUpdateProgress } from './welcome.js';
-import { initInstallPrompt } from './pwa-install.js';
+import { maybeShowWelcome, showWelcome, closeWelcome, setUpdateResult, setInstallAvailable, refreshHeadsUp, setHeadsUpHandlers, showUpdateProgress } from './welcome.js';
+import { createInstallController } from './pwa-install.js';
 import { initLineNumbers, refreshLineNumbers } from './line-numbers.js';
 import { installFind } from './find.js';
 import { initScrollArrows } from './scroll-arrows.js';
 import { showNotice, formatResultError } from './notice.js';
 import { createDraftStash, describeDraft } from './drafts.js';
+import { shouldSurfaceWebUpdate, shouldRecheckUpdate, RECHECK_GAP_MS } from './sw-update.js';
 
 // Restart the one-shot spin animation cleanly: drop the class, force a
 // reflow so the browser doesn't coalesce the toggle into a no-op, then
@@ -282,9 +283,17 @@ function wireCopyAddress(btnId, addrId) {
 wireCopyAddress('donate-eth', 'donate-eth-addr');
 wireCopyAddress('donate-btc', 'donate-btc-addr');
 
-// "Install as web app" button in the welcome dialog (hidden unless the PWA is
-// actually installable).
-initInstallPrompt();
+// PWA install: capture the browser's install prompt and surface a one-click
+// "install" line in the welcome dialog's Heads-up box (see welcome.js). The
+// beforeinstallprompt event can fire after the dialog has already opened, so
+// push availability into the welcome state and refresh the box in place —
+// exactly the pattern the update notice uses.
+const installController = createInstallController();
+setInstallAvailable(installController.canInstall());
+installController.onChange(() => {
+  setInstallAvailable(installController.canInstall());
+  refreshHeadsUp();
+});
 
 // Any click anywhere closes the popup (including clicks on the link, which
 // still navigate first thanks to target="_blank"). The icon's own click
@@ -519,7 +528,11 @@ setHeadsUpHandlers({
     } else if (typeof location !== 'undefined') {
       location.reload();
     }
-  }
+  },
+  // One-click install from the Heads-up "install" line. Replays the browser's
+  // captured native prompt; onChange (above) re-renders the box so the line
+  // clears itself once the prompt is consumed or the app is installed.
+  installApp: () => { installController.prompt(); }
 });
 
 // Desktop: ask the native side whether a newer web layer is available (the
@@ -540,21 +553,43 @@ if (platform.name !== 'web' && typeof platform.checkUpdate === 'function') {
 // is cache-first, so a stale version.js makes version polling useless — detect
 // updates via the SW lifecycle instead: when a new worker reaches 'installed'
 // while an old one still controls the page, fresh assets are cached and ready,
-// so surface the "click to reload" notice.
+// so surface the "click to reload" notice (decision in sw-update.js).
 if (platform.name === 'web' && 'serviceWorker' in navigator) {
+  const notify = () => {
+    setUpdateResult({ kind: 'web' });
+    refreshHeadsUp({ kind: 'web' });
+  };
+  let registration = null;
+  let lastUpdateCheck = 0;
+  // Re-check for a new deploy when the tab regains focus (throttled). This is
+  // what makes an update surface on its own for an always-open installed PWA —
+  // the "click to update" notice appears without the user manually reloading.
+  // The browser's built-in ~24h SW check is far too slow for a continuously-
+  // deployed app; a fresh sw.js on the server triggers updatefound → the notify
+  // wiring below, exactly as a page load would.
+  const maybeRecheck = () => {
+    if (!registration) return;
+    const now = Date.now();
+    if (!shouldRecheckUpdate(lastUpdateCheck, now, RECHECK_GAP_MS)) return;
+    lastUpdateCheck = now;
+    registration.update().catch(() => { /* offline — retry on next refocus */ });
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') maybeRecheck();
+  });
+
   window.addEventListener('load', async () => {
-    const notify = () => {
-      setUpdateResult({ kind: 'web' });
-      refreshHeadsUp({ kind: 'web' });
-    };
     try {
       const reg = await navigator.serviceWorker.register('./sw.js');
+      registration = reg;
+      lastUpdateCheck = Date.now();
+      // An update that installed while the app was closed is already waiting.
       if (reg.waiting && navigator.serviceWorker.controller) notify();
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) notify();
+          if (shouldSurfaceWebUpdate(nw.state, navigator.serviceWorker.controller)) notify();
         });
       });
     } catch (_e) { /* offline / unsupported — ignore */ }

@@ -958,29 +958,10 @@ dialog#welcome-dialog::backdrop {
   .welcome-shortcut-key { display: none; }
 }
 
-/* "Install as web app" — JS unhides this only when the browser fires
-   beforeinstallprompt (i.e. the PWA is genuinely installable: a supporting
-   engine, https, not already installed). On iOS Safari / Firefox / an
-   installed instance the event never fires, so the button stays hidden.
-   Replaces the old "Get desktop builds" link now that the PWA is the
-   shipping target. Magenta-outlined with the popup's chromatic echo. */
-.welcome-install {
-  display: block;
-  width: 100%;
-  margin: 14px 0 2px;
-  padding: 9px 16px;
-  border: 1px solid var(--gx-magenta);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--fg);
-  font: inherit;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
-}
-.welcome-install:hover { background: rgba(255, 61, 138, 0.10); }
-.welcome-install[hidden] { display: none; }
+/* PWA install is now offered as a one-click action inside the Heads-up box
+   (welcome.js `install-app` notice → renderer `installApp` handler), so the
+   old standalone .welcome-install button was removed to keep a single,
+   consistent install affordance alongside the update notice. */
 
 /* Info popup — terminal-window aesthetic pulled from the icon's
    chromatic-aberration palette. Monospaced, lowercased, magenta border
