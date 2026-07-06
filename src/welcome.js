@@ -167,7 +167,7 @@ export function headsUpNotices(env) {
       // Firefox never fire the event, so this stays hidden there.
       id: 'install-app',
       active: (e) => !!e.canInstall,
-      text: 'Install DedTxt for the best experience — offline, its own window, one tap to open.',
+      text: 'Install dedtxt for the best experience — offline, its own window, one tap to open.',
       action: { label: 'Click here to install', onClick: 'installApp' }
     },
     {

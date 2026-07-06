@@ -6,52 +6,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#111111" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="DedTxt" />
+  <meta name="apple-mobile-web-app-title" content="dedtxt" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="./manifest.webmanifest" />
+  <!-- SVG favicon (scales crisply on hi-DPI tabs), with the PNG as a fallback
+       for engines that don't render SVG favicons. -->
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
   <link rel="icon" href="./icons/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="./icons/icon-512.png" />
 
   <!-- SEO + social cards -->
-  <meta name="description" content="DedTxt — a dead simple, dependency-free plain-text editor that runs in any modern browser and installs as a PWA. No accounts, no tracking, works offline." />
+  <meta name="description" content="dedtxt — a dead simple, dependency-free plain-text editor that runs in any modern browser and installs as a PWA. No accounts, no tracking, works offline." />
   <meta name="author" content="Chris Portka" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://dedtxt.app/" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="DedTxt" />
-  <meta property="og:title" content="DedTxt — a dead simple plain-text editor" />
+  <meta property="og:site_name" content="dedtxt" />
+  <meta property="og:title" content="dedtxt — a dead simple plain-text editor" />
   <meta property="og:description" content="A dependency-free plain-text editor that runs in your browser and installs as a PWA. No accounts, no tracking, works offline." />
   <meta property="og:url" content="https://dedtxt.app/" />
   <meta property="og:image" content="https://dedtxt.app/icons/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="The DedTxt glitch skull logo and wordmark on a dark background." />
+  <meta property="og:image:alt" content="The dedtxt glitch skull logo and wordmark on a dark background." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="DedTxt — a dead simple plain-text editor" />
+  <meta name="twitter:title" content="dedtxt — a dead simple plain-text editor" />
   <meta name="twitter:description" content="A dependency-free plain-text editor that runs in your browser and installs as a PWA. No accounts, no tracking, works offline." />
   <meta name="twitter:image" content="https://dedtxt.app/icons/og-image.png" />
-  <meta name="twitter:image:alt" content="The DedTxt glitch skull logo and wordmark on a dark background." />
+  <meta name="twitter:image:alt" content="The dedtxt glitch skull logo and wordmark on a dark background." />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "DedTxt",
+    "name": "dedtxt",
     "url": "https://dedtxt.app/",
     "description": "A dead simple, dependency-free plain-text editor for the browser, installable as a PWA.",
     "applicationCategory": "Productivity",
     "operatingSystem": "Any",
+    "featureList": [
+      "Works offline as an installable PWA",
+      "Find and replace with regex",
+      "Opens and saves real files (File System Access API)",
+      "Crash / draft recovery of unsaved text",
+      "No accounts, no tracking, zero runtime dependencies"
+    ],
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "author": { "@type": "Person", "name": "Chris Portka" }
   }
   </script>
 
   <link rel="stylesheet" href="./styles.css" />
-  <title>DedTxt — a dead simple plain-text editor</title>
+  <title>dedtxt</title>
 </head>
 <body>
   <!-- Visually-hidden page heading: the UI is a full-viewport editor with no
        chrome for a visible h1, but crawlers + screen readers still get one. -->
-  <h1 class="visually-hidden">DedTxt — a dead simple plain-text editor</h1>
+  <h1 class="visually-hidden">dedtxt — a dead simple plain-text editor</h1>
   <div id="editor-wrap">
     <div id="line-gutter" aria-hidden="true"><div id="line-gutter-inner"></div></div>
     <div id="editor-highlights" aria-hidden="true"><div id="editor-highlights-inner"></div></div>
@@ -89,10 +99,10 @@
        re-announce EVERY notice) so only the newly-added card is read out. -->
   <div id="notice-region" aria-live="assertive" aria-atomic="false"></div>
 
-  <dialog id="welcome-dialog" aria-label="DedTxt menu">
+  <dialog id="welcome-dialog" aria-label="dedtxt menu">
     <form method="dialog" class="welcome-card">
       <button type="button" id="welcome-close" class="welcome-close" aria-label="Close menu" title="Close">✕</button>
-      <button type="button" class="welcome-icon-btn" id="welcome-icon-btn" aria-label="About DedTxt" aria-controls="info-popup" aria-expanded="false">
+      <button type="button" class="welcome-icon-btn" id="welcome-icon-btn" aria-label="About dedtxt" aria-controls="info-popup" aria-expanded="false">
         <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
       </button>
       <p class="welcome-sub">A dead simple plain-text editor.</p>

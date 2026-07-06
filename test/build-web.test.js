@@ -29,9 +29,30 @@ describe('scripts/build-web.js output (smoke)', () => {
 
   test('app shell files land at the root', () => {
     for (const f of ['index.html', 'styles.css', 'renderer.js', 'sw.js',
-      'manifest.webmanifest', 'platform/web.js', 'notice.js', 'drafts.js']) {
+      'manifest.webmanifest', 'platform/web.js', 'notice.js', 'drafts.js',
+      'sw-update.js', 'icons/icon.svg']) {
       assert.ok(fs.existsSync(path.join(out, f)), `dist-web/${f} missing`);
     }
+  });
+
+  test('the deployed CSP drops the Tauri-only ipc: connect-src tokens', () => {
+    // The shared source keeps `connect-src 'self' ipc: http://ipc.localhost`
+    // for the desktop webview; the web build must tighten it to just 'self'.
+    const html = read('index.html');
+    assert.match(html, /connect-src 'self';/, 'web CSP should be exactly connect-src \'self\'');
+    assert.ok(!/ipc:/.test(html), 'no ipc: token should survive in the web build');
+    assert.ok(!/ipc\.localhost/.test(html), 'no ipc.localhost should survive in the web build');
+  });
+
+  test('an SVG favicon is linked and shipped alongside the PNG fallback', () => {
+    const html = read('index.html');
+    assert.match(html, /<link rel="icon" href="\.\/icons\/icon\.svg" type="image\/svg\+xml"/);
+    assert.match(html, /<link rel="icon" href="\.\/icons\/favicon\.png"/);
+    assert.ok(fs.readFileSync(path.join(out, 'icons/icon.svg'), 'utf8').includes('<svg'));
+  });
+
+  test('the tab title is the clean wordmark (no tagline)', () => {
+    assert.match(read('index.html'), /<title>dedtxt<\/title>/);
   });
 
   test('service worker got a real build id (cache busting)', () => {

@@ -47,10 +47,10 @@ function installGlobals(opts = {}) {
   const anchors = [];
 
   globalThis.document = {
-    // Real index.html ships with <title>DedTxt</title>; mirror that so
+    // Real index.html ships with <title>dedtxt</title>; mirror that so
     // tests for "title shouldn't change after a download-fallback save"
     // start from the same baseline.
-    title: 'DedTxt',
+    title: 'dedtxt',
     body: {
       appendChild() {},
       removeChild() {}
@@ -168,11 +168,11 @@ describe('src/platform/web.js', () => {
   beforeEach(() => { uninstallGlobals(); });
 
   describe('newFile() and initial title', () => {
-    test('newFile() sets the tab title to bare "DedTxt"', async () => {
+    test('newFile() sets the tab title to bare "dedtxt"', async () => {
       installGlobals();
       const web = await freshWeb();
       web.newFile();
-      assert.equal(document.title, 'DedTxt');
+      assert.equal(document.title, 'dedtxt');
     });
 
     test('newFile() resets prior name + dirty state', async () => {
@@ -180,43 +180,43 @@ describe('src/platform/web.js', () => {
       const web = await freshWeb();
       await web.openDroppedFile(makeFakeFile('a.txt', 'hi'));
       web.setDirty(true);
-      assert.equal(document.title, '• a.txt • — DedTxt');
+      assert.equal(document.title, '• a.txt • — dedtxt');
 
       web.newFile();
-      assert.equal(document.title, 'DedTxt');
+      assert.equal(document.title, 'dedtxt');
       assert.equal(window.onbeforeunload, null);
     });
   });
 
   describe('title rendering', () => {
-    test('no file → "DedTxt"', async () => {
+    test('no file → "dedtxt"', async () => {
       installGlobals();
       const web = await freshWeb();
       web.setDirty(false);
-      assert.equal(document.title, 'DedTxt');
+      assert.equal(document.title, 'dedtxt');
     });
 
-    test('no file but dirty → still "DedTxt" (no bullet without a name)', async () => {
+    test('no file but dirty → still "dedtxt" (no bullet without a name)', async () => {
       installGlobals();
       const web = await freshWeb();
       web.setDirty(true);
-      assert.equal(document.title, 'DedTxt');
+      assert.equal(document.title, 'dedtxt');
     });
 
-    test('named file clean → "name — DedTxt"', async () => {
+    test('named file clean → "name — dedtxt"', async () => {
       installGlobals();
       const web = await freshWeb();
       web.setName('notes.md');
       web.setDirty(false);
-      assert.equal(document.title, 'notes.md — DedTxt');
+      assert.equal(document.title, 'notes.md — dedtxt');
     });
 
-    test('named file dirty → "• name • — DedTxt"', async () => {
+    test('named file dirty → "• name • — dedtxt"', async () => {
       installGlobals();
       const web = await freshWeb();
       web.setName('notes.md');
       web.setDirty(true);
-      assert.equal(document.title, '• notes.md • — DedTxt');
+      assert.equal(document.title, '• notes.md • — dedtxt');
     });
 
     test('clean → dirty → clean transitions never leak bullets or stray spaces', async () => {
@@ -229,11 +229,11 @@ describe('src/platform/web.js', () => {
       const web = await freshWeb();
       web.setName('readme.md');
       web.setDirty(false);
-      assert.equal(document.title, 'readme.md — DedTxt');
+      assert.equal(document.title, 'readme.md — dedtxt');
       web.setDirty(true);
-      assert.equal(document.title, '• readme.md • — DedTxt');
+      assert.equal(document.title, '• readme.md • — dedtxt');
       web.setDirty(false);
-      assert.equal(document.title, 'readme.md — DedTxt');
+      assert.equal(document.title, 'readme.md — dedtxt');
     });
   });
 
@@ -247,7 +247,7 @@ describe('src/platform/web.js', () => {
       const res = await web.openDroppedFile(makeFakeFile('b.txt', 'hello'));
       assert.deepEqual(res, { ok: true });
       assert.deepEqual(loaded, { filePath: 'b.txt', content: 'hello' });
-      assert.equal(document.title, 'b.txt — DedTxt');
+      assert.equal(document.title, 'b.txt — dedtxt');
     });
 
     test('opening a second file replaces the title — not stuck on the first', async () => {
@@ -258,10 +258,10 @@ describe('src/platform/web.js', () => {
       web.onLoad(() => {});
 
       await web.openDroppedFile(makeFakeFile('A.txt', 'one'));
-      assert.equal(document.title, 'A.txt — DedTxt');
+      assert.equal(document.title, 'A.txt — dedtxt');
 
       await web.openDroppedFile(makeFakeFile('B.txt', 'two'));
-      assert.equal(document.title, 'B.txt — DedTxt');
+      assert.equal(document.title, 'B.txt — dedtxt');
     });
 
     test('a dirty bullet from the prior file does not leak into the new title', async () => {
@@ -271,10 +271,10 @@ describe('src/platform/web.js', () => {
 
       await web.openDroppedFile(makeFakeFile('A.txt', 'one'));
       web.setDirty(true);
-      assert.equal(document.title, '• A.txt • — DedTxt');
+      assert.equal(document.title, '• A.txt • — dedtxt');
 
       await web.openDroppedFile(makeFakeFile('B.txt', 'two'));
-      assert.equal(document.title, 'B.txt — DedTxt');
+      assert.equal(document.title, 'B.txt — dedtxt');
     });
 
     test('returns {ok:false} when file.arrayBuffer() throws', async () => {
@@ -314,7 +314,7 @@ describe('src/platform/web.js', () => {
       const res = await web.openFile();
       assert.equal(res.ok, true);
       assert.deepEqual(loaded, { filePath: 'opened.txt', content: 'initial content' });
-      assert.equal(document.title, 'opened.txt — DedTxt');
+      assert.equal(document.title, 'opened.txt — dedtxt');
     });
 
     test('returns {canceled:true} on AbortError', async () => {
@@ -346,7 +346,7 @@ describe('src/platform/web.js', () => {
       assert.equal(pickerCalls, 1);
       assert.deepEqual(handle.writes, ['the content']);
       // Title reflects the picked name with NO stale bullet (rc.21 fix).
-      assert.equal(document.title, 'first.txt — DedTxt');
+      assert.equal(document.title, 'first.txt — dedtxt');
     });
 
     test('picker suggestedName defaults to untitled.txt, then uses the known name', async () => {
@@ -691,7 +691,7 @@ describe('src/platform/web.js', () => {
       assert.equal(env.blobs[0].options.type, 'text/plain;charset=utf-8');
       // The download API never reports what the browser's own save dialog
       // saved the file as, so the tab title must NOT assert "untitled.txt".
-      assert.equal(document.title, 'DedTxt');
+      assert.equal(document.title, 'dedtxt');
     });
 
     test('each save re-downloads — there is no FSA handle to write through', async () => {
@@ -704,7 +704,7 @@ describe('src/platform/web.js', () => {
 
       assert.equal(env.blobs.length, 3);
       assert.deepEqual(env.blobs.map(b => b.parts[0]), ['one', 'two', 'three']);
-      assert.equal(document.title, 'DedTxt');
+      assert.equal(document.title, 'dedtxt');
     });
 
     test('an opened file reuses its name for the download (and the title keeps showing it)', async () => {
@@ -713,13 +713,13 @@ describe('src/platform/web.js', () => {
       web.onLoad(() => {});
 
       await web.openDroppedFile(makeFakeFile('readme.md', 'old'));
-      assert.equal(document.title, 'readme.md — DedTxt');
+      assert.equal(document.title, 'readme.md — dedtxt');
 
       const res = await web.saveFile('new');
       assert.equal(res.filePath, 'readme.md');
       assert.equal(env.anchors.find(a => a.download).download, 'readme.md');
       assert.equal(env.blobs.length, 1);
-      assert.equal(document.title, 'readme.md — DedTxt');
+      assert.equal(document.title, 'readme.md — dedtxt');
     });
 
     test('binary save downloads with the octet-stream mime', async () => {
@@ -752,10 +752,10 @@ describe('src/platform/web.js', () => {
       web.onLoad(() => {});
 
       await web.openFile();
-      assert.equal(document.title, 'workflow.txt — DedTxt');
+      assert.equal(document.title, 'workflow.txt — dedtxt');
 
       web.setDirty(true);
-      assert.equal(document.title, '• workflow.txt • — DedTxt');
+      assert.equal(document.title, '• workflow.txt • — dedtxt');
       await web.saveFile('edit one');
 
       web.setDirty(true);
@@ -964,7 +964,7 @@ describe('launchQueue file-handler integration (src/platform/web.js)', () => {
 
     await captured.consumer({ files: [handle] });
     assert.deepEqual(loaded, { filePath: 'launched.txt', content: 'from the OS' });
-    assert.equal(document.title, 'launched.txt — DedTxt');
+    assert.equal(document.title, 'launched.txt — dedtxt');
 
     // Re-save writes through the launch handle silently — no picker.
     const res = await web.saveFile('edited');
@@ -1010,6 +1010,6 @@ describe('launchQueue file-handler integration (src/platform/web.js)', () => {
 
     await captured.consumer({ files: [{ getFile: async () => { throw new Error('gone'); } }] });
     assert.equal(loadedCalled, false);
-    assert.equal(document.title, 'DedTxt');
+    assert.equal(document.title, 'dedtxt');
   });
 });

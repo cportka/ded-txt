@@ -1,6 +1,6 @@
-# Contributing to DedTxt
+# Contributing to dedtxt
 
-Thanks for your interest! DedTxt is a dependency-free plain-text editor that
+Thanks for your interest! dedtxt is a dependency-free plain-text editor that
 ships as a web PWA (<https://dedtxt.app/>) and — paused for now — a Tauri
 desktop app. The guiding principle is **dead simple**: small, fast, no runtime
 dependencies, no tracking. Features that add weight or complexity are usually

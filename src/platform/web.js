@@ -58,18 +58,19 @@ function hasFsAccess() {
 }
 
 function updateTitle() {
-  // No file open → bare "DedTxt". Only show a name (and dirty bullets) once
-  // the user has actually opened or named a file.
+  // No file open → bare "dedtxt" (the clean wordmark, matching the static
+  // <title>). Only show a name (and dirty bullets) once the user has actually
+  // opened or named a file.
   if (!currentName) {
-    document.title = 'DedTxt';
+    document.title = 'dedtxt';
     return;
   }
   // Dirty marker flanks the filename on both sides so unsaved state is
   // visible at a glance regardless of how the OS truncates a long tab title.
   // Clean state stays bullet-free so the tab looks calm when nothing's pending.
   document.title = dirty
-    ? `• ${currentName} • — DedTxt`
-    : `${currentName} — DedTxt`;
+    ? `• ${currentName} • — dedtxt`
+    : `${currentName} — dedtxt`;
 }
 
 function fireLoad(name, content, isBinary) {
@@ -221,7 +222,7 @@ const web = {
         currentHandle = handle;
         currentName = handle.name;
         // Clear dirty before painting so the first frame after the picker
-        // closes shows "foo.txt — DedTxt" without a stale bullet.
+        // closes shows "foo.txt — dedtxt" without a stale bullet.
         dirty = false;
         updateTitle();
         return { ok: true, filePath: handle.name };

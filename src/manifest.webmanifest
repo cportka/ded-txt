@@ -1,6 +1,6 @@
 {
-  "name": "DedTxt",
-  "short_name": "DedTxt",
+  "name": "dedtxt",
+  "short_name": "dedtxt",
   "id": "/",
   "lang": "en",
   "dir": "ltr",
@@ -23,14 +23,14 @@
       "sizes": "1280x800",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Editing a plain-text note in DedTxt with line numbers"
+      "label": "Editing a plain-text note in dedtxt with line numbers"
     },
     {
       "src": "./screenshots/editor-narrow.png",
       "sizes": "750x1334",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "The DedTxt menu on a phone: New, Save, Open, Find"
+      "label": "The dedtxt menu on a phone: New, Save, Open, Find"
     }
   ],
   "file_handlers": [
