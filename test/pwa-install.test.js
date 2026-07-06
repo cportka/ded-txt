@@ -86,11 +86,20 @@ describe('src/pwa-install.js', () => {
       });
       assert.equal(c.canInstall(), true);
 
+      // onChange MUST fire when the prompt is consumed — the open welcome
+      // dialog relies on it (via refreshHeadsUp) to clear the install line
+      // once installed. canInstall() flips to false regardless, so without
+      // this assertion a dropped notify() would leave the line lingering yet
+      // still pass every other test.
+      let changes = 0;
+      c.onChange(() => { changes++; });
+
       const p = c.prompt();
       assert.equal(prompted, true, 'native prompt invoked');
       resolveChoice({ outcome: 'accepted' });
       assert.equal(await p, true, 'prompt() reports it showed a prompt');
       assert.equal(c.canInstall(), false, 'a consumed prompt is not reusable');
+      assert.equal(changes, 1, 'onChange fired so the install line can clear itself');
     });
 
     test('prompt() with nothing captured is a safe no-op', async () => {
@@ -106,8 +115,12 @@ describe('src/pwa-install.js', () => {
       const c = createInstallController({ window: win });
       win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {} });
       assert.equal(c.canInstall(), true);
+      // onChange MUST fire on install so a live dialog drops the install line.
+      let changes = 0;
+      c.onChange(() => { changes++; });
       win.dispatch('appinstalled', {});
       assert.equal(c.canInstall(), false);
+      assert.equal(changes, 1, 'onChange fired on appinstalled');
       // A stray late beforeinstallprompt after install must not re-offer.
       win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {} });
       assert.equal(c.canInstall(), false);
