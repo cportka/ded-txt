@@ -33,8 +33,10 @@ cargo test --manifest-path src-tauri/Cargo.toml    # Rust unit tests
 ## Before you open a PR
 
 - `npm test` and `npm run lint` (`npx eslint@8.57.1 src/ test/ scripts/`) pass.
-- **Bump the version** in lockstep (`rc.N → rc.N+1`) across `src/version.js`,
-  `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
+- **Bump the version** ([SemVer](https://semver.org): PATCH for fixes, MINOR
+  for backward-compatible features, MAJOR for breaking changes) in lockstep
+  across `src/version.js`, `package.json`, `src-tauri/tauri.conf.json`, and
+  `src-tauri/Cargo.toml`. Releases are tagged `vX.Y.Z`.
 - Add a short entry to [CHANGELOG.md](./CHANGELOG.md).
 - Match the surrounding code: vanilla HTML / CSS / ES modules, no build step
   for the app itself, and the "glitch" UI vocabulary (RGB-split accents,

@@ -157,7 +157,7 @@ export function installFind({ editor, closeWelcome }) {
   const highlightsInner = document.getElementById('editor-highlights-inner');
   const wrap = document.getElementById('editor-wrap');
 
-  if (!bar || !findInput) return { open() {}, close() {}, reset() {} };
+  if (!bar || !findInput) return { open() {}, close() {}, reset() {}, isOpen() { return false; } };
 
   // Honour the OS "reduce motion" setting — when set, the find bar's glitch
   // in/out is skipped and it shows/hides instantly (mirrors the
@@ -670,5 +670,10 @@ export function installFind({ editor, closeWelcome }) {
     syncBarMetrics();    // bar.hidden → releases the reserved padding
   }
 
-  return { open, close, reset };
+  // True while the bar is visible (including during its close-out animation,
+  // since [hidden] isn't set until animationend). Lets the renderer route a
+  // stray Escape to closing Find instead of toggling the welcome dialog.
+  function isOpen() { return !bar.hidden; }
+
+  return { open, close, reset, isOpen };
 }
