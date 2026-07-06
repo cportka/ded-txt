@@ -164,7 +164,35 @@ describe('src/welcome.js', () => {
     test('native update without an explicit url falls back to GitHub Releases', () => {
       const active = mod.headsUpNotices({ hasFsa: true, onTauri: true, isTouchOnly: false, update: { kind: 'native' } });
       const note = active.find(n => n.id === 'update-native');
-      assert.match(note.action.href, /github\.com\/cportka\/dedtxt\/releases/);
+      assert.match(note.action.href, /github\.com\/cportka\/ded-txt\/releases/);
+    });
+
+    test('canInstall → adds a one-click install-app notice with an installApp action', () => {
+      const active = mod.headsUpNotices({ hasFsa: true, onTauri: false, isTouchOnly: false, canInstall: true });
+      const note = active.find(n => n.id === 'install-app');
+      assert.ok(note, 'install-app notice present when installable');
+      assert.deepEqual(note.action, { label: 'Click here to install', onClick: 'installApp' });
+    });
+
+    test('install-app notice is absent unless canInstall is set', () => {
+      // Not installable (default), already installed, or an engine that never
+      // fires beforeinstallprompt → no install line.
+      for (const env of [
+        { hasFsa: true, onTauri: false, isTouchOnly: false },
+        { hasFsa: true, onTauri: false, isTouchOnly: false, canInstall: false },
+        { hasFsa: false, onTauri: false, isTouchOnly: true } // iOS-ish
+      ]) {
+        assert.ok(!mod.headsUpNotices(env).some(n => n.id === 'install-app'));
+      }
+    });
+
+    test('install-app coexists with update-web when both are available', () => {
+      const active = mod.headsUpNotices({
+        hasFsa: true, onTauri: false, isTouchOnly: false, canInstall: true, update: { kind: 'web' }
+      });
+      const ids = active.map(n => n.id);
+      assert.ok(ids.includes('install-app'));
+      assert.ok(ids.includes('update-web'));
     });
 
     test('no update in env → no update notices, plain items stay { id, text }', () => {

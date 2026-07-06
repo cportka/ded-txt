@@ -14,15 +14,15 @@ source, but native installers are paused for now in favor of the PWA.
 ## Project
 
 - [Web app](https://dedtxt.app/): the editor itself.
-- [Source on GitHub](https://github.com/cportka/dedtxt): code, issues, and pull requests.
-- [README](https://github.com/cportka/dedtxt/blob/main/README.md): overview, build steps, keyboard shortcuts.
-- [Changelog](https://github.com/cportka/dedtxt/blob/main/CHANGELOG.md): release history.
-- [Privacy](https://github.com/cportka/dedtxt/blob/main/PRIVACY.md): the app collects no data.
+- [Source on GitHub](https://github.com/cportka/ded-txt): code, issues, and pull requests.
+- [README](https://github.com/cportka/ded-txt/blob/main/README.md): overview, build steps, keyboard shortcuts.
+- [Changelog](https://github.com/cportka/ded-txt/blob/main/CHANGELOG.md): release history.
+- [Privacy](https://github.com/cportka/ded-txt/blob/main/PRIVACY.md): the app collects no data.
 
 ## Contributing
 
-- [Contributing guide](https://github.com/cportka/dedtxt/blob/main/CONTRIBUTING.md)
-- [Future ideas](https://github.com/cportka/dedtxt/blob/main/FUTURE.md)
+- [Contributing guide](https://github.com/cportka/ded-txt/blob/main/CONTRIBUTING.md)
+- [Future ideas](https://github.com/cportka/ded-txt/blob/main/FUTURE.md)
 
 ## Notes for agents
 

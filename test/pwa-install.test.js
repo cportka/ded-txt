@@ -3,8 +3,8 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
 // Behaviour tests for src/pwa-install.js. The module is browser-only at runtime
-// but takes injectable window/document, so we drive it with tiny event-bus
-// mocks — no JSDOM, in keeping with the rest of the suite.
+// but takes an injectable window, so we drive it with a tiny event-bus mock —
+// no JSDOM, in keeping with the rest of the suite.
 
 function makeWin(opts = {}) {
   const handlers = {};
@@ -19,23 +19,6 @@ function makeWin(opts = {}) {
       (handlers[type] || []).forEach((fn) => fn(ev));
     }
   };
-}
-
-function makeBtn() {
-  const handlers = {};
-  return {
-    hidden: true,
-    disabled: false,
-    addEventListener(type, fn) {
-      if (!handlers[type]) handlers[type] = [];
-      handlers[type].push(fn);
-    },
-    click() { (handlers.click || []).forEach((fn) => fn()); }
-  };
-}
-
-function makeDoc(btn) {
-  return { getElementById: (id) => (id === 'install-pwa' ? btn : null) };
 }
 
 async function fresh() {
@@ -66,59 +49,95 @@ describe('src/pwa-install.js', () => {
     });
   });
 
-  describe('initInstallPrompt()', () => {
-    test('reveals the button on beforeinstallprompt, then prompts on click', async () => {
-      const { initInstallPrompt } = await fresh();
-      const btn = makeBtn();
+  describe('createInstallController()', () => {
+    test('not installable until beforeinstallprompt fires', async () => {
+      const { createInstallController } = await fresh();
       const win = makeWin({ matchMedia: () => ({ matches: false }) });
-      initInstallPrompt({ window: win, document: makeDoc(btn) });
-      assert.equal(btn.hidden, true, 'hidden until installable');
+      const c = createInstallController({ window: win });
+      assert.equal(c.canInstall(), false);
 
       let prevented = false;
+      win.dispatch('beforeinstallprompt', { preventDefault() { prevented = true; }, prompt() {} });
+      assert.equal(prevented, true, 'browser mini-infobar suppressed');
+      assert.equal(c.canInstall(), true);
+    });
+
+    test('onChange fires when installability changes', async () => {
+      const { createInstallController } = await fresh();
+      const win = makeWin({ matchMedia: () => ({ matches: false }) });
+      const c = createInstallController({ window: win });
+      let changes = 0;
+      c.onChange(() => { changes++; });
+      win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {} });
+      assert.equal(changes, 1, 'notified when prompt captured');
+    });
+
+    test('prompt() replays the native prompt, then clears availability (one-shot)', async () => {
+      const { createInstallController } = await fresh();
+      const win = makeWin({ matchMedia: () => ({ matches: false }) });
+      const c = createInstallController({ window: win });
+
       let prompted = false;
       let resolveChoice;
-      const ev = {
-        preventDefault() { prevented = true; },
+      win.dispatch('beforeinstallprompt', {
+        preventDefault() {},
         prompt() { prompted = true; },
         userChoice: new Promise((r) => { resolveChoice = r; })
-      };
-      win.dispatch('beforeinstallprompt', ev);
-      assert.equal(prevented, true, 'browser mini-infobar suppressed');
-      assert.equal(btn.hidden, false, 'our button revealed');
+      });
+      assert.equal(c.canInstall(), true);
 
-      btn.click();
+      const p = c.prompt();
       assert.equal(prompted, true, 'native prompt invoked');
       resolveChoice({ outcome: 'accepted' });
-      await Promise.resolve();
-      await Promise.resolve();
-      assert.equal(btn.hidden, true, 'a one-shot prompt hides the button again');
+      assert.equal(await p, true, 'prompt() reports it showed a prompt');
+      assert.equal(c.canInstall(), false, 'a consumed prompt is not reusable');
     });
 
-    test('stays hidden when already installed (standalone)', async () => {
-      const { initInstallPrompt } = await fresh();
-      const btn = makeBtn();
-      const win = makeWin({ matchMedia: () => ({ matches: true }) });
-      initInstallPrompt({ window: win, document: makeDoc(btn) });
-      // No beforeinstallprompt listener is registered in standalone mode.
+    test('prompt() with nothing captured is a safe no-op', async () => {
+      const { createInstallController } = await fresh();
+      const win = makeWin({ matchMedia: () => ({ matches: false }) });
+      const c = createInstallController({ window: win });
+      assert.equal(await c.prompt(), false);
+    });
+
+    test('appinstalled clears availability for good', async () => {
+      const { createInstallController } = await fresh();
+      const win = makeWin({ matchMedia: () => ({ matches: false }) });
+      const c = createInstallController({ window: win });
       win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {} });
-      assert.equal(btn.hidden, true);
-    });
-
-    test('appinstalled hides the button', async () => {
-      const { initInstallPrompt } = await fresh();
-      const btn = makeBtn();
-      const win = makeWin({ matchMedia: () => ({ matches: false }) });
-      initInstallPrompt({ window: win, document: makeDoc(btn) });
-      win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {}, userChoice: Promise.resolve({}) });
-      assert.equal(btn.hidden, false);
+      assert.equal(c.canInstall(), true);
       win.dispatch('appinstalled', {});
-      assert.equal(btn.hidden, true);
+      assert.equal(c.canInstall(), false);
+      // A stray late beforeinstallprompt after install must not re-offer.
+      win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {} });
+      assert.equal(c.canInstall(), false);
     });
 
-    test('no button in the DOM → no-op (no throw)', async () => {
-      const { initInstallPrompt } = await fresh();
+    test('already standalone → never installable, no listeners wired', async () => {
+      const { createInstallController } = await fresh();
+      const win = makeWin({ matchMedia: () => ({ matches: true }) });
+      const c = createInstallController({ window: win });
+      win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {} });
+      assert.equal(c.canInstall(), false);
+    });
+
+    test('no window → inert controller (no throw)', async () => {
+      const { createInstallController } = await fresh();
+      let c;
+      assert.doesNotThrow(() => { c = createInstallController({ window: null }); });
+      assert.equal(c.canInstall(), false);
+      assert.equal(await c.prompt(), false);
+    });
+
+    test('a throwing onChange listener does not break the others', async () => {
+      const { createInstallController } = await fresh();
       const win = makeWin({ matchMedia: () => ({ matches: false }) });
-      assert.doesNotThrow(() => initInstallPrompt({ window: win, document: { getElementById: () => null } }));
+      const c = createInstallController({ window: win });
+      let reached = false;
+      c.onChange(() => { throw new Error('boom'); });
+      c.onChange(() => { reached = true; });
+      assert.doesNotThrow(() => win.dispatch('beforeinstallprompt', { preventDefault() {}, prompt() {} }));
+      assert.equal(reached, true);
     });
   });
 });

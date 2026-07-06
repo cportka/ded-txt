@@ -28,8 +28,11 @@ runner (zero deps).
   lightly tested.
 - `src/line-numbers.js`, `src/scroll-arrows.js` — gutter + floating arrows (pure
   helpers tested).
-- `src/pwa-install.js` — "Install as web app" button (tested).
-- `src/sw.js` — service worker (offline precache). `src/update.js` — version
+- `src/pwa-install.js` — install controller (`canInstall`/`prompt`/`onChange`);
+  feeds the welcome dialog's one-click "install" Heads-up notice (tested).
+- `src/sw.js` — service worker (offline precache). `src/sw-update.js` — pure
+  web SW-lifecycle decisions ("surface the update notice?" / "re-check now?"),
+  tested; the DOM wiring lives in `renderer.js`. `src/update.js` — version
   classifier for the **desktop** OTA only (web updates use the SW lifecycle).
 - `src-tauri/` — Rust crate: native menus, dialogs, file I/O, custom OTA.
 - `scripts/build-web.js` — web bundle + `version.json` manifest + stamps the real

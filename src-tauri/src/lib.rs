@@ -307,7 +307,7 @@ fn pick_file_from_argv(argv: &[String]) -> Option<PathBuf> {
 // Where the published web layer and its integrity manifest live.
 const VERSION_URL: &str = "https://dedtxt.app/version.json";
 const DOWNLOAD_BASE: &str = "https://dedtxt.app/";
-const RELEASES_URL: &str = "https://github.com/cportka/dedtxt/releases/latest";
+const RELEASES_URL: &str = "https://github.com/cportka/ded-txt/releases/latest";
 
 // version.json (built by scripts/build-web.js): the published web version, the
 // minimum native shell it requires, and every runtime file with a sha256 so an

@@ -1,19 +1,19 @@
 {
   "name": "dedtxt",
   "productName": "DedTxt",
-  "version": "1.0.0-rc.61",
+  "version": "1.0.0-rc.62",
   "description": "DedTxt — a dead simple plain-text editor.",
   "author": {
     "name": "Chris Portka"
   },
   "license": "ISC",
-  "homepage": "https://github.com/cportka/dedtxt#readme",
+  "homepage": "https://github.com/cportka/ded-txt#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cportka/dedtxt.git"
+    "url": "https://github.com/cportka/ded-txt.git"
   },
   "bugs": {
-    "url": "https://github.com/cportka/dedtxt/issues"
+    "url": "https://github.com/cportka/ded-txt/issues"
   },
   "keywords": [
     "text-editor",

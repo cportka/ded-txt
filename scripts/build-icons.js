@@ -86,7 +86,52 @@ async function main() {
     .png()
     .toFile(path.join(webIconsDir, 'og-image.png'));
 
-  console.log('Wrote icons to build/, src/icons/, and src-tauri/icons/');
+  // GitHub repository social preview (1280x640 — GitHub's own spec, distinct
+  // from the 1200x630 Open Graph card above). Same glitch language, refreshed
+  // for the wider 2:1 canvas: icon left, tagline + URL right, plus a third
+  // muted feature line ("install · offline · no accounts") the OG card omits.
+  // Lives in .github/ (a repo-settings asset, never deployed) — upload it via
+  // the repo's Settings → Social preview. Regenerated here so it can't drift.
+  const githubDir = path.join(root, '.github');
+  fs.mkdirSync(githubDir, { recursive: true });
+  const SP_W = 1280;
+  const SP_H = 640;
+  const SP_ICON = 468;
+  const spIcon = await sharp(svg).resize(SP_ICON, SP_ICON).png().toBuffer();
+  // textX + the 50px tagline keep the longest line ("plain-text editor",
+  // ~17 mono chars ≈ 510px) inside the 1280 canvas with a comfortable margin.
+  const textX = 660;
+  const splitLine = (y, size, text) =>
+    `<text x="${textX + 3}" y="${y + 3}" font-size="${size}" fill="#ff3d8a" opacity="0.85">${text}</text>` +
+    `<text x="${textX - 3}" y="${y - 2}" font-size="${size}" fill="#cfe9ff" opacity="0.45">${text}</text>` +
+    `<text x="${textX}" y="${y}" font-size="${size}" fill="#f0ede4">${text}</text>`;
+  const spBg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${SP_W}" height="${SP_H}" viewBox="0 0 ${SP_W} ${SP_H}">
+      <defs>
+        <linearGradient id="sp" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#161616"/><stop offset="1" stop-color="#000000"/>
+        </linearGradient>
+      </defs>
+      <rect width="${SP_W}" height="${SP_H}" fill="url(#sp)"/>
+      <g fill="#ff3d8a" opacity="0.12">
+        <rect x="${textX}" y="182" width="470" height="8"/>
+        <rect x="${textX}" y="392" width="330" height="8"/>
+        <rect x="${textX}" y="470" width="230" height="8"/>
+      </g>
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="700">
+        ${splitLine(272, 50, 'a dead simple')}
+        ${splitLine(338, 50, 'plain-text editor')}
+        <text x="${textX}" y="440" font-size="40" font-weight="700" fill="#ff3d8a">dedtxt.app</text>
+        <text x="${textX}" y="502" font-size="25" font-weight="600" fill="#8a8a8a" letter-spacing="1">install · offline · no accounts</text>
+      </g>
+    </svg>`
+  );
+  await sharp(spBg)
+    .composite([{ input: spIcon, top: Math.round((SP_H - SP_ICON) / 2), left: 110 }])
+    .png()
+    .toFile(path.join(githubDir, 'social-preview.png'));
+
+  console.log('Wrote icons to build/, src/icons/, src-tauri/icons/, and .github/');
 }
 
 main().catch((err) => {

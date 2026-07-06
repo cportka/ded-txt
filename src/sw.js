@@ -13,6 +13,7 @@ const SHELL = [
   './welcome.js',
   './notice.js',
   './drafts.js',
+  './sw-update.js',
   './pwa-install.js',
   './version.js',
   './line-numbers.js',
@@ -27,6 +28,13 @@ const SHELL = [
   './icons/favicon.png'
 ];
 
+// Update contract (see src/sw-update.js + renderer.js): skipWaiting() here lets
+// a freshly-installed worker activate promptly, so the user's one-click reload
+// from the "update ready" notice always lands on the new assets — and every
+// version transition (including from a shell that predates this file) works in
+// a single click, with no "close every tab" step. cache.addAll is atomic, so a
+// missing SHELL entry fails the install (guarded by test/sw-shell.test.js) and
+// the old version keeps serving rather than a half-cached break.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())

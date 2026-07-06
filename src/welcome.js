@@ -29,6 +29,12 @@ let glitchCleanup = null;
 // env so the notice shows the next time the dialog opens, and applied live (if
 // the dialog is already open) via refreshHeadsUp when an async check resolves.
 let currentUpdate = null;
+// Whether the browser is currently offering a one-click PWA install (the
+// beforeinstallprompt event fired and we're not already installed). Fed into
+// the welcome env by the renderer via setInstallAvailable so the Heads-up box
+// can show a one-click "install" line, refreshed live when the event arrives
+// after the dialog is already open.
+let currentCanInstall = false;
 // Maps an actionable notice's onClick token (e.g. 'applyUpdate') to a handler;
 // set by the renderer via setHeadsUpHandlers.
 let headsUpHandlers = {};
@@ -44,14 +50,19 @@ export function setUpdateResult(update) {
   currentUpdate = update || null;
 }
 
-// Apply an update result. Stores it and, if the welcome dialog is open right
-// now, re-renders the heads-up box so a check that resolves while the dialog
-// is showing surfaces immediately (otherwise it appears on the next open).
+export function setInstallAvailable(canInstall) {
+  currentCanInstall = !!canInstall;
+}
+
+// Apply an update / install-availability change. Stores it and, if the welcome
+// dialog is open right now, re-renders the heads-up box so a check that
+// resolves while the dialog is showing surfaces immediately (otherwise it
+// appears on the next open).
 export function refreshHeadsUp(update) {
   if (update !== undefined) currentUpdate = update || null;
   const dialog = document.getElementById('welcome-dialog');
   if (!dialog || !dialog.open || !lastEnv) return;
-  lastEnv = { ...lastEnv, update: currentUpdate };
+  lastEnv = { ...lastEnv, update: currentUpdate, canInstall: currentCanInstall };
   renderHeadsUp(dialog, headsUpNotices(lastEnv), headsUpHandlers);
 }
 
@@ -149,6 +160,17 @@ export function headsUpNotices(env) {
       text: "Cmd/Ctrl+N won't work on web — click New above."
     },
     {
+      // The browser is offering a one-click PWA install (beforeinstallprompt
+      // fired, not already installed). The action replays the native prompt in
+      // a single click — same shape as the update notice. Only ever active on
+      // engines that support programmatic install (Chromium); iOS Safari /
+      // Firefox never fire the event, so this stays hidden there.
+      id: 'install-app',
+      active: (e) => !!e.canInstall,
+      text: 'Install DedTxt for the best experience — offline, its own window, one tap to open.',
+      action: { label: 'Click here to install', onClick: 'installApp' }
+    },
+    {
       // A newer web layer is available and the runtime can hot-swap it (web:
       // reload to the freshly-cached SW assets; desktop: fetch + reload).
       id: 'update-web',
@@ -164,7 +186,7 @@ export function headsUpNotices(env) {
       text: 'A new desktop build is available.',
       action: (e) => ({
         label: 'Get the new desktop build →',
-        href: (e.update && e.update.url) || 'https://github.com/cportka/dedtxt/releases/latest'
+        href: (e.update && e.update.url) || 'https://github.com/cportka/ded-txt/releases/latest'
       })
     }
   ];
@@ -181,13 +203,14 @@ export function headsUpNotices(env) {
 
 function computeEnv() {
   const w = (typeof window !== 'undefined') ? window : null;
-  if (!w) return { hasFsa: false, onTauri: false, isTouchOnly: false };
+  if (!w) return { hasFsa: false, onTauri: false, isTouchOnly: false, canInstall: false };
   const isTouchOnly = (typeof w.matchMedia === 'function')
     && w.matchMedia('(any-hover: none) and (pointer: coarse)').matches;
   return {
     hasFsa: typeof w.showOpenFilePicker === 'function',
     onTauri: typeof w.__TAURI__ !== 'undefined',
-    isTouchOnly
+    isTouchOnly,
+    canInstall: currentCanInstall
   };
 }
 
