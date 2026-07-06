@@ -2,7 +2,7 @@
   <img src="build/icon.svg" alt="dedtxt icon" width="160" />
 </p>
 
-# dedtxt
+# [dedtxt](https://dedtxt.app/)
 
 A dead simple plain-text editor.
 
