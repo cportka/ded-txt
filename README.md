@@ -9,10 +9,10 @@ A dead simple plain-text editor.
 > "because everything sucked for this sort of thing"
 
 A bit like TextEdit or Notepad, but even simpler and with fewer features.
-No hidden text. No formatting. No settings to fiddle with. Just a textarea
-and your file. Raw bytes in, raw bytes out — UTF-8 by default, no BOM, no
-line-ending munging. If the tab dies with unsaved text, the next visit
-offers to restore it.
+No hidden text. No formatting. No settings. A textarea
+and a file. Raw bytes in, raw bytes out, UTF-8 by default, no BOM, no
+line-ending munging. If we die with unsaved text, may the next visit
+offer to restore.
 
 Two targets, same code:
 
@@ -20,8 +20,8 @@ Two targets, same code:
   from any modern browser (including iOS and Android via "Add to Home Screen").
   **This is the shipping target.**
 - **Desktop** — macOS / Windows / Linux native via [Tauri 2](https://v2.tauri.app/).
-  **Native installer builds are paused for now** in favor of the PWA; the code,
-  Rust tests, and CI are kept current so they can be revived later (see
+  **Native installer are a later release if there is interest**; the code,
+  Rust tests, and CI are kept current so they may be revived (see
   [FUTURE.md](./FUTURE.md) and [CHANGELOG.md](./CHANGELOG.md)).
 
 ## Requirements
@@ -76,7 +76,7 @@ new module and teaching `platform/index.js` how to detect it.
 
 ## Build desktop installers (paused)
 
-> **Native desktop builds are deprecated for now** — the PWA is the shipping
+> **Native desktop builds are deprecated but buildable** — the PWA is the shipping
 > target. The tooling below still works locally and the Rust code stays tested
 > in CI (the `desktop-check` job), but no installers are auto-built or released.
 > See [FUTURE.md](./FUTURE.md) to revive them.
@@ -134,14 +134,14 @@ dedtxt for txt/md/log/json/csv/ini/yml/yaml/xml.
 
 There's one Save, not Save / Save As. Open a different file and Save targets
 the new one — there is no "save as a different file" path. The save dialog is
-always the browser's own; dedtxt never stacks its own filename prompt on top.
+the browser's own; dedtxt never stacks its own filename prompt on top.
 A fresh buffer defaults to `untitled.txt`, and any extension you type is kept
 (`notes.md` stays `notes.md`).
 
 The tab title is bare "dedtxt" until you've actually opened or saved a real
 file; after that it's `<name> — dedtxt` when clean and `• <name> • — dedtxt`
-when there are unsaved changes (the dirty bullets flank the filename so the
-state survives heavy title truncation by the OS window chrome).
+when there are unsaved changes (dirty bullets flank the filename so the
+state survives title truncation by the OS window chrome).
 
 **Chromium browsers** (Chrome, Edge, Brave, Arc, Opera) implement the File
 System Access API, so opened files have a real writable handle and re-saves
