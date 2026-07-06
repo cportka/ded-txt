@@ -47,7 +47,10 @@ async function main() {
     .png()
     .toFile(path.join(webIconsDir, 'icon-maskable-512.png'));
 
-  // Favicon — modern browsers honor PNG favicons fine.
+  // Favicon — a scalable SVG for modern engines (crisp on hi-DPI tabs), plus
+  // a 64px PNG fallback. The SVG is the same master art, copied verbatim so it
+  // ships in the web bundle and precaches with the rest of the shell.
+  fs.copyFileSync(svgPath, path.join(webIconsDir, 'icon.svg'));
   await sharp(svg).resize(64, 64).png().toFile(path.join(webIconsDir, 'favicon.png'));
 
   // Open Graph / social card (1200x630): the app icon on the left, tagline +

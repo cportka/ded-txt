@@ -1,12 +1,42 @@
 # Changelog
 
-All notable changes to DedTxt. This is the single source of project history —
-older planning notes have been folded in here. DedTxt is in a pre-1.0
+All notable changes to dedtxt. This is the single source of project history —
+older planning notes have been folded in here. dedtxt is in a pre-1.0
 release-candidate series; the version is kept in lockstep across
 `src/version.js`, `package.json`, `src-tauri/tauri.conf.json`, and
 `src-tauri/Cargo.toml`.
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+
+## [1.0.0-rc.63]
+
+Launch-review cleanup (Portka `app-website-evaluator`, A/97): the punch-list
+items that were low-effort/high-value, plus a brand-name standardization.
+
+### Changed
+- **Name is now stylized lowercase `dedtxt` everywhere it's displayed** — the
+  window/tab title, PWA manifest (`name`/`short_name`), Apple web-app title,
+  Open Graph/Twitter/JSON-LD, meta description, in-app labels, and the docs.
+  The domain (`dedtxt.app`), the repo slug (`ded-txt`), and the author are
+  unchanged.
+- **Clean window title.** The tab/window title is now just `dedtxt` (was
+  `DedTxt — a dead simple plain-text editor`); with a file open it's
+  `<name> — dedtxt` / `• <name> • — dedtxt`. The descriptive text still lives
+  in the meta description, OG/Twitter titles, and the visually-hidden `<h1>`
+  for SEO.
+
+### Added
+- **SVG favicon** (`icons/icon.svg`, the master art) linked ahead of the PNG
+  fallback and precached in the service-worker shell — crisp on hi-DPI tabs.
+- **`featureList` in the `WebApplication` JSON-LD** (offline, find/replace,
+  real file save, draft recovery, zero-dependency) for richer AI/AEO parsing.
+
+### Security
+- **Tightened the deployed CSP.** The web build now ships
+  `connect-src 'self'` — the Tauri-only `ipc:` / `http://ipc.localhost` tokens
+  are stripped from the PWA output (the shared source keeps them for the paused
+  desktop webview). Pairs with the custom domain's now-enforced HTTPS (HSTS via
+  GitHub Pages).
 
 ## [1.0.0-rc.62]
 

@@ -1,6 +1,6 @@
 # Roadmap & future ideas
 
-DedTxt stays *dead simple* — most "more of an editor" ideas are non-goals. This
+dedtxt stays *dead simple* — most "more of an editor" ideas are non-goals. This
 is the roadmap toward a confident 1.0 and beyond, seeded by a full multi-lens
 repo audit. Shipped work lives in [CHANGELOG.md](./CHANGELOG.md).
 
@@ -8,24 +8,37 @@ repo audit. Shipped work lives in [CHANGELOG.md](./CHANGELOG.md).
 shipped most of it: save/open error notices, `launchQueue` file handling, crash
 / draft recovery, the SHELL / build / CSS-parity test guards, the a11y pass,
 find debouncing, the honest download-fallback dirty state, and manifest install
-screenshots. What's below is what's left.)*
+screenshots. rc.62 added one-click install + update-flow hardening + the repo
+rename. rc.63 cleared the launch-review punch-list — SVG favicon, tightened web
+CSP, `dedtxt` name standardization + clean title, and richer JSON-LD — and the
+custom domain now enforces HTTPS. What's below is what's left.)*
 
 ## Before 1.0.0
 
+The only true blocker is the release cut itself; the launch review (A/97) rated
+everything else launch-ready.
+
 - **Cut the 1.0.0 release.** You can't be a confident 1.0 while every version
-  file still reads `1.0.0-rc.N`. Decide a post-rc version policy for a
-  continuously-deployed PWA (semver bumps on user-visible change? treat the build
-  SHA as the real deploy id?), set all four version files to `1.0.0`, tag
-  `v1.0.0`, and cut a source GitHub Release so the changelog can use real tags.
-  From then on the repo follows the Portka standard's enforced SemVer
-  (`tests/run-tests.sh`) with no rc exception. *(A product decision — yours to
-  make.)*
-- **Light/dark toggle.** Locked dark today. Deliberately deferred out of the
-  rc.61 batch — needs a real design pass so the glitch palette (`--gx-*`) reads
-  on a light ground, not just a variable swap.
+  file still reads `1.0.0-rc.N`, and there's no git tag or GitHub Release yet.
+  Decide a post-rc version policy for a continuously-deployed PWA (semver bumps
+  on user-visible change? treat the build SHA as the real deploy id?), set all
+  four version files to `1.0.0`, add a `## [1.0.0]` CHANGELOG section (the
+  version-sync gate requires it), tag `v1.0.0`, and cut a source GitHub Release
+  so the changelog can use real tags. From then on the repo follows the Portka
+  standard's enforced SemVer (`tests/run-tests.sh`) with no rc exception.
+  *(A product decision — yours to make.)*
+
+### Optional (safe to ship 1.0.0 without)
+
+- **Light/dark toggle.** Locked dark today. Needs a real design pass so the
+  glitch palette (`--gx-*`) reads on a light ground, not just a variable swap.
 - **Save-encoding choice.** UTF-8-only today (binary buffers round-trip
   Latin-1). A minimal encoding picker on save is the last "real editor" gap for
   files that must stay in a legacy encoding.
+- **A dedicated `security.txt` contact address** (a real inbox, not the GitHub
+  advisories/issues links) — needs an address only the owner can provide.
+- **Richer JSON-LD** (`FAQPage` / `HowTo`) for AEO — marginal for a single-page
+  utility; the `WebApplication` + `featureList` block already covers the basics.
 
 ## Desktop (revive when ready)
 

@@ -37,14 +37,24 @@ copyTree(src, out);
 // also sets it at runtime, but injecting it here means view-source, crawlers,
 // and pre-hydration HTML show the shipped version instead of the v0.0.0
 // placeholder (which reads as "unfinished" to exactly the people who peek).
+//
+// Also tighten the CSP for the web target: the shared src/index.html carries
+// `connect-src 'self' ipc: http://ipc.localhost` so the Tauri desktop webview
+// can reach its IPC bridge, but the PWA never uses IPC — strip those two
+// tokens so the deployed policy is exactly `connect-src 'self'`.
 const stampVersion = require('../package.json').version;
 const indexPath = path.join(out, 'index.html');
 fs.writeFileSync(
   indexPath,
-  fs.readFileSync(indexPath, 'utf8').replace(
-    /(<span id="welcome-version">)[^<]*(<\/span>)/,
-    `$1v${stampVersion}$2`
-  )
+  fs.readFileSync(indexPath, 'utf8')
+    .replace(
+      /(<span id="welcome-version">)[^<]*(<\/span>)/,
+      `$1v${stampVersion}$2`
+    )
+    .replace(
+      "connect-src 'self' ipc: http://ipc.localhost;",
+      "connect-src 'self';"
+    )
 );
 
 // 2. CNAME owns the custom domain on every gh-pages deploy.

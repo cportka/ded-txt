@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="build/icon.svg" alt="DedTxt icon" width="160" />
+  <img src="build/icon.svg" alt="dedtxt icon" width="160" />
 </p>
 
-# DedTxt
+# dedtxt
 
 A dead simple plain-text editor.
 
@@ -128,18 +128,18 @@ npm run gen:icons         # regenerates Tauri, PWA, and macOS/Windows icon sets
 | Toggle welcome    | `Esc`        | `Esc`      |
 
 Drop a file onto the window to open it. The OS "Open with…" menu lists
-DedTxt for txt/md/log/json/csv/ini/yml/yaml/xml.
+dedtxt for txt/md/log/json/csv/ini/yml/yaml/xml.
 
 ## Save behavior
 
 There's one Save, not Save / Save As. Open a different file and Save targets
 the new one — there is no "save as a different file" path. The save dialog is
-always the browser's own; DedTxt never stacks its own filename prompt on top.
+always the browser's own; dedtxt never stacks its own filename prompt on top.
 A fresh buffer defaults to `untitled.txt`, and any extension you type is kept
 (`notes.md` stays `notes.md`).
 
-The tab title is bare "DedTxt" until you've actually opened or saved a real
-file; after that it's `<name> — DedTxt` when clean and `• <name> • — DedTxt`
+The tab title is bare "dedtxt" until you've actually opened or saved a real
+file; after that it's `<name> — dedtxt` when clean and `• <name> • — dedtxt`
 when there are unsaved changes (the dirty bullets flank the filename so the
 state survives heavy title truncation by the OS window chrome).
 
@@ -164,7 +164,7 @@ character) closes it.
 
 ## Updates
 
-DedTxt keeps itself current — no manual re-download.
+dedtxt keeps itself current — no manual re-download.
 
 **Web** (dedtxt.app) — a new deploy is picked up by the service worker in the
 background. Once the fresh assets are cached, the welcome dialog surfaces an
