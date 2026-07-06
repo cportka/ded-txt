@@ -1,7 +1,7 @@
 {
   "name": "dedtxt",
   "productName": "dedtxt",
-  "version": "1.0.0-rc.63",
+  "version": "1.0.0",
   "description": "dedtxt — a dead simple plain-text editor.",
   "author": {
     "name": "Chris Portka"

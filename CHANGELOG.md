@@ -8,6 +8,29 @@ release-candidate series; the version is kept in lockstep across
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0]
+
+**First stable release.** dedtxt is a dead-simple, dependency-free plain-text
+editor: a single textarea and your file, installable as an offline PWA, with no
+accounts and no tracking. This 1.0.0 is the culmination of the `1.0.0-rc.*`
+series (see the entries below for the full path here) — the release-candidate
+cycle hardened save/open feedback, crash/draft recovery, the PWA install and
+update flows, accessibility, the test guards, and the site/security furniture
+to a launch-ready state (independent review: A/97).
+
+From 1.0.0 onward the repo follows the Portka standard's enforced
+[SemVer](https://semver.org) with **no rc exception**: PATCH for
+backward-compatible fixes, MINOR for backward-compatible features (the
+light/dark toggle is slated for 1.1.0), MAJOR for breaking changes. The web
+PWA is continuously deployed from `main`; each user-visible change ships under
+its own SemVer bump, and the build SHA (`version.json` `buildId`) remains the
+precise per-deploy identifier.
+
+### Fixed
+- **Escape while the Find bar is open now just closes Find** and no longer also
+  pops the welcome dialog open behind it. Works whether focus is in a Find text
+  field or on one of its buttons.
+
 ## [1.0.0-rc.63]
 
 Launch-review cleanup (Portka `app-website-evaluator`, A/97): the punch-list
@@ -253,6 +276,7 @@ The bulk of the rc series refined a deliberately tiny editor. Highlights:
 - Established the platform-agnostic renderer with a `platform/{web,tauri}.js`
   split, the PWA (service worker + manifest), and `dedtxt.app` via GitHub Pages.
 
+[1.0.0]: https://github.com/cportka/ded-txt/releases/tag/v1.0.0
 [1.0.0-rc.60]: https://github.com/cportka/ded-txt/commits/main
 [1.0.0-rc.59]: https://github.com/cportka/ded-txt/commits/main
 [1.0.0-rc.58]: https://github.com/cportka/ded-txt/commits/main

@@ -75,14 +75,15 @@ on both but currently unused).
 This repo follows the **Portka standard** (`.claude/CLAUDE.md`): update `main`
 first, branch for everything, tests + CI then a PR, merge on green, hand back
 the PR link. Repo-specific rules on top of it:
-- **Bump the version on every PR**: `rc.N → rc.N+1` in lockstep across
-  `src/version.js`, `package.json`, `src-tauri/tauri.conf.json`,
-  `src-tauri/Cargo.toml`.
-- **Pre-1.0 SemVer exception**: the Portka standard's enforced SemVer applies,
-  but until the 1.0.0 cut the version stays a `1.0.0-rc.N` prerelease (valid
-  SemVer) — don't bump MAJOR/MINOR/PATCH before 1.0.0.
-  `tests/run-tests.sh` + `tests/version-sync.test.mjs` enforce that
-  `package.json` and `CHANGELOG.md` agree (CI runs both).
+- **Bump the version on every PR** in lockstep across `src/version.js`,
+  `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`.
+- **SemVer (enforced from 1.0.0 — the rc exception is retired).** As of 1.0.0
+  the Portka standard's SemVer applies with no carve-out: PATCH for
+  backward-compatible fixes, MINOR for backward-compatible features (the
+  light/dark toggle is the 1.1.0 target), MAJOR for breaking changes. Tag each
+  release `vX.Y.Z` and cut a GitHub Release. `tests/run-tests.sh` +
+  `tests/version-sync.test.mjs` enforce that `package.json` and `CHANGELOG.md`
+  agree (CI runs both).
 - **Add a `CHANGELOG.md` entry.**
 - Before a PR: `npm test` (Node `--test`) and lint with the **pinned ESLint 8**:
   `npx --yes eslint@8.57.1 src/ test/ scripts/` (the repo `.eslintrc` can't be

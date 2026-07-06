@@ -363,9 +363,18 @@ if (welcomeDialog) {
 
 // Escape toggles the welcome dialog. When the dialog is open the browser
 // already closes it on Escape (native <dialog> behavior). When it's closed,
-// pressing Escape opens it again.
+// pressing Escape opens it again — UNLESS the Find bar is open, in which case
+// Escape just closes Find and must not pop the welcome dialog. Find's own
+// input handler already closes it when a text field has focus; this covers
+// focus being on any of Find's buttons too, and (critically) swallows the
+// Escape so it never falls through to showWelcome().
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  if (find.isOpen()) {
+    e.preventDefault();
+    find.close();
+    return;
+  }
   if (welcomeDialog && !welcomeDialog.open) {
     e.preventDefault();
     showWelcome();

@@ -160,7 +160,8 @@ Shown automatically once per browser / install. After you dismiss it,
 the auto-open never fires again — not even after a version bump. To
 re-open: click the icon in the top-right corner of the editor, or press
 `Esc`. Pressing `Esc` again (or clicking outside the card, or typing any
-character) closes it.
+character) closes it. When the Find bar is open, `Esc` closes Find instead —
+it won't pop the welcome dialog.
 
 ## Updates
 

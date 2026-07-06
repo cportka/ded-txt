@@ -32,11 +32,12 @@ fixes. Keep one source of truth and the other places in agreement, and bump the 
 push/PR, so they can't drift.
 <!-- END portka-standard -->
 
-## dedtxt-specific exception: rc versioning until 1.0.0
+## dedtxt versioning (1.0.0 shipped — rc exception retired)
 
-Until the 1.0.0 cut, this repo's version stays a `1.0.0-rc.N` **prerelease**
-(bumped `rc.N -> rc.N+1` on every PR, in lockstep across `src/version.js`,
-`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`). That is
-valid SemVer and passes `tests/run-tests.sh`, but the MAJOR.MINOR.PATCH bump
-rules above only kick in from 1.0.0 onward. See `CLAUDE.md` (repo root) for
-the full release rules.
+The pre-1.0 `1.0.0-rc.N` prerelease exception is **over**: 1.0.0 shipped, so the
+Portka standard's SemVer now applies in full — PATCH for backward-compatible
+fixes, MINOR for backward-compatible features (light/dark toggle → 1.1.0),
+MAJOR for breaking changes, bumped in lockstep across `src/version.js`,
+`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, with a
+`vX.Y.Z` tag + GitHub Release per version. See `CLAUDE.md` (repo root) for the
+full release rules.

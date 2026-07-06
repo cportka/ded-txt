@@ -1,40 +1,35 @@
 # Roadmap & future ideas
 
-dedtxt stays *dead simple* — most "more of an editor" ideas are non-goals. This
-is the roadmap toward a confident 1.0 and beyond, seeded by a full multi-lens
-repo audit. Shipped work lives in [CHANGELOG.md](./CHANGELOG.md).
+dedtxt stays *dead simple* — most "more of an editor" ideas are non-goals.
+**1.0.0 shipped** (a launch-ready A/97 in independent review); this is the
+roadmap beyond it. Shipped work lives in [CHANGELOG.md](./CHANGELOG.md).
 
-*(rc.61 promoted the old "Later / nice-to-have" list into the pre-1.0 scope and
-shipped most of it: save/open error notices, `launchQueue` file handling, crash
-/ draft recovery, the SHELL / build / CSS-parity test guards, the a11y pass,
-find debouncing, the honest download-fallback dirty state, and manifest install
-screenshots. rc.62 added one-click install + update-flow hardening + the repo
-rename. rc.63 cleared the launch-review punch-list — SVG favicon, tightened web
-CSP, `dedtxt` name standardization + clean title, and richer JSON-LD — and the
-custom domain now enforces HTTPS. What's below is what's left.)*
+Versioning follows SemVer with no exception now (see `CLAUDE.md`): PATCH for
+fixes, MINOR for backward-compatible features, MAJOR for breaking changes, each
+tagged `vX.Y.Z` with a GitHub Release.
 
-## Before 1.0.0
+## 1.1.0 — light/dark toggle (next)
 
-The only true blocker is the release cut itself; the launch review (A/97) rated
-everything else launch-ready.
+The headline post-1.0 feature, deliberately held back from 1.0.0 so it gets a
+real design pass rather than a naive variable swap:
 
-- **Cut the 1.0.0 release.** You can't be a confident 1.0 while every version
-  file still reads `1.0.0-rc.N`, and there's no git tag or GitHub Release yet.
-  Decide a post-rc version policy for a continuously-deployed PWA (semver bumps
-  on user-visible change? treat the build SHA as the real deploy id?), set all
-  four version files to `1.0.0`, add a `## [1.0.0]` CHANGELOG section (the
-  version-sync gate requires it), tag `v1.0.0`, and cut a source GitHub Release
-  so the changelog can use real tags. From then on the repo follows the Portka
-  standard's enforced SemVer (`tests/run-tests.sh`) with no rc exception.
-  *(A product decision — yours to make.)*
+- A light theme that the **glitch palette** (`--gx-magenta` / `--gx-cyan` /
+  `--gx-bone` and the RGB-split accents) actually reads well on — the chromatic
+  aberration and magenta bands are tuned for a near-black ground, so a light
+  ground needs re-tuned accent values, not just flipped `--bg` / `--fg`.
+- A toggle control (welcome dialog or a corner affordance) plus a
+  `prefers-color-scheme` default and a persisted `localStorage` choice
+  (document the new key in `PRIVACY.md`, alongside `dedtxt-welcomed` /
+  `dedtxt-draft`).
+- Keep every existing invariant: all motion stays `prefers-reduced-motion`
+  gated; the three text-layout layers stay in parity; contrast stays WCAG AA in
+  both themes (the `test/css-parity.test.js` guard already helps here).
 
-### Optional (safe to ship 1.0.0 without)
+## Later / nice-to-have
 
-- **Light/dark toggle.** Locked dark today. Needs a real design pass so the
-  glitch palette (`--gx-*`) reads on a light ground, not just a variable swap.
 - **Save-encoding choice.** UTF-8-only today (binary buffers round-trip
   Latin-1). A minimal encoding picker on save is the last "real editor" gap for
-  files that must stay in a legacy encoding.
+  files that must stay in a legacy encoding. (Candidate for a 1.x MINOR.)
 - **A dedicated `security.txt` contact address** (a real inbox, not the GitHub
   advisories/issues links) — needs an address only the owner can provide.
 - **Richer JSON-LD** (`FAQPage` / `HowTo`) for AEO — marginal for a single-page
