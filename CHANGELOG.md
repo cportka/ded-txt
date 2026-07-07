@@ -8,6 +8,16 @@ release-candidate series; the version is kept in lockstep across
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.1]
+
+### Fixed
+- **No more misleading "use Chrome or Edge" save hint on mobile.** The welcome
+  dialog's "your browser can't silently save — use Chrome or Edge" heads-up is
+  now desktop-only. On iOS every browser is WebKit (Chrome/Edge included) and
+  Android Chrome lacks the File System Access API too, so there's no browser on
+  the device you could switch to — the advice was wrong. On mobile the box now
+  simply omits it.
+
 ## [1.0.0]
 
 **First stable release.** dedtxt is a dead-simple, dependency-free plain-text
@@ -276,6 +286,7 @@ The bulk of the rc series refined a deliberately tiny editor. Highlights:
 - Established the platform-agnostic renderer with a `platform/{web,tauri}.js`
   split, the PWA (service worker + manifest), and `dedtxt.app` via GitHub Pages.
 
+[1.0.1]: https://github.com/cportka/ded-txt/releases/tag/v1.0.1
 [1.0.0]: https://github.com/cportka/ded-txt/releases/tag/v1.0.0
 [1.0.0-rc.60]: https://github.com/cportka/ded-txt/commits/main
 [1.0.0-rc.59]: https://github.com/cportka/ded-txt/commits/main

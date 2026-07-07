@@ -144,9 +144,13 @@ export function headsUpNotices(env) {
     },
     {
       id: 'no-fsa',
-      // Firefox / Safari / iOS — no File System Access API, so every save
-      // triggers a fresh download instead of writing back to disk.
-      active: (e) => !e.hasFsa,
+      // Desktop Firefox / Safari — no File System Access API, so every save
+      // triggers a fresh download instead of writing back to disk. Gated on
+      // !isTouchOnly because the "switch to Chrome/Edge" remedy is desktop-
+      // only: on mobile there is no browser you can switch to that has the FSA
+      // (iOS is all WebKit; Android Chrome lacks it too), so the advice would
+      // be misleading — nothing on the device can silently save.
+      active: (e) => !e.hasFsa && !e.isTouchOnly,
       text: "Your browser can't silently save changes — each save downloads a fresh copy. For native-like save, use Chrome or Edge."
     },
     {

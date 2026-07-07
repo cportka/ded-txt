@@ -111,16 +111,31 @@ describe('src/welcome.js', () => {
       assert.deepEqual(active.map(n => n.id), ['esc-hint', 'no-fsa']);
     });
 
-    test('touch-only mobile (no FSA, not Tauri) → only the FSA notice, no Cmd+N', () => {
-      // Touch users have no keyboard — surfacing a keyboard-shortcut
-      // limitation would just confuse. The CSS already hides shortcut
-      // hints on touch via the same media query.
+    test('touch-only mobile (no FSA, not Tauri) → NO notices (no misleading save advice)', () => {
+      // On mobile there is no browser you can switch to that has the FSA
+      // (iOS is all WebKit; Android Chrome lacks it too), so the "use Chrome
+      // or Edge" no-fsa notice would be actively wrong — suppress it. The
+      // keyboard-shortcut notices are already touch-suppressed, so the box is
+      // empty here. (Regression guard for the iOS "silent save" heads-up.)
       const active = mod.headsUpNotices({ hasFsa: false, onTauri: false, isTouchOnly: true });
-      assert.equal(active.length, 1);
-      assert.equal(active[0].id, 'no-fsa');
+      assert.deepEqual(active, []);
     });
 
-    test('touch-only with FSA (Android Chrome) → no notices', () => {
+    test('the no-fsa notice is desktop-only (never fires on touch)', () => {
+      // Fires on desktop without FSA...
+      assert.ok(mod.headsUpNotices({ hasFsa: false, onTauri: false, isTouchOnly: false })
+        .some(n => n.id === 'no-fsa'));
+      // ...but never on a touch-only device, regardless of the other flags.
+      for (const env of [
+        { hasFsa: false, onTauri: false, isTouchOnly: true },
+        { hasFsa: false, onTauri: true, isTouchOnly: true },
+        { hasFsa: false, isTouchOnly: true, canInstall: true }
+      ]) {
+        assert.ok(!mod.headsUpNotices(env).some(n => n.id === 'no-fsa'));
+      }
+    });
+
+    test('touch-only with FSA (rare) → no notices', () => {
       const active = mod.headsUpNotices({ hasFsa: true, onTauri: false, isTouchOnly: true });
       assert.deepEqual(active, []);
     });
