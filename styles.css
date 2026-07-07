@@ -1,0 +1,1336 @@
+:root {
+  color-scheme: dark;
+  --bg: #111111;
+  --fg: #f4f4f4;
+  /* #8a8a8a on #111 is ~5.5:1 — WCAG AA for normal text. The old #666666
+     (~3.3:1) failed AA for every --muted text surface (find counter,
+     heads-up notices, placeholder). Borders ride along slightly brighter. */
+  --muted: #8a8a8a;
+  /* Glitch palette — pulled straight from build/icon.svg so the popup
+     and the chromatic-aberration accents read as the same family as the
+     skull icon. Used only by .info-popup and the subtle "glitch
+     moments" sprinkled through the welcome dialog. */
+  --gx-bone: #f0ede4;
+  --gx-magenta: #ff3d8a;
+  --gx-cyan: #cfe9ff;
+  --gx-ink: #0a0a0a;
+  --gx-ink-2: #1a1a1a;
+}
+/* Standard screen-reader-only pattern: rendered (so SRs and crawlers see
+   it) but visually removed without display:none. Used by the page h1. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  /* Defense against any stray horizontal overflow — we never want a
+     horizontal scrollbar; wrapping should always handle width. */
+  overflow-x: hidden;
+}
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Editor + gutter live in a flex row that fills the viewport. */
+#editor-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* border-box so the .find-open padding-top (mobile) is subtracted
+     from the 100% height instead of added to it. Without this the wrap
+     would overflow its parent by the find bar's height and the
+     absolutely-anchored find bar (right: 56px) could be pushed off the
+     visible viewport. (Desktop reserves no space — the bar overlays the
+     full-width textarea; see the find-dialog rule below.) */
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  /* Find-bar footprint, written by JS when the bar opens. Only
+     --find-bar-h is consumed (mobile padding-top, below); --find-bar-w is
+     still written but unused, since the desktop bar overlays at full width
+     rather than narrowing the textarea. Both default to 0px so closed-state
+     geometry matches the bar-not-present baseline. */
+  --find-bar-h: 0px;
+  --find-bar-w: 0px;
+}
+/* Find dialog placement.
+   Mobile: the bar becomes a top banner; padding-top pushes the editor (and
+   line-gutter + overlays) down by the bar's measured height so text never
+   paints under it.
+   Desktop: the bar overlays the top-right corner at full editor width (like
+   a browser / VS Code find) — no padding is reserved, so the textarea keeps
+   its full wrap column and the active match scrolls into view. The
+   .find-open class is toggled by JS on open()/close(). */
+@media (max-width: 600px) {
+  #editor-wrap.find-open { padding-top: var(--find-bar-h); }
+}
+
+/* Subtle line-number gutter. overflow:hidden + inner translateY for
+   scroll-sync (programmatic scrollTop on overflow:hidden is unreliable). */
+#line-gutter {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  background: transparent;
+}
+#line-gutter-inner {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+  opacity: 0.55;
+  padding: 12px 6px 12px 0;
+  box-sizing: border-box;
+  text-align: right;
+  white-space: pre;
+  will-change: transform;
+}
+
+/* The textarea must NOT use `width: 100%` here — in a flex row with the
+   gutter (40px), 100% + 40px > parent and the body picks up a horizontal
+   scrollbar, which then shifts position:fixed elements. Letting flex own
+   the width via `flex: 1 1 auto; min-width: 0` is correct. */
+#text-editor {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  resize: none;
+  background: transparent;
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  /* Soft wrap to the viewable area. NEVER inserts characters into .value. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+/* Stack the textarea above #editor-highlights so the user's text and
+   caret paint over the find-match marks. The textarea's transparent
+   background lets the overlay's coloured bands show through behind
+   each glyph. position:relative gives it a stacking context without
+   removing it from the flex row. */
+#text-editor { position: relative; z-index: 1; }
+#text-editor:focus { outline: none; }
+#text-editor::placeholder { color: var(--muted); }
+/* Manual drag-selection in the textarea — magenta to match the rest
+   of the glitch palette. This is NOT what surfaces find matches: that
+   path uses the #editor-highlights overlay (browsers wash out the
+   inactive textarea selection so the find flow can't rely on it). */
+#text-editor::selection {
+  background: var(--gx-magenta);
+  color: var(--gx-ink);
+}
+#text-editor::-moz-selection {
+  background: var(--gx-magenta);
+  color: var(--gx-ink);
+}
+
+/* Off-screen layout mirror — same font/padding/width/wrap as the textarea
+   so per-line offsetHeight reports the correct wrapped row count.
+   height:0 + overflow:hidden are load-bearing: the mirror holds one div per
+   logical line, so at its natural height it's as tall as the whole document.
+   As a position:absolute child of #editor-wrap (overflow:visible) that height
+   leaks into the body's scroll extent, letting the page scroll far past the
+   last line into empty space. Clipping it to a zero-height box drops it from
+   the scrollable area while each child's offsetHeight stays fully measurable
+   (child metrics don't depend on the parent's own height or clipping). */
+#editor-mirror {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  /* top: 0 is fine — mirror is hidden and only its child offsetHeights
+     are read by line-numbers.js, not its absolute position. */
+  top: 0;
+  left: 0;
+  height: 0;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#editor-mirror > div {
+  min-height: 1.45em;
+}
+
+/* Visible match-highlight overlay for find. Sits behind the textarea
+   (z-index 0; textarea is z-index 1) — the textarea's transparent
+   background lets the magenta bands show through.
+
+   Two elements, exactly like #line-gutter / #line-gutter-inner: the OUTER
+   #editor-highlights is a fixed, viewport-sized window that clips
+   (overflow:hidden); the INNER #editor-highlights-inner holds the full
+   document height of marks and is the thing that scroll-syncs via
+   translateY. This split is load-bearing: a single element that both clips
+   AND carries the text would only ever reveal the first screenful of
+   matches — CSS clips overflow in the element's own coordinate space
+   *before* its transform is applied, so transforming it just slides that
+   first-screenful band around and never exposes a match below the fold. */
+#editor-highlights {
+  position: absolute;
+  /* find.js's paintHighlights writes top/left/width inline every
+     paint, sourcing them from editor.offsetTop/offsetLeft/clientWidth
+     so the overlay tracks the textarea's *actual* box regardless of
+     which media query applied padding to #editor-wrap. The CSS values
+     here are just the closed-state defaults. */
+  top: 0;
+  bottom: 0;
+  left: 40px;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+/* Inner content layer. Every text-layout property MUST match #text-editor
+   exactly so the marks wrap at the same column and sit on the same rows;
+   the only divergences are color:transparent (the textarea draws the text,
+   we only paint the mark backgrounds) and will-change:transform (it is the
+   scroll-synced layer). Its height is the natural full-document height so
+   translateY can bring any match into the clip window. */
+#editor-highlights-inner {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  color: transparent;
+  will-change: transform;
+}
+#editor-highlights mark {
+  /* Inactive matches — faint magenta tint so every hit is visible
+     without overwhelming the live text. */
+  background: rgba(255, 61, 138, 0.35);
+  color: transparent;
+  padding: 0;
+  border-radius: 1px;
+}
+#editor-highlights mark.find-match-active {
+  /* The current match (the one ↑/↓/Enter navigates to) — full
+     magenta from the icon palette. */
+  background: var(--gx-magenta);
+}
+
+/* Find + Replace bar. Floats top-right of #editor-wrap, inset by 56px
+   so the corner menu button (32px wide + 8px margin + 16px gap) stays
+   clickable. On desktop it overlays the full-width textarea. The bar
+   deliberately does NOT push the textarea down or narrow it — resizing
+   the editor would break the line-gutter scroll sync. */
+#find-bar {
+  position: absolute;
+  top: 0;
+  right: 56px;
+  z-index: 50;
+  background: var(--bg);
+  border: 1px solid var(--muted);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  /* Right padding reserves a gutter so no row child (notably the replace
+     row's "All" button) can slide under the absolutely-pinned close X. */
+  padding: 6px 26px 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+#find-bar[hidden] { display: none; }
+/* Glitch in/out for the find bar. Same RGB-split + translate-jitter
+   vocabulary as welcome-icon-boot, applied to the whole bar via
+   drop-shadow (the bar is opaque, so text-shadow alone wouldn't ghost the
+   border/background). steps() keeps it blocky. The bar stays display:flex
+   throughout; find.js only sets [hidden] after the out-animation ends. */
+#find-bar.find-glitch-in  { animation: find-bar-glitch-in 150ms steps(1, end); }
+#find-bar.find-glitch-out { animation: find-bar-glitch-out 135ms steps(1, end); }
+@keyframes find-bar-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(2px, 1px, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  65% {
+    transform: translate3d(-1px, 0, 0);
+    filter: drop-shadow(1px 0 0 var(--gx-magenta)) drop-shadow(-1px 0 0 var(--gx-cyan));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes find-bar-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  40% {
+    opacity: 1;
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(3px, -1px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0);
+    filter: drop-shadow(5px 0 0 var(--gx-magenta)) drop-shadow(-5px 0 0 var(--gx-cyan));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #find-bar.find-glitch-in,
+  #find-bar.find-glitch-out { animation: none; }
+}
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#find-bar input {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--muted);
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  /* Default sizing on wide screens: stays at 180px. Allow shrink so
+     that on narrow viewports the bar doesn't push itself off-screen
+     to the left — the narrow-viewport @media block below promotes the
+     input to its own full-width row instead. */
+  flex: 0 1 180px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+#find-bar input:focus { outline: 1px solid var(--gx-cyan); }
+.find-counter {
+  color: var(--muted);
+  min-width: 52px;
+  text-align: center;
+}
+.find-counter-empty {
+  /* Chromatic split when the search comes up dry — the same magenta/cyan
+     RGB ghosts as the rest of the glitch surface, so "no matches" reads
+     as a small visual hiccup instead of a hard red error. */
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+.find-btn, .find-toggle {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid transparent;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 2px;
+  min-width: 22px;
+}
+.find-btn:hover, .find-toggle:hover {
+  background: rgba(127, 127, 127, 0.18);
+}
+/* Active toggle: lifted into the icon's glitch palette so "on" is
+   unambiguous against hover. Magenta border + 18% magenta fill carry
+   the on-state, bone text with the icon-wordmark's 1px RGB split echoes
+   the chromatic-aberration treatment used by .find-counter-empty and
+   the version stamp. */
+.find-toggle[aria-pressed="true"] {
+  border-color: var(--gx-magenta);
+  background: rgba(255, 61, 138, 0.18);
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+.find-toggle[aria-pressed="true"]:hover {
+  background: rgba(255, 61, 138, 0.28);
+}
+.find-replace-btn {
+  padding: 2px 10px;
+}
+/* Close X — lifted out of the row flow and pinned to the bar's bottom-
+   right corner so it sits at the dialog's edge at every width (incl. the
+   mobile wrap, where the row would otherwise drop it onto its own line).
+   #find-bar reserves right padding so no row child slides under it.
+   Subtle chromatic-aberration X from the icon palette; the RGB split
+   intensifies on hover/focus. */
+#find-close {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  min-width: 0;
+  padding: 0 2px;
+  line-height: 1;
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+#find-close:hover,
+#find-close:focus-visible {
+  background: transparent;
+  outline: none;
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+
+/* Narrow-viewport layout for the find bar. On phones the desktop bar
+   (180px input + counter + 7 buttons ≈ 410px wide) grows leftward from
+   its right:56px anchor and runs off the left edge of the viewport.
+   Here we anchor it across the available width, let the .find-row
+   flex-wrap, and promote the input to its own full-width row so the
+   counter + nav/toggle buttons wrap to a second row below it. The
+   existing replace row already lives below — this just gives the
+   primary row the same kind of vertical breathing room. */
+@media (max-width: 600px) {
+  #find-bar {
+    left: max(8px, env(safe-area-inset-left));
+  }
+  .find-row {
+    flex-wrap: wrap;
+  }
+  #find-bar input {
+    flex: 1 1 100%;
+    width: auto;
+  }
+}
+
+#menu-toggle {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid transparent;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#menu-toggle:hover,
+#menu-toggle:focus-visible {
+  opacity: 1;
+  border-color: var(--muted);
+  outline: none;
+}
+#menu-toggle img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  pointer-events: none;
+  transition: filter 80ms steps(2);
+}
+/* Subtle chromatic-aberration glitch on hover — same RGB split as the
+   icon's wordmark, applied to the corner menu button so the cursor
+   picks it up on its way past. `steps(2)` keeps the transition
+   broken/glitchy rather than smooth. */
+#menu-toggle:hover img {
+  filter:
+    drop-shadow(1px 0 0 var(--gx-magenta))
+    drop-shadow(-1px 0 0 var(--gx-cyan));
+}
+/* Click feedback: a quick accelerate-spin-decelerate, 1s total. The class
+   is added by renderer.js on click and removed via animationend so a
+   second click can re-trigger it cleanly. */
+#menu-toggle.spinning img {
+  /* Snap to full speed on press, then decelerate to a stop over 1 s.
+     cubic-bezier(0.05, 0.9, 0.25, 1) jumps the rotation to ~90% of the
+     way around within the first ~25% of the duration, then eases the
+     remaining ~10% gently to the end. */
+  animation: menu-spin 1000ms cubic-bezier(0.05, 0.9, 0.25, 1);
+}
+@keyframes menu-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Floating scroll-to-start / scroll-to-end arrows (scroll-arrows.js toggles
+   them by scroll position). Subtle chromatic glyphs in the icon palette —
+   same treatment as #find-close — pinned top-right just under the menu button
+   and bottom-right. */
+.scroll-arrow {
+  position: fixed;
+  right: max(8px, env(safe-area-inset-right));
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 9;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.55;
+  color: var(--gx-bone);
+  text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+/* Author display:flex above would otherwise beat the UA [hidden] rule. */
+.scroll-arrow[hidden] { display: none; }
+#scroll-top { top: calc(max(8px, env(safe-area-inset-top)) + 40px); }
+#scroll-bottom { bottom: max(8px, env(safe-area-inset-bottom)); }
+.scroll-arrow:hover,
+.scroll-arrow:focus-visible {
+  opacity: 1;
+  outline: none;
+  border-color: var(--muted);
+  text-shadow: 2px 0 0 var(--gx-magenta), -2px 0 0 var(--gx-cyan);
+}
+/* Appear / disappear / click — mirror find-bar-glitch-in/out, steps() for a
+   blocky digital feel. glitch-in ends at opacity 1, then the opacity
+   transition above settles it back to the subtle 0.55 at rest. */
+.scroll-arrow.arrow-glitch-in  { animation: arrow-glitch-in 150ms steps(1, end); }
+.scroll-arrow.arrow-glitch-out { animation: arrow-glitch-out 135ms steps(1, end); }
+.scroll-arrow.arrow-activating { animation: arrow-pulse 135ms steps(1, end); }
+@keyframes arrow-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -3px, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  45% {
+    opacity: 1;
+    transform: translate3d(2px, 1px, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes arrow-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  45% {
+    opacity: 1;
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -3px, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+}
+@keyframes arrow-pulse {
+  0%   { transform: none; filter: none; }
+  35%  { transform: translate3d(-2px, 0, 0); filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan)); }
+  70%  { transform: translate3d(2px, 0, 0);  filter: drop-shadow(3px 0 0 var(--gx-cyan)) drop-shadow(-3px 0 0 var(--gx-magenta)); }
+  100% { transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-arrow.arrow-glitch-in,
+  .scroll-arrow.arrow-glitch-out,
+  .scroll-arrow.arrow-activating { animation: none; }
+}
+/* Bigger tap targets on touch, matching the find controls. */
+@media (any-hover: none) and (pointer: coarse) {
+  .scroll-arrow { width: 40px; height: 40px; font-size: 20px; }
+  #scroll-top { top: calc(max(8px, env(safe-area-inset-top)) + 44px); }
+}
+
+/* First-visit / version-bump welcome dialog. Themed via the same CSS
+   variables as the editor so it follows light/dark automatically.
+   Caps at viewport height so phones never lose the bottom row below
+   the chrome bar — the card scrolls internally if content overflows. */
+dialog#welcome-dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--fg);
+  max-width: min(320px, calc(100% - 32px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  outline: none;
+}
+dialog#welcome-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.welcome-card {
+  background: var(--bg);
+  border: 1px solid var(--muted);
+  border-radius: 12px;
+  padding: 16px 22px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.4;
+  /* Use viewport units directly, not `100%` of parent. The parent <form>
+     inside <dialog> has no explicit height (only a max-height on the
+     dialog), so `max-height: 100%` resolves unpredictably across
+     browsers and on iOS Safari collapses the card to roughly the height
+     of the h1, hiding everything below it. */
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.welcome-icon-btn {
+  display: block;
+  /* Cap the icon at the size it was at the old 240px card width so the
+     wider dialog gets its extra room without inflating the hero. */
+  width: 100%;
+  max-width: 196px;
+  margin: 0 auto 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.welcome-icon-btn:focus-visible {
+  /* Chromatic focus ring — 2px box-shadows nudged ±2px in magenta+cyan
+     echo the icon's own RGB split. The thin bone outline anchors the
+     shape so the focus is still legible without the ghosts. */
+  outline: 1px solid var(--gx-bone);
+  outline-offset: 2px;
+  box-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+.welcome-icon {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+}
+/* One-shot "boot glitch" on dialog open. welcome.js stamps .booting on
+   the button and removes it on its own animationend (filtered by name).
+   steps(1) keeps the phases blocky so it reads as a digital hiccup, not
+   a smooth fade. Same RGB-split vocabulary as the icon's static
+   chromatic aberration — just briefly amplified, then collapsed back. */
+.welcome-icon-btn.booting .welcome-icon {
+  animation: welcome-icon-boot 450ms steps(1, end);
+}
+@keyframes welcome-icon-boot {
+  0% {
+    opacity: 0;
+    transform: translate3d(-4px, 0, 0) skewX(5deg);
+    filter:
+      drop-shadow(6px 0 0 var(--gx-magenta))
+      drop-shadow(-6px 0 0 var(--gx-cyan));
+  }
+  12% {
+    opacity: 1;
+    transform: translate3d(4px, -1px, 0) skewX(-3deg);
+    /* channel swap + vertical ghost — the "signal lock" stutter */
+    filter:
+      drop-shadow(5px 1px 0 var(--gx-cyan))
+      drop-shadow(-5px -1px 0 var(--gx-magenta));
+  }
+  24% {
+    opacity: 0.88;
+    transform: translate3d(-5px, 1px, 0);
+    filter:
+      drop-shadow(7px 0 0 var(--gx-magenta))
+      drop-shadow(-7px 0 0 var(--gx-cyan));
+  }
+  36% {
+    opacity: 1;
+    transform: translate3d(4px, 0, 0) skewX(3deg);
+    filter:
+      drop-shadow(4px -1px 0 var(--gx-magenta))
+      drop-shadow(-4px 1px 0 var(--gx-cyan));
+  }
+  50% {
+    transform: translate3d(-3px, -1px, 0) skewX(-2deg);
+    filter:
+      drop-shadow(3px 0 0 var(--gx-cyan))
+      drop-shadow(-3px 0 0 var(--gx-magenta));
+  }
+  64% {
+    opacity: 0.94;
+    transform: translate3d(2px, 1px, 0);
+    filter:
+      drop-shadow(4px 0 0 var(--gx-magenta))
+      drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  78% {
+    transform: translate3d(-2px, 0, 0) skewX(1deg);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta));
+  }
+  90% {
+    transform: translate3d(1px, 0, 0);
+    filter:
+      drop-shadow(1px 0 0 var(--gx-cyan))
+      drop-shadow(-1px 0 0 var(--gx-magenta));
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-icon-btn.booting .welcome-icon { animation: none; }
+}
+/* One-shot glitch-IN on dialog open: the whole card boots in with the same
+   RGB-split + jitter family as the icon, just shorter, so the main window
+   itself feels like it snaps in rather than only the icon. welcome.js stamps
+   .glitching-in and clears it on animationend. Declared BEFORE the glitch-out
+   rule so a dismiss that lands mid-stamp still wins the cascade (equal
+   specificity → later source wins). */
+.welcome-card.glitching-in {
+  animation: welcome-card-glitch-in 220ms steps(1, end);
+}
+@keyframes welcome-card-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(-3px, -1px, 0) skewX(-2deg);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  30% {
+    opacity: 1;
+    transform: translate3d(3px, 1px, 0) skewX(1deg);
+    filter: drop-shadow(2px 0 0 var(--gx-cyan)) drop-shadow(-2px 0 0 var(--gx-magenta));
+  }
+  55% {
+    opacity: 0.92;
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  80% {
+    opacity: 1;
+    transform: translate3d(1px, 0, 0);
+    filter: drop-shadow(1px 0 0 var(--gx-magenta));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+/* Version stamp gets its own quick RGB-split shudder during the boot, on top
+   of its resting 1px chromatic split. */
+.welcome-card.glitching-in .welcome-version {
+  animation: welcome-version-glitch 220ms steps(1, end);
+}
+@keyframes welcome-version-glitch {
+  0%, 100% {
+    transform: none;
+    text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+  }
+  25% {
+    transform: translateX(-1px);
+    text-shadow: 3px 0 0 var(--gx-magenta), -3px 0 0 var(--gx-cyan);
+  }
+  50% {
+    transform: translateX(1px);
+    text-shadow: -2px 0 0 var(--gx-magenta), 2px 0 0 var(--gx-cyan);
+  }
+  75% {
+    transform: translateX(-1px);
+    text-shadow: 2px 0 0 var(--gx-cyan), -2px 0 0 var(--gx-magenta);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-card.glitching-in,
+  .welcome-card.glitching-in .welcome-version { animation: none; }
+}
+/* Glitch-out on dialog dismiss. welcome.js stamps .glitching-out on the
+   card, plays this, then calls dialog.close() on animationend. Same
+   RGB-split + jitter family as welcome-icon-boot; collapses to opacity 0
+   so the native close (which drops the top layer) is seamless. */
+.welcome-card.glitching-out {
+  animation: welcome-card-glitch-out 180ms steps(1, end);
+}
+@keyframes welcome-card-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  35% {
+    opacity: 1;
+    transform: translate3d(-3px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(4px, -1px, 0);
+    filter: drop-shadow(5px 0 0 var(--gx-magenta)) drop-shadow(-5px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+    filter: drop-shadow(6px 0 0 var(--gx-magenta)) drop-shadow(-6px 0 0 var(--gx-cyan));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-card.glitching-out { animation: none; }
+}
+/* Spin animation on icon click — reuses the menu-spin keyframe from
+   the top-right hamburger so the easing/timing matches: snap to speed
+   then decelerate over 1 s. Placed AFTER .booting in source order so a
+   click mid-boot wins the cascade and the spin feedback is preserved. */
+.welcome-icon-btn.spinning .welcome-icon {
+  animation: menu-spin 1000ms cubic-bezier(0.05, 0.9, 0.25, 1);
+}
+/* Explicit ✕ close for the welcome dialog — Escape / backdrop click are
+   invisible dismiss paths on touch and to screen-reader users. Pinned to
+   the card's top-right corner; same chromatic-aberration X treatment as
+   #find-close. The card is the positioning context. */
+.welcome-card { position: relative; }
+.welcome-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+.welcome-close:hover {
+  border-color: var(--muted);
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+.welcome-close:focus-visible {
+  outline: 1px solid var(--gx-cyan);
+  outline-offset: 1px;
+  border-color: var(--muted);
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+/* Comfortable thumb target on touch. */
+@media (any-hover: none) and (pointer: coarse) {
+  .welcome-close { min-width: 36px; min-height: 36px; }
+}
+
+.welcome-sub {
+  margin: 0 0 2px;
+  color: #7A8590;
+  font-size: 14px;
+  text-align: center;
+}
+.welcome-version {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--gx-bone);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  letter-spacing: 0.5px;
+  /* RGB-split echo of the icon's chromatic aberration — small enough
+     to read as decorative, not as broken type. */
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+/* Clickable shortcut rows. Each runs its associated editor action when
+   clicked (Save saves, New starts a new file, etc.).
+   Subtle at-rest affordance (faint background + faint border) so the
+   rows read as tappable buttons even on touch where there's no hover.
+   :hover and :focus-visible are styled differently so programmatic
+   focus (which iOS Safari treats as :focus-visible) doesn't make "New"
+   look pre-selected on dialog open.
+   Layout: 2x2 grid — New/Open down the left column, Save/Find down the
+   right. Compactifies the vertical footprint so the heads-up notice gets
+   horizontal room instead of stacking down. */
+.welcome-shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+.welcome-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 12px;
+  background: rgba(127, 127, 127, 0.05);
+  border: 1px solid rgba(127, 127, 127, 0.18);
+  border-radius: 6px;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+.welcome-shortcut:hover {
+  background: rgba(127, 127, 127, 0.18);
+  border-color: var(--muted);
+}
+.welcome-shortcut:focus-visible {
+  outline: 2px solid var(--muted);
+  outline-offset: -2px;
+}
+.welcome-shortcut:active {
+  background: rgba(127, 127, 127, 0.25);
+}
+/* Click-feedback flash. Triggered by JS adding .activating on click,
+   removed once the action runs. Visible on both touch and mouse so
+   users always get confirmation their selection registered. */
+.welcome-shortcut.activating {
+  animation: welcome-flash 135ms ease-out;
+}
+@keyframes welcome-flash {
+  /* Mid-flash picks up the icon's chromatic split for ~half a frame so
+     the press registers as a quick "glitched" pop, then settles back
+     to the at-rest treatment. */
+  0%, 40% {
+    background: rgba(255, 61, 138, 0.18);
+    border-color: var(--gx-magenta);
+    text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+  }
+  100% {
+    background: rgba(127, 127, 127, 0.05);
+    border-color: rgba(127, 127, 127, 0.18);
+    text-shadow: none;
+  }
+}
+/* Reduced-motion: gate the click-feedback spins + the shortcut flash. These
+   were the only animations left ungated; per the project contract all motion
+   degrades to an instant state under prefers-reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  #menu-toggle.spinning img,
+  .welcome-icon-btn.spinning .welcome-icon { animation: none; }
+  .welcome-shortcut.activating { animation: none; }
+}
+.welcome-shortcut-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #7A8590;
+  white-space: nowrap;
+  font-size: 13px;
+}
+/* Hide keyboard-shortcut hints on touch-only devices — they don't apply,
+   but the rows themselves are still tappable. */
+@media (any-hover: none) and (pointer: coarse) {
+  .welcome-shortcut-key { display: none; }
+}
+
+/* PWA install is now offered as a one-click action inside the Heads-up box
+   (welcome.js `install-app` notice → renderer `installApp` handler), so the
+   old standalone .welcome-install button was removed to keep a single,
+   consistent install affordance alongside the update notice. */
+
+/* Info popup — terminal-window aesthetic pulled from the icon's
+   chromatic-aberration palette. Monospaced, lowercased, magenta border
+   with a soft magenta+cyan glow, each glyph carries the icon's RGB
+   split as a 1px text-shadow. Position is set on the element by JS based
+   on the icon's bounding rect; `position: fixed` survives the dialog's
+   internal overflow (the dialog is in the top layer, so fixed children
+   render above its backdrop). Stays on system fonts (no CSP-impacting
+   webfont). */
+.info-popup {
+  position: fixed;
+  transform: translateY(-50%);
+  background: var(--gx-ink);
+  color: var(--gx-bone);
+  border: 1px solid var(--gx-magenta);
+  border-radius: 2px;
+  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  text-transform: lowercase;
+  min-width: 160px;
+  max-width: 220px;
+  z-index: 9999;
+  box-shadow:
+    0 0 0 1px var(--gx-ink),
+    0 0 12px rgba(255, 61, 138, 0.45),
+    0 0 24px rgba(207, 233, 255, 0.15);
+}
+.info-popup[hidden] { display: none; }
+.info-popup p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+.info-popup p + p { margin-top: 4px; }
+.info-popup a {
+  color: var(--gx-cyan);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--gx-cyan);
+}
+.info-popup a:hover {
+  color: var(--gx-magenta);
+  border-bottom-color: var(--gx-magenta);
+}
+/* Crypto donation (ETH / BTC): a click-to-copy control styled like the popup's links.
+   inline-block so the copy-confirmation glitch (transform/filter) applies —
+   inline boxes can't be transformed. The abbreviated address shows at rest;
+   on .copied we swap to a check mark with a one-shot RGB-split glitch
+   (steps()-timed, reduced-motion gated), matching the find-bar / arrow
+   glitch vocabulary. */
+.info-crypto {
+  display: inline-block;
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  color: var(--gx-cyan);
+  border-bottom: 1px dotted var(--gx-cyan);
+  cursor: pointer;
+}
+.info-crypto:hover,
+.info-crypto:focus-visible {
+  color: var(--gx-magenta);
+  border-bottom-color: var(--gx-magenta);
+  outline: none;
+}
+/* The "copied ✓" confirmation rides in the same slot as the address; only
+   one of the two shows at a time. */
+.info-crypto .info-crypto-done { display: none; }
+.info-crypto.copied .info-crypto-text { display: none; }
+.info-crypto.copied .info-crypto-done {
+  display: inline;
+  color: var(--gx-bone);
+  text-shadow: 1px 0 0 var(--gx-magenta), -1px 0 0 var(--gx-cyan);
+}
+.info-crypto.copied { animation: crypto-copied-glitch 200ms steps(1, end); }
+@keyframes crypto-copied-glitch {
+  0% {
+    transform: translate3d(-2px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-magenta)) drop-shadow(-3px 0 0 var(--gx-cyan));
+  }
+  50% {
+    transform: translate3d(2px, 0, 0);
+    filter: drop-shadow(3px 0 0 var(--gx-cyan)) drop-shadow(-3px 0 0 var(--gx-magenta));
+  }
+  100% { transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .info-crypto.copied { animation: none; }
+}
+/* Chevron: two stacked triangles (outline + fill) on the popup's left
+   edge, pointing at the icon. Recolored to match the new palette. */
+.info-popup::before,
+.info-popup::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+}
+.info-popup::before {
+  right: 100%;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid var(--gx-magenta);
+}
+.info-popup::after {
+  right: 100%;
+  margin-right: -1px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 7px solid var(--gx-ink);
+}
+
+/* Heads-up notices in the welcome dialog. Data-driven by
+   headsUpNotices() in welcome.js — single active notice renders
+   inline ("Heads up — …"); multiple render under a shared "Heads up:"
+   header with a bulleted list. */
+.welcome-heads-up {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.welcome-heads-up a {
+  color: var(--fg);
+  text-decoration: underline;
+}
+/* Actionable heads-up notice (e.g. "Click here to update") rendered as a
+   <button> — styled to read like the inline link above. */
+.welcome-heads-up-action {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--fg);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.welcome-heads-up p {
+  margin: 0;
+}
+.welcome-heads-up strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.welcome-heads-up-intro {
+  margin: 0 0 4px;
+}
+.welcome-heads-up-items {
+  margin: 0;
+  padding-left: 18px;
+}
+.welcome-heads-up-items li {
+  margin: 2px 0;
+}
+/* Determinate progress bar shown in place of the notice while a desktop update
+   downloads. Glitch-flavoured: magenta fill, steps()-timed, motion-gated. */
+.welcome-update-track {
+  margin-top: 8px;
+  height: 4px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.welcome-update-fill {
+  width: 0;
+  height: 100%;
+  background: var(--gx-magenta);
+  transition: width 140ms steps(5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-update-fill { transition: none; }
+}
+
+/* Toast notices (save/open failures, draft recovery) — notice.js appends
+   cards into the fixed #notice-region at bottom-center. Terminal-window
+   aesthetic from the same family as .info-popup: ink background, monospace,
+   RGB-split text; errors trade the muted border for magenta + a soft glow.
+   Glitch in/out mirror the find bar's steps() vocabulary and are gated
+   behind prefers-reduced-motion per the project contract. */
+#notice-region {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, calc(100vw - 24px));
+  /* The empty region must never eat clicks aimed at the editor. */
+  pointer-events: none;
+}
+.notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--gx-ink);
+  color: var(--gx-bone);
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.notice-error {
+  border-color: var(--gx-magenta);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    0 0 12px rgba(255, 61, 138, 0.35);
+}
+.notice-text {
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+  /* Long error strings wrap instead of pushing the buttons off-screen. */
+  overflow-wrap: anywhere;
+}
+/* Action buttons (Restore / Discard) — chromatic underlined controls in the
+   same voice as the info popup's links. */
+.notice-action {
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--gx-cyan);
+  border-bottom: 1px dotted var(--gx-cyan);
+}
+.notice-action:hover {
+  color: var(--gx-magenta);
+  border-bottom-color: var(--gx-magenta);
+}
+/* Keyboard focus gets a real ring, not just a hue shift. */
+.notice-action:focus-visible {
+  color: var(--gx-magenta);
+  border-bottom-color: var(--gx-magenta);
+  outline: 1px solid var(--gx-cyan);
+  outline-offset: 2px;
+}
+.notice-dismiss {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  margin: 0;
+  padding: 0 2px;
+  min-width: 22px;
+  min-height: 22px;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--gx-bone);
+  text-shadow:
+    1px 0 0 var(--gx-magenta),
+    -1px 0 0 var(--gx-cyan);
+}
+.notice-dismiss:hover {
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+.notice-dismiss:focus-visible {
+  outline: 1px solid var(--gx-cyan);
+  outline-offset: 1px;
+  text-shadow:
+    2px 0 0 var(--gx-magenta),
+    -2px 0 0 var(--gx-cyan);
+}
+.notice.notice-glitch-in  { animation: notice-glitch-in 150ms steps(1, end); }
+.notice.notice-glitch-out { animation: notice-glitch-out 135ms steps(1, end); animation-fill-mode: forwards; }
+@keyframes notice-glitch-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(-2px, -1px, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  65% {
+    transform: translate3d(1px, 0, 0);
+    filter: drop-shadow(1px 0 0 var(--gx-magenta)) drop-shadow(-1px 0 0 var(--gx-cyan));
+  }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes notice-glitch-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  40% {
+    opacity: 1;
+    transform: translate3d(2px, 0, 0);
+    filter: drop-shadow(2px 0 0 var(--gx-magenta)) drop-shadow(-2px 0 0 var(--gx-cyan));
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(-3px, 1px, 0);
+    filter: drop-shadow(4px 0 0 var(--gx-magenta)) drop-shadow(-4px 0 0 var(--gx-cyan));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+    filter: drop-shadow(5px 0 0 var(--gx-magenta)) drop-shadow(-5px 0 0 var(--gx-cyan));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice.notice-glitch-in,
+  .notice.notice-glitch-out { animation: none; }
+}
+/* Bigger touch targets for the notice controls on phones. */
+@media (any-hover: none) and (pointer: coarse) {
+  .notice { font-size: 13px; }
+  .notice-dismiss { min-width: 36px; min-height: 36px; }
+}
+
+/* Touch-device font-size bump. iOS Safari auto-zooms any input or
+   textarea with font-size < 16px when it receives focus — tapping
+   into the editor or the find input shifts the entire layout. Lifting
+   to 16px on touch-only viewports defeats that without disabling
+   pinch-zoom globally (which would be an a11y trade-off the user
+   didn't ask for). The two find-overlay mirrors must track the
+   textarea's font-size or character positions drift, so they bump
+   together. #line-gutter-inner is decorative (aria-hidden) and stays
+   at 14px so multi-digit numbers keep fitting the 40px rail; to stay
+   aligned despite the smaller font, line-numbers.js pins its line-height
+   (in px) to the editor's measured row height every paint, so the
+   numbers sit on their rows instead of creeping upward one per line. */
+@media (any-hover: none) and (pointer: coarse) {
+  #text-editor,
+  #editor-highlights-inner,
+  #editor-mirror,
+  #find-bar input {
+    font-size: 16px;
+  }
+  /* Bigger tap targets on phones — the desktop 22x20-ish buttons are
+     impossible to hit accurately with a thumb, especially the X close
+     button. ~38-40px height puts every find control inside the Apple
+     HIG comfort zone without inflating the desktop layout. */
+  .find-btn, .find-toggle {
+    min-width: 36px;
+    padding: 6px 10px;
+  }
+  /* The pinned close X needs a wider reserved gutter + a larger hit area. */
+  #find-bar { padding-right: 46px; }
+  #find-close {
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

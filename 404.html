@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; form-action 'none'; style-src 'self'; script-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="dedtxt" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <!-- SVG favicon (scales crisply on hi-DPI tabs), with the PNG as a fallback
+       for engines that don't render SVG favicons. -->
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="icon" href="./icons/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="./icons/icon-512.png" />
+
+  <!-- SEO + social cards -->
+  <meta name="description" content="dedtxt — a dead simple, dependency-free plain-text editor that runs in any modern browser and installs as a PWA. No accounts, no tracking, works offline." />
+  <meta name="author" content="Chris Portka" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://dedtxt.app/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="dedtxt" />
+  <meta property="og:title" content="dedtxt — a dead simple plain-text editor" />
+  <meta property="og:description" content="A dependency-free plain-text editor that runs in your browser and installs as a PWA. No accounts, no tracking, works offline." />
+  <meta property="og:url" content="https://dedtxt.app/" />
+  <meta property="og:image" content="https://dedtxt.app/icons/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="The dedtxt glitch skull logo and wordmark on a dark background." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="dedtxt — a dead simple plain-text editor" />
+  <meta name="twitter:description" content="A dependency-free plain-text editor that runs in your browser and installs as a PWA. No accounts, no tracking, works offline." />
+  <meta name="twitter:image" content="https://dedtxt.app/icons/og-image.png" />
+  <meta name="twitter:image:alt" content="The dedtxt glitch skull logo and wordmark on a dark background." />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "dedtxt",
+    "url": "https://dedtxt.app/",
+    "description": "A dead simple, dependency-free plain-text editor for the browser, installable as a PWA.",
+    "applicationCategory": "Productivity",
+    "operatingSystem": "Any",
+    "featureList": [
+      "Works offline as an installable PWA",
+      "Find and replace with regex",
+      "Opens and saves real files (File System Access API)",
+      "Crash / draft recovery of unsaved text",
+      "No accounts, no tracking, zero runtime dependencies"
+    ],
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "Chris Portka" }
+  }
+  </script>
+
+  <link rel="stylesheet" href="./styles.css" />
+  <title>dedtxt</title>
+</head>
+<body>
+  <!-- Visually-hidden page heading: the UI is a full-viewport editor with no
+       chrome for a visible h1, but crawlers + screen readers still get one. -->
+  <h1 class="visually-hidden">dedtxt — a dead simple plain-text editor</h1>
+  <div id="editor-wrap">
+    <div id="line-gutter" aria-hidden="true"><div id="line-gutter-inner"></div></div>
+    <div id="editor-highlights" aria-hidden="true"><div id="editor-highlights-inner"></div></div>
+    <textarea id="text-editor" aria-label="Text editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft"></textarea>
+    <div id="editor-mirror" aria-hidden="true"></div>
+    <form id="find-bar" role="search" aria-label="Find in document" hidden>
+      <div class="find-row">
+        <input type="text" id="find-input" placeholder="find" aria-label="Find" autocomplete="off" spellcheck="false" />
+        <span id="find-counter" class="find-counter" role="status" aria-live="polite">0 / 0</span>
+        <button type="button" id="find-prev" class="find-btn" title="Previous (Shift+Enter)" aria-label="Previous match">↑</button>
+        <button type="button" id="find-next" class="find-btn" title="Next (Enter)" aria-label="Next match">↓</button>
+        <button type="button" id="find-case" class="find-toggle" title="Case sensitive" aria-pressed="false" aria-label="Case sensitive">Aa</button>
+        <button type="button" id="find-word" class="find-toggle" title="Whole word" aria-pressed="false" aria-label="Whole word">\b</button>
+        <button type="button" id="find-regex" class="find-toggle" title="Regular expression" aria-pressed="false" aria-label="Regular expression">.*</button>
+        <button type="button" id="find-replace-toggle" class="find-toggle" title="Toggle replace" aria-pressed="false" aria-label="Toggle replace">⇄</button>
+        <button type="button" id="find-close" class="find-btn" title="Close (Esc)" aria-label="Close find bar">✕</button>
+      </div>
+      <div class="find-row" id="find-replace-row" hidden>
+        <input type="text" id="find-replace-input" placeholder="replace" aria-label="Replace with" autocomplete="off" spellcheck="false" />
+        <button type="button" id="find-replace" class="find-btn find-replace-btn" title="Replace current match">Replace</button>
+        <button type="button" id="find-replace-all" class="find-btn find-replace-btn" title="Replace all matches">All</button>
+      </div>
+    </form>
+  </div>
+  <button id="menu-toggle" type="button" aria-haspopup="dialog" aria-label="Show menu" title="Menu">
+    <img src="./icons/icon-192.png" alt="" aria-hidden="true" />
+  </button>
+
+  <button id="scroll-top" type="button" class="scroll-arrow" aria-label="Scroll to start" title="Scroll to start" hidden>↑</button>
+  <button id="scroll-bottom" type="button" class="scroll-arrow" aria-label="Scroll to end" title="Scroll to end" hidden>↓</button>
+
+  <!-- Toast notices (save/open failures, draft recovery). Static so the
+       aria-live region exists at page load; notice.js appends cards here.
+       aria-atomic=false (and no role=alert, whose implicit atomic=true would
+       re-announce EVERY notice) so only the newly-added card is read out. -->
+  <div id="notice-region" aria-live="assertive" aria-atomic="false"></div>
+
+  <dialog id="welcome-dialog" aria-label="dedtxt menu">
+    <form method="dialog" class="welcome-card">
+      <button type="button" id="welcome-close" class="welcome-close" aria-label="Close menu" title="Close">✕</button>
+      <button type="button" class="welcome-icon-btn" id="welcome-icon-btn" aria-label="About dedtxt" aria-controls="info-popup" aria-expanded="false">
+        <img class="welcome-icon" src="./icons/icon-512.png" alt="" aria-hidden="true" />
+      </button>
+      <p class="welcome-sub">A dead simple plain-text editor.</p>
+      <p class="welcome-version"><span id="welcome-version">v1.0.1</span></p>
+      <div class="welcome-shortcuts">
+        <button type="button" class="welcome-shortcut" data-action="new">
+          <span>New</span>
+          <span class="welcome-shortcut-key" data-key="new">Ctrl + N</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="save">
+          <span>Save</span>
+          <span class="welcome-shortcut-key" data-key="save">Ctrl + S</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="open">
+          <span>Open</span>
+          <span class="welcome-shortcut-key" data-key="open">Ctrl + O</span>
+        </button>
+        <button type="button" class="welcome-shortcut" data-action="find">
+          <span>Find</span>
+          <span class="welcome-shortcut-key" data-key="find">Ctrl + F</span>
+        </button>
+      </div>
+      <div class="welcome-heads-up" hidden></div>
+    </form>
+    <div id="info-popup" class="info-popup" hidden>
+      <p><a href="https://venmo.com/portka" target="_blank" rel="noopener">venmo me a donation</a></p>
+      <p>
+        <button type="button" id="donate-eth" class="info-crypto"
+                data-address="0x354c2aB3f7a23F74cdDC745B26aEA53EC1602203"
+                aria-label="Copy Ethereum donation address to clipboard">
+          <span class="info-crypto-text">donate eth: <span id="donate-eth-addr">0x354c…2203</span></span>
+          <span class="info-crypto-done" aria-hidden="true">copied ✓</span>
+        </button>
+      </p>
+      <p>
+        <button type="button" id="donate-btc" class="info-crypto"
+                data-address="3J4XRAwhHwJWQb4F4qw5yTCrs5Zg1s1vaR"
+                aria-label="Copy Bitcoin donation address to clipboard">
+          <span class="info-crypto-text">donate btc: <span id="donate-btc-addr">3J4X…1vaR</span></span>
+          <span class="info-crypto-done" aria-hidden="true">copied ✓</span>
+        </button>
+      </p>
+      <p>by chris portka</p>
+      <p>
+        <a href="https://github.com/cportka/ded-txt" target="_blank" rel="noopener">github</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/cportka/ded-txt/blob/main/PRIVACY.md" target="_blank" rel="noopener">privacy</a>
+      </p>
+    </div>
+  </dialog>
+
+  <script type="module" src="./renderer.js"></script>
+</body>
+</html>

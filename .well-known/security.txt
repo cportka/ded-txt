@@ -1,0 +1,5 @@
+Contact: https://github.com/cportka/ded-txt/security/advisories/new
+Contact: https://github.com/cportka/ded-txt/issues
+Expires: 2027-07-07T01:10:21.112Z
+Preferred-Languages: en
+Canonical: https://dedtxt.app/.well-known/security.txt

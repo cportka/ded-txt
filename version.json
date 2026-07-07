@@ -1,0 +1,111 @@
+{
+  "version": "1.0.1",
+  "nativeMin": "1.0.0-rc.49",
+  "buildId": "14c9606f5871",
+  "files": [
+    {
+      "path": "drafts.js",
+      "sha256": "3a356c19950c0117c07d1915c8d0a47d733aa4053ea6123508ac7604dd6d6949"
+    },
+    {
+      "path": "find.js",
+      "sha256": "07cbc0787a0c4c29f8f1dde6b5fcd36798f59988a6b97551dc326f41ebdfa57d"
+    },
+    {
+      "path": "icons/favicon.png",
+      "sha256": "a3d8c6d8eec974d8068d26fbd533fbd1d9adde2b7f1e89c86166ff68db50ef5f"
+    },
+    {
+      "path": "icons/icon-192.png",
+      "sha256": "6d09a7424b9afe6270898588cb84f68daf6c89f40f9623248872d8106d0d9563"
+    },
+    {
+      "path": "icons/icon-512.png",
+      "sha256": "3a7caa865443a8ce0464efcd1f47dc7fda22881ef22c5dfdb8e99d739565e85b"
+    },
+    {
+      "path": "icons/icon-maskable-512.png",
+      "sha256": "6cf90285f61add576b8798be631c12694134afdce21b50479e36c41cfd9fe84f"
+    },
+    {
+      "path": "icons/icon.svg",
+      "sha256": "008619e8b2db2902ba80cfd78b7f7c3b8065aa6d4aa823214e2062652e4172ce"
+    },
+    {
+      "path": "icons/og-image.png",
+      "sha256": "1f7b535bba29198b60d686564386165b0150ebd356f6c08fea15b4a1ab1cebcd"
+    },
+    {
+      "path": "index.html",
+      "sha256": "ad1f0d3c696522bcc87f3f8f469ff491e867844e64429bf04dfc3ff1a2c53dbe"
+    },
+    {
+      "path": "line-numbers.js",
+      "sha256": "f80751e451c138b7d5800f61a44624dd5b0549418c5cc8b613db99bace1fb503"
+    },
+    {
+      "path": "manifest.webmanifest",
+      "sha256": "71d57ae579001c519d9f2bf38ee19f4e81c28e6c5ad8fa5b8e7de5ccd64e07f4"
+    },
+    {
+      "path": "notice.js",
+      "sha256": "5ae236483bd6c5533e32defe4463e29fa0c80abec75f599a458de2334c88b509"
+    },
+    {
+      "path": "platform/index.js",
+      "sha256": "75ffb5d4e9bcb7dabad51aaff33c8d9abe7332142804bb1e201c3aee51933d55"
+    },
+    {
+      "path": "platform/tauri.js",
+      "sha256": "33f8731a58c627d9494a5052f1a96d14c9a68f0c61a276ae7d2c965a92d4ed85"
+    },
+    {
+      "path": "platform/web.js",
+      "sha256": "7561ce6a663b73c2c245ae14420baae629a77f79f2bb8b3638675b5973e32cd2"
+    },
+    {
+      "path": "pwa-install.js",
+      "sha256": "5350ad93f1f94031f01103c0527cc906c60ec3aba90e0fdbb1b3e12ace9a3b1f"
+    },
+    {
+      "path": "renderer.js",
+      "sha256": "386b256613d65d4ecc8d45a3d7ac559ce1f6117d59e6422a79614a37c9229e90"
+    },
+    {
+      "path": "screenshots/editor-narrow.png",
+      "sha256": "7a300fdd8a04b0f80e692de300b4b5bdd8e5b6cf1c68242478fd8c1ebfc9ed7f"
+    },
+    {
+      "path": "screenshots/editor-wide.png",
+      "sha256": "ff221e19ec99f9118367449157451e6b2e1a3099ee6bad87691aa90e47cff92b"
+    },
+    {
+      "path": "scroll-arrows.js",
+      "sha256": "a3996824148e718a59b55f95b518eca516571123b4036cd28c41532dca10e5f8"
+    },
+    {
+      "path": "styles.css",
+      "sha256": "7975ee559fd7c3e98ac107ff150a8823b534ce5e47417683e74f24e1e97ec929"
+    },
+    {
+      "path": "sw-update.js",
+      "sha256": "4d14995d6bbbe9869e894bfa5c07d4719be3a5652d150110167f4bfccd51caec"
+    },
+    {
+      "path": "sw.js",
+      "sha256": "ad175746dbee6201695a07c35dc09c2c3bb7a030c40196d9ace548f7a49c1932"
+    },
+    {
+      "path": "update.js",
+      "sha256": "ad539257d59d164f55f167daa01ee566c96877cbd2fe45c2280ab3ee390b939d"
+    },
+    {
+      "path": "version.js",
+      "sha256": "c673d1f225f80d9dab38a8eaa088123bd6f1fd8145c16248b3cc6ca9b2991102"
+    },
+    {
+      "path": "welcome.js",
+      "sha256": "fa785f8c7e4645719353f9df552176bb47069c7e290565c2c2f34a35cd1e908e"
+    }
+  ]
+}
