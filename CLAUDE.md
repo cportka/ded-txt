@@ -63,13 +63,13 @@ on both but currently unused).
 - **All motion is gated behind `prefers-reduced-motion`** (project contract).
   New animated UI needs a matching reduced-motion rule.
 - **Native-only save** (rc.58): no in-app filename prompt. Chromium = FSA silent
-  re-save; Firefox/Safari = a download each save (it returns `{ok:true}` it can't
-  actually verify — see FUTURE.md). Default name `untitled.txt`; a typed
-  extension is honored.
+  re-save; Firefox/Safari = a download each save, reported as
+  `{ok:true, unconfirmed:true}` so the buffer stays dirty (rc.61). Default name
+  `untitled.txt`; a typed extension is honored.
 - **Binary round-trip**: invalid-UTF-8 or NUL-containing files load as Latin-1
   one-char-per-byte (`isBinary`), and save re-encodes via `charCodeAt(i) & 0xff`.
-- **Save/open errors are currently swallowed** by the renderer (no error UI) —
-  the top FUTURE.md 1.0 item.
+- **Save/open errors surface as toasts** via `notice.js` (rc.61); a canceled
+  picker is a user decision and stays silent (`formatResultError`).
 
 ## Release / PR workflow (standing rules)
 This repo follows the **Portka standard** (`.claude/CLAUDE.md`): update `main`
@@ -85,8 +85,9 @@ the PR link. Repo-specific rules on top of it:
   `tests/version-sync.test.mjs` enforce that `package.json` and `CHANGELOG.md`
   agree (CI runs both).
 - **Add a `CHANGELOG.md` entry.**
-- Before a PR: `npm test` (Node `--test`) and lint with the **pinned ESLint 8**:
-  `npx --yes eslint@8.57.1 src/ test/ scripts/` (the repo `.eslintrc` can't be
+- Before a PR: `npm test` (Node `--test`), `npm run build:web && npm run test:e2e`
+  (browser suites; CI runs them before deploying), and lint with the **pinned ESLint 8**:
+  `npx --yes eslint@8.57.1 src/ test/ scripts/ e2e/` (the repo `.eslintrc` can't be
   read by a globally-installed ESLint 9/10).
 - Develop on the session's feature branch, not `main`.
 - When approved/done: **merge to `main`** (pushing to `main` auto-deploys the PWA
@@ -109,4 +110,4 @@ UI should match (see `find-bar-glitch-in/out`, `welcome-card-glitch-out`,
 
 ## Docs map
 `README.md` (overview / build / keys), `CHANGELOG.md` (history — single source of
-truth), `FUTURE.md` (1.0 roadmap), `CONTRIBUTING.md`, `PRIVACY.md`, `src/llms.txt`.
+truth), `FUTURE.md` (post-1.0 roadmap), `CONTRIBUTING.md`, `PRIVACY.md`, `src/llms.txt`.

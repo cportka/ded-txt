@@ -32,7 +32,9 @@ cargo test --manifest-path src-tauri/Cargo.toml    # Rust unit tests
 
 ## Before you open a PR
 
-- `npm test` and `npm run lint` (`npx eslint@8.57.1 src/ test/ scripts/`) pass.
+- `npm test` and `npm run lint` (`npx eslint@8.57.1 src/ test/ scripts/ e2e/`) pass.
+- UI/CSS changes: `npm run build:web && npm run test:e2e` passes (headless
+  Chrome/Chromium; set `CHROME_PATH` if yours isn't auto-detected).
 - **Bump the version** ([SemVer](https://semver.org): PATCH for fixes, MINOR
   for backward-compatible features, MAJOR for breaking changes) in lockstep
   across `src/version.js`, `package.json`, `src-tauri/tauri.conf.json`, and

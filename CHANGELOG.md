@@ -8,6 +8,43 @@ release-candidate series; the version is kept in lockstep across
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.2]
+
+Mobile layout patch — triaged from [#75](https://github.com/cportka/ded-txt/issues/75)
+("Recover Unsaved looks real bad on mobile Safari"), plus the responsive audit
+it prompted.
+
+### Fixed
+- **The crash-recovery "Recovered … Restore / Discard" notice collapsed to one
+  character per line on phones** (#75) — a card taller than the screen, with
+  its top cut off. Two causes stacked: the notice region was centred with
+  `left: 50%` + `translateX(-50%)` and no width, so it shrink-to-fit into the
+  50vw to the right of `left`; and `overflow-wrap: anywhere` let the flex row
+  squeeze the message to its one-glyph min-content beside the nowrap buttons.
+  The region now spans gutter-to-gutter and the card is a grid (message owns a
+  real track); on narrow screens the message + ✕ sit on top with the actions
+  on their own row. Affected every mobile browser; Safari is where it showed.
+- **The about popup ran 120–150px off the right edge on every phone.** It was
+  always placed beside the icon; on narrow screens it now centres over the
+  icon, clamped on-screen (and re-anchors on rotate/resize).
+- **Find-bar buttons were only 28px tall on touch** despite the intended
+  thumb-sized targets — now 36px, with the fields matched.
+- Notice controls: bigger touch hit areas (without moving the dotted
+  underline), iOS native button chrome reset, and the region now *adds* the
+  safe-area insets so cards clear the home indicator and, in landscape, the
+  notch.
+
+### Added
+- **Committed browser e2e suites, run in CI before every deploy**
+  (`npm run test:e2e`): `e2e/responsive.e2e.js` walks every overlay across a
+  320px-phone → 1920px-desktop viewport matrix and asserts geometry (on-screen,
+  no sideways scroll, readable notice shape, ≥16px fields on touch for iOS's
+  focus-zoom, tap-target sizes); `e2e/flows.e2e.js` covers draft recovery,
+  save-error notices, Esc/Find, the one-click install line, the mobile vs.
+  desktop save hint, and a real service-worker v1→v2 update cycle. Both fail
+  on the pre-fix code. `playwright-core` (zero-dependency) is a new
+  devDependency only — it drives the CI runner's preinstalled Chrome.
+
 ## [1.0.1]
 
 ### Fixed
@@ -286,6 +323,7 @@ The bulk of the rc series refined a deliberately tiny editor. Highlights:
 - Established the platform-agnostic renderer with a `platform/{web,tauri}.js`
   split, the PWA (service worker + manifest), and `dedtxt.app` via GitHub Pages.
 
+[1.0.2]: https://github.com/cportka/ded-txt/releases/tag/v1.0.2
 [1.0.1]: https://github.com/cportka/ded-txt/releases/tag/v1.0.1
 [1.0.0]: https://github.com/cportka/ded-txt/releases/tag/v1.0.0
 [1.0.0-rc.60]: https://github.com/cportka/ded-txt/commits/main

@@ -1084,6 +1084,10 @@ dialog#welcome-dialog::backdrop {
   border-bottom: 7px solid transparent;
   border-right: 7px solid var(--gx-ink);
 }
+/* Narrow screens: renderer.js centres the bubble over the icon (there's no
+   room beside it), so there's no side for the chevron to point from. */
+.info-popup-centered::before,
+.info-popup-centered::after { display: none; }
 
 /* Heads-up notices in the welcome dialog. Data-driven by
    headsUpNotices() in welcome.js — single active notice renders
@@ -1156,24 +1160,36 @@ dialog#welcome-dialog::backdrop {
    behind prefers-reduced-motion per the project contract. */
 #notice-region {
   position: fixed;
-  left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
+  /* Span gutter-to-gutter and centre the cards inside. (The old
+     left: 50% + translateX(-50%) shrink-to-fit the region into the 50vw to
+     the right of `left`, capping every card at half the screen — on a phone
+     the draft-recovery offer collapsed to one character per line, #75.) The
+     calc()s ADD the safe-area insets so cards clear the home indicator and,
+     in landscape, the notch. */
+  left: calc(12px + env(safe-area-inset-left));
+  right: calc(12px + env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: 200;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  max-width: min(560px, calc(100vw - 24px));
   /* The empty region must never eat clicks aimed at the editor. */
   pointer-events: none;
 }
+/* Card layout: a grid with named areas, so the message owns a real track
+   (minmax(0, 1fr)) instead of being flex-shrunk to its min-content — the
+   other half of #75. Wide: [text][actions][✕] on one row. Narrow (below):
+   text + ✕ on top, actions on their own row. */
 .notice {
   pointer-events: auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "text close";
   align-items: center;
-  gap: 10px;
-  max-width: 100%;
+  column-gap: 12px;
+  row-gap: 6px;
+  max-width: min(560px, 100%);
   box-sizing: border-box;
   background: var(--gx-ink);
   color: var(--gx-bone);
@@ -1185,6 +1201,19 @@ dialog#welcome-dialog::backdrop {
   line-height: 1.5;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
+.notice-with-actions {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "text actions close";
+}
+@media (max-width: 480px) {
+  .notice-with-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "text    close"
+      "actions actions";
+  }
+  .notice-with-actions .notice-dismiss { align-self: start; }
+}
 .notice-error {
   border-color: var(--gx-magenta);
   box-shadow:
@@ -1192,15 +1221,31 @@ dialog#welcome-dialog::backdrop {
     0 0 12px rgba(255, 61, 138, 0.35);
 }
 .notice-text {
+  grid-area: text;
+  min-width: 0;
   text-shadow:
     1px 0 0 var(--gx-magenta),
     -1px 0 0 var(--gx-cyan);
-  /* Long error strings wrap instead of pushing the buttons off-screen. */
-  overflow-wrap: anywhere;
+  /* Long error strings / filenames wrap instead of pushing the buttons
+     off-screen. break-word (not `anywhere`): `anywhere` also shrinks the
+     text's min-content to a single character, which is exactly what let the
+     old flex layout squeeze the message into a one-glyph column. */
+  overflow-wrap: break-word;
+}
+.notice-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
 }
 /* Action buttons (Restore / Discard) — chromatic underlined controls in the
    same voice as the info popup's links. */
 .notice-action {
+  /* iOS Safari paints native button chrome unless appearance is reset. */
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
   background: transparent;
   border: none;
   margin: 0;
@@ -1223,6 +1268,9 @@ dialog#welcome-dialog::backdrop {
   outline-offset: 2px;
 }
 .notice-dismiss {
+  grid-area: close;
+  -webkit-appearance: none;
+  appearance: none;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -1291,10 +1339,17 @@ dialog#welcome-dialog::backdrop {
   .notice.notice-glitch-in,
   .notice.notice-glitch-out { animation: none; }
 }
-/* Bigger touch targets for the notice controls on phones. */
+/* Bigger touch targets for the notice controls on phones. The actions keep
+   their tight dotted-underline look; an invisible ::after extends each hit
+   area to ~44px tall without moving the underline or the layout. */
 @media (any-hover: none) and (pointer: coarse) {
-  .notice { font-size: 13px; }
-  .notice-dismiss { min-width: 36px; min-height: 36px; }
+  .notice { font-size: 13px; padding: 10px 12px; }
+  .notice-dismiss { min-width: 36px; min-height: 36px; margin: -8px -8px -8px 0; }
+  .notice-action::after {
+    content: "";
+    position: absolute;
+    inset: -12px -8px;
+  }
 }
 
 /* Touch-device font-size bump. iOS Safari auto-zooms any input or
@@ -1322,8 +1377,11 @@ dialog#welcome-dialog::backdrop {
      HIG comfort zone without inflating the desktop layout. */
   .find-btn, .find-toggle {
     min-width: 36px;
+    min-height: 36px; /* padding alone left them 28px tall (e2e-measured) */
     padding: 6px 10px;
   }
+  /* Match the fields to the buttons so the row reads as one even strip. */
+  #find-bar input { min-height: 36px; }
   /* The pinned close X needs a wider reserved gutter + a larger hit area. */
   #find-bar { padding-right: 46px; }
   #find-close {

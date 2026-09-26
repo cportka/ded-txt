@@ -189,17 +189,44 @@ document.querySelectorAll('.welcome-shortcut').forEach((btn) => {
 const welcomeIconBtn = document.getElementById('welcome-icon-btn');
 const infoPopup = document.getElementById('info-popup');
 
+const POPUP_GAP = 14;    // icon → popup, room for the chevron
+const POPUP_MARGIN = 8;  // keep the bubble clear of the viewport edge
+
+// Wide screens: beside the icon, chevron pointing back at it. Phones: the
+// welcome card is nearly full-width, so "beside the icon" is off-screen —
+// centre the bubble over the icon instead, clamped on-screen, and drop the
+// chevron (.info-popup-centered). Must run while the popup is visible: a
+// [hidden] element measures 0 wide. `top` is the bubble's vertical centre
+// (the CSS translateY(-50%)), clamped so the whole bubble stays in view.
 function positionInfoPopup() {
   if (!welcomeIconBtn || !infoPopup) return;
-  const rect = welcomeIconBtn.getBoundingClientRect();
-  infoPopup.style.top = (rect.top + rect.height / 2) + 'px';
-  infoPopup.style.left = (rect.right + 14) + 'px';
+  const icon = welcomeIconBtn.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  const vh = document.documentElement.clientHeight;
+  const pw = infoPopup.offsetWidth;
+  const ph = infoPopup.offsetHeight;
+  const beside = icon.right + POPUP_GAP;
+  const fitsBeside = beside + pw <= vw - POPUP_MARGIN;
+  const left = fitsBeside
+    ? beside
+    : Math.max(POPUP_MARGIN, Math.min(icon.left + icon.width / 2 - pw / 2, vw - POPUP_MARGIN - pw));
+  const centerY = icon.top + icon.height / 2;
+  const top = Math.max(POPUP_MARGIN + ph / 2, Math.min(centerY, vh - POPUP_MARGIN - ph / 2));
+  infoPopup.classList.toggle('info-popup-centered', !fitsBeside);
+  infoPopup.style.left = left + 'px';
+  infoPopup.style.top = top + 'px';
 }
+
+// Rotating a phone (or resizing a window) with the popup open re-anchors it.
+window.addEventListener('resize', () => {
+  if (infoPopup && !infoPopup.hidden) positionInfoPopup();
+});
 
 function showInfoPopup() {
   if (!infoPopup) return;
-  positionInfoPopup();
+  // Unhide first so it can be measured; both happen before the next paint.
   infoPopup.hidden = false;
+  positionInfoPopup();
   if (welcomeIconBtn) welcomeIconBtn.setAttribute('aria-expanded', 'true');
   // Move focus to the popup's first link so keyboard users land inside it
   // (it sits at the end of the dialog's DOM — tabbing there from the icon

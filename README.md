@@ -37,6 +37,7 @@ npm install
 npm start                 # Tauri dev window (Rust toolchain required)
 npm run serve:web         # Web build at http://127.0.0.1:5173
 npm test                  # JS unit tests (node:test, zero deps)
+npm run test:e2e          # browser e2e vs dist-web/ (run build:web first)
 ```
 
 Rust unit tests:
@@ -66,6 +67,7 @@ src-tauri/                Rust crate — the desktop "main process"
 build/                    Icon source (icon.svg) + master icon outputs
 scripts/                  Build scripts (web, icons)
 test/                     JS unit tests (node:test)
+e2e/                      Browser e2e: responsive layout + user flows
 CNAME                     dedtxt.app custom-domain claim for gh-pages
 ```
 

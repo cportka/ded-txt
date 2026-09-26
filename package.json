@@ -1,7 +1,7 @@
 {
   "name": "dedtxt",
   "productName": "dedtxt",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "dedtxt — a dead simple plain-text editor.",
   "author": {
     "name": "Chris Portka"
@@ -33,11 +33,13 @@
     "build:linux": "node scripts/build-icons.js && tauri build",
     "build:web": "node scripts/build-icons.js && node scripts/build-web.js",
     "serve:web": "node scripts/build-icons.js && node scripts/build-web.js && npx --yes http-server dist-web -p 5173 -c-1",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:e2e": "node --test --test-reporter=spec e2e/*.e2e.js"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "eslint": "^8.57.1",
+    "playwright-core": "~1.56.1",
     "png2icons": "^2.0.1",
     "sharp": "^0.34.5"
   }
