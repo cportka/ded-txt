@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg14" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a1a"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <clipPath id="clip14">
+      <rect width="1024" height="1024" rx="180" ry="180"/>
+    </clipPath>
+
+    <!-- Full skull symbol -->
+    <symbol id="skull14" overflow="visible">
+      <g transform="translate(512 420)">
+        <path fill="#f0ede4" d="
+          M -210 -40
+          C -210 -200, -120 -290, 0 -290
+          C 120 -290, 210 -200, 210 -40
+          C 210 30, 180 80, 150 110
+          L 150 170
+          C 150 195, 130 215, 105 215
+          L 60 215 L 60 175 L 30 175 L 30 215
+          L -30 215 L -30 175 L -60 175 L -60 215
+          L -105 215
+          C -130 215, -150 195, -150 170
+          L -150 110
+          C -180 80, -210 30, -210 -40 Z
+        "/>
+        <ellipse cx="-95" cy="-50" rx="55" ry="65" fill="#000000"/>
+        <ellipse cx="95" cy="-50" rx="55" ry="65" fill="#000000"/>
+        <path d="M 0 30 L -22 80 L 22 80 Z" fill="#000000"/>
+        <g stroke="#000000" stroke-width="6">
+          <line x1="-30" y1="135" x2="-30" y2="215"/>
+          <line x1="30" y1="135" x2="30" y2="215"/>
+          <line x1="0" y1="135" x2="0" y2="215"/>
+          <line x1="-90" y1="135" x2="90" y2="135"/>
+        </g>
+      </g>
+    </symbol>
+
+    <symbol id="skullSilhouette14" overflow="visible">
+      <path transform="translate(512 420)" d="
+        M -210 -40
+        C -210 -200, -120 -290, 0 -290
+        C 120 -290, 210 -200, 210 -40
+        C 210 30, 180 80, 150 110
+        L 150 170
+        C 150 195, 130 215, 105 215
+        L 60 215 L 60 175 L 30 175 L 30 215
+        L -30 215 L -30 175 L -60 175 L -60 215
+        L -105 215
+        C -130 215, -150 195, -150 170
+        L -150 110
+        C -180 80, -210 30, -210 -40 Z
+      "/>
+    </symbol>
+
+    <!-- Five slice bands — closer to #9's density -->
+    <clipPath id="slice14-a"><rect x="0" y="220" width="1024" height="34"/></clipPath>
+    <clipPath id="slice14-b"><rect x="0" y="318" width="1024" height="44"/></clipPath>
+    <clipPath id="slice14-c"><rect x="0" y="430" width="1024" height="28"/></clipPath>
+    <clipPath id="slice14-d"><rect x="0" y="500" width="1024" height="50"/></clipPath>
+    <clipPath id="slice14-e"><rect x="0" y="588" width="1024" height="30"/></clipPath>
+
+    <mask id="rest14">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <rect x="0" y="220" width="1024" height="34" fill="#000"/>
+      <rect x="0" y="318" width="1024" height="44" fill="#000"/>
+      <rect x="0" y="430" width="1024" height="28" fill="#000"/>
+      <rect x="0" y="500" width="1024" height="50" fill="#000"/>
+      <rect x="0" y="588" width="1024" height="30" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" rx="180" ry="180" fill="url(#bg14)"/>
+
+  <g clip-path="url(#clip14)">
+    <!-- Subtle whole-skull chromatic ghosts behind everything -->
+    <g transform="translate(12 3)" opacity="0.55">
+      <use href="#skullSilhouette14" fill="#ff3d8a"/>
+    </g>
+    <g transform="translate(-9 -2)" opacity="0.3">
+      <use href="#skullSilhouette14" fill="#cfe9ff"/>
+    </g>
+
+    <!-- Main skull, slice bands cut out -->
+    <g mask="url(#rest14)">
+      <use href="#skull14"/>
+    </g>
+
+    <!-- Each slice: pink edge fill, then displaced skull copy. Bigger offsets than #13. -->
+    <g clip-path="url(#slice14-a)">
+      <rect x="0" y="220" width="1024" height="34" fill="#ff3d8a"/>
+      <g transform="translate(-44 0)"><use href="#skull14"/></g>
+    </g>
+    <g clip-path="url(#slice14-b)">
+      <rect x="0" y="318" width="1024" height="44" fill="#ff3d8a"/>
+      <g transform="translate(56 0)"><use href="#skull14"/></g>
+    </g>
+    <g clip-path="url(#slice14-c)">
+      <rect x="0" y="430" width="1024" height="28" fill="#ff3d8a"/>
+      <g transform="translate(-28 0)"><use href="#skull14"/></g>
+    </g>
+    <g clip-path="url(#slice14-d)">
+      <rect x="0" y="500" width="1024" height="50" fill="#ff3d8a"/>
+      <g transform="translate(38 0)"><use href="#skull14"/></g>
+    </g>
+    <g clip-path="url(#slice14-e)">
+      <rect x="0" y="588" width="1024" height="30" fill="#ff3d8a"/>
+      <g transform="translate(-22 0)"><use href="#skull14"/></g>
+    </g>
+  </g>
+
+  <!-- Wordmark with chromatic aberration: enlarged from 140 -> 200, repositioned to fit between skull bottom (~655) and baselines (880/910). Letter-spacing nudged down so glyphs don't crowd the rounded corners. -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+     font-size="200" font-weight="700"
+     text-anchor="middle" letter-spacing="4">
+    <text x="524" y="855" fill="#ff3d8a" opacity="0.8">dedtxt</text>
+    <text x="502" y="851" fill="#cfe9ff" opacity="0.4">dedtxt</text>
+    <text x="512" y="853" fill="#f0ede4">dedtxt</text>
+  </g>
+
+  <!-- Baselines -->
+  <g stroke="#3a3a3a" stroke-width="4">
+    <line x1="280" y1="880" x2="744" y2="880"/>
+    <line x1="320" y1="910" x2="704" y2="910"/>
+  </g>
+</svg>

@@ -1,0 +1,47 @@
+{
+  "name": "dedtxt",
+  "short_name": "dedtxt",
+  "id": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "description": "A dead simple plain-text editor.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "./screenshots/editor-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Editing a plain-text note in dedtxt with line numbers"
+    },
+    {
+      "src": "./screenshots/editor-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "The dedtxt menu on a phone: New, Save, Open, Find"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "text/plain": [".txt", ".md", ".log", ".csv", ".ini"],
+        "application/json": [".json"],
+        "application/xml": [".xml"],
+        "application/x-yaml": [".yml", ".yaml"]
+      }
+    }
+  ]
+}
