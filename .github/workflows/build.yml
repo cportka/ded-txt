@@ -35,6 +35,12 @@ jobs:
       # Portka standard: version is valid SemVer + CHANGELOG agrees.
       - run: bash tests/run-tests.sh
       - run: npm run build:web
+      # Browser e2e against the built bundle: responsive layout across a
+      # phone → desktop viewport matrix + the user-facing flows (draft
+      # recovery, notices, Esc/Find, install + SW update). playwright-core
+      # drives the runner's preinstalled Google Chrome — no browser download.
+      # Runs before the deploy step, so a regression never reaches dedtxt.app.
+      - run: npm run test:e2e
 
       - name: Upload web bundle
         uses: actions/upload-artifact@v4

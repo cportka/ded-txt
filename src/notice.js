@@ -84,18 +84,28 @@ export function showNotice(message, opts = {}) {
     outTimer = setTimeout(remove, GLITCH_OUT_FALLBACK_MS);
   };
 
-  for (const action of opts.actions || []) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'notice-action';
-    btn.textContent = action.label;
-    btn.addEventListener('click', () => {
-      // Handler first: it may decline (confirm() canceled) by returning
-      // false, in which case the notice must survive the click.
-      if (typeof action.onClick === 'function' && action.onClick() === false) return;
-      dismiss();
-    });
-    el.appendChild(btn);
+  // Action buttons live in one container so the layout can give them their
+  // own row on narrow screens (text + ✕ on top, actions below) instead of
+  // squeezing the message into a sliver beside them.
+  const actions = opts.actions || [];
+  if (actions.length) {
+    el.classList.add('notice-with-actions');
+    const group = document.createElement('span');
+    group.className = 'notice-actions';
+    for (const action of actions) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'notice-action';
+      btn.textContent = action.label;
+      btn.addEventListener('click', () => {
+        // Handler first: it may decline (confirm() canceled) by returning
+        // false, in which case the notice must survive the click.
+        if (typeof action.onClick === 'function' && action.onClick() === false) return;
+        dismiss();
+      });
+      group.appendChild(btn);
+    }
+    el.appendChild(group);
   }
 
   const close = document.createElement('button');

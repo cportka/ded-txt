@@ -5,7 +5,7 @@
 ## Checklist
 
 - [ ] `npm test` passes
-- [ ] `npm run lint` passes (`npx eslint@8.57.1 src/ test/ scripts/`)
+- [ ] `npm run lint` passes (`npx eslint@8.57.1 src/ test/ scripts/ e2e/`)
 - [ ] Version bumped in lockstep (`src/version.js`, `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`)
 - [ ] Added a `CHANGELOG.md` entry
 - [ ] No new runtime dependencies; UI matches the existing glitch vocabulary
